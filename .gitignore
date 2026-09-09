@@ -1,0 +1,18 @@
+# dependencies
+/node_modules
+
+# Next.js build output
+/.next
+/out
+
+# local editor files
+.idea
+
+# generated document preview files
+/feature-brief-render
+
+# local environment files
+.env*
+
+# system files
+.DS_Store
