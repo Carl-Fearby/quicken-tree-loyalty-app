@@ -53,6 +53,9 @@ const menuItems = {
     { title: 'Kids & Desserts', items: [['Spaghetti & Tomato Sauce', 'Vegan available without cheese', '£6.00'], ['Chicken Bites & Fries', 'Served with beans or peas', '£7.00'], ['Children’s Roast', 'A junior-sized Sunday roast', '£8.00'], ['Mixed Ice Cream', 'Classic mixed ice cream', '£4.00'], ['Brownie & Ice Cream', 'A rich brownie with ice cream', '£4.50']] },
   ],
   Drinks: [
+    { title: 'Draught Lager', items: [['Carling', 'Crisp and refreshing lager on draught', '£4.00'], ['Madri Excepcional', 'Continental-style lager on draught', '£6.50'], ['Hawkstone Lager', 'Premium lager, 4.8% ABV', '£6.50']] },
+    { title: 'Draught Cider', items: [['Aspall Draught Cyder', 'Suffolk draught cider', '£6.50']] },
+    { title: 'Draught Ale & Stout', items: [['Guinness Extra Cold', 'Extra Cold stout on draught', '£6.50'], ['Guinness', 'Classic draught stout', '£6.50'], ['Sharp’s Atlantic Pale Ale', 'Refreshing pale ale on draught', '£6.50']] },
     { title: 'Speciality Coffee', items: [['Irish Coffee', 'Jameson’s whiskey, Americano and cream', '£5.90'], ['Carajillo Liqueur Coffee', 'Rum, Americano and cream', '£5.90'], ['Bailey’s Floater', 'Bailey’s, Americano and cream', '£5.90'], ['Affogato', 'Double espresso poured over vanilla ice cream', '£5.90']] },
     { title: 'Coffee & Iced Coffee', items: [['Cappuccino', 'Freshly made coffee', '£3.90'], ['Espresso', 'Freshly made coffee', '£3.90'], ['Americano', 'Freshly made coffee', '£3.50'], ['Latte', 'Freshly made coffee', '£3.90'], ['Mocha', 'Freshly made coffee', '£4.20'], ['Iced Latte', 'Served with whipped cream and chocolate or toffee sauce', '£4.50'], ['Iced Black Coffee', 'Served with whipped cream and chocolate or toffee sauce', '£4.00']] },
     { title: 'Tea, Chocolate & Juices', items: [['Yorkshire Tea', 'A proper cup of tea', '£3.90'], ['Selection of Flavoured Tea', 'Earl Grey, Chamomile, Mint, Raspberry & Pomegranate, Lemon or Lemon & Ginger', '£3.90'], ['Hot Chocolate', 'Add cream and marshmallows for £1.00', '£4.00'], ['Apple, Orange, Pineapple or Cranberry Juice', 'Choose your favourite', '£4.00']] },
@@ -61,7 +64,7 @@ const menuItems = {
 } as const;
 
 const menuCategories = [
-  { label: 'Breakfasts', sections: menuItems.Breakfast, service: 'Breakfast served from 7:30 AM' },
+  { label: 'Breakfasts', sections: menuItems.Breakfast, service: 'Breakfast served from 7:30 AM until 12:00 PM' },
   { label: 'Sharers', sections: [menuItems['Main Menu'][0]], service: 'Main menu served from 12:00 PM' },
   { label: 'Starters', sections: [menuItems['Main Menu'][1]], service: 'Main menu served from 12:00 PM' },
   { label: 'Grill', sections: [menuItems['Main Menu'][2]], service: 'Main menu served from 12:00 PM' },
