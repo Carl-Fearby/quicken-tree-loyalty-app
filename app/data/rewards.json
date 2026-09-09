@@ -1,0 +1,7 @@
+{
+  "rewards": [
+    { "icon": "fa-mug-hot", "title": "Complimentary coffee", "meta": "400 points · with brunch", "code": "QT8F4M7R2K9P" },
+    { "icon": "fa-champagne-glasses", "title": "A glass on us", "meta": "600 points · selected pours", "code": "QT3W6N8H5L2D" },
+    { "icon": "fa-utensils", "title": "£10 dining credit", "meta": "1,000 points · any meal", "code": "QT9C4V7B2X6M" }
+  ]
+}

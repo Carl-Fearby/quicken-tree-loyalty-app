@@ -1,0 +1,6 @@
+{
+  "storageKey": "quicken-tree-profile",
+  "default": { "name": "Stephen", "email": "", "memberSince": "2024", "tier": "Quicken Member", "tastes": ["Grill favourites"] },
+  "venue": { "name": "The Quicken Tree", "location": "Heart of England Conference Centre" },
+  "tasteOptions": ["Grill favourites", "Steak & chops", "Burgers & loaded fries", "British classics", "Sunday roasts", "Seafood", "Fresh salads", "Vegetarian dishes", "Vegan options", "Gluten-free choices", "Brunch", "Afternoon tea", "Craft beer", "Cocktails & bubbles", "Coffee & dessert"]
+}

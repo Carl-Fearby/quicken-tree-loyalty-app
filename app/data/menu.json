@@ -1,0 +1,870 @@
+{
+  "serviceMessages": {
+    "Breakfasts": "Breakfast served from 7:30 AM until 12:00 PM",
+    "Main": "Main menu served from 12:00 PM",
+    "Sunday": "Sunday lunch served from 12:00 PM",
+    "Drinks": "Drinks available throughout service"
+  },
+  "dietaryTagNames": {
+    "V": "Vegetarian",
+    "VG": "Vegan",
+    "GF": "Gluten Free",
+    "DF": "Dairy Free",
+    "VO": "Vegetarian Option",
+    "VGO": "Vegan Option Available",
+    "GFO": "Gluten Free Option Available"
+  },
+  "dietaryTags": {
+    "The Veggie": [
+      "V"
+    ],
+    "The Vegan": [
+      "VG"
+    ],
+    "Shashuka": [
+      "V"
+    ],
+    "Classic": [
+      "V"
+    ],
+    "Baked Camembert": [
+      "V"
+    ],
+    "Vegetarian Platter": [
+      "V"
+    ],
+    "Chicken Wings or Cauli Wings": [
+      "VGO"
+    ],
+    "Soup of the Day": [
+      "VGO"
+    ],
+    "Bloody Marie Prawn Salad": [
+      "GFO"
+    ],
+    "Burrata & Prosciutto Bruschetta": [
+      "VO"
+    ],
+    "Grilled Asparagus": [
+      "V"
+    ],
+    "Vegetarian or Beef Lasagne": [
+      "V"
+    ],
+    "Aubergine Schnitzel": [
+      "V",
+      "VGO"
+    ],
+    "Greek Feta Salad": [
+      "GF",
+      "VGO"
+    ],
+    "Falafel & Spinach Burger": [
+      "VG"
+    ],
+    "Triple Cooked Chips": [
+      "V",
+      "GF"
+    ],
+    "Fries": [
+      "V",
+      "GF"
+    ],
+    "Truffle Fries": [
+      "V",
+      "GF"
+    ],
+    "Sweet Potato Fries": [
+      "V",
+      "GF"
+    ],
+    "Beer Battered Onion Rings": [
+      "V"
+    ],
+    "Coleslaw": [
+      "V"
+    ],
+    "Garlic Ciabatta": [
+      "V"
+    ],
+    "Garlic Ciabatta & Cheese": [
+      "V"
+    ],
+    "Spaghetti & Tomato Sauce": [
+      "VG"
+    ],
+    "Children’s Roast": [
+      "VGO"
+    ]
+  },
+  "menuItems": {
+    "Breakfast": [
+      {
+        "title": "English Breakfast",
+        "items": [
+          [
+            "The Full English",
+            "Award-winning sausage, bacon, fried egg, tomatoes, beans, mushrooms, hash brown and toast",
+            "£9.50"
+          ],
+          [
+            "The Even Fuller English",
+            "Two sausages, two bacon rashers, fried egg, tomatoes, beans, mushrooms, hash brown and toast",
+            "£11.50"
+          ],
+          [
+            "The Veggie",
+            "Smashed avocado, veggie sausage, plant-based bacon, egg, tomatoes, beans, mushrooms and toast",
+            "£9.50"
+          ],
+          [
+            "The Vegan",
+            "Smashed avocado, veggie sausage, plant-based bacon, mushrooms, tomato, wilted spinach, hash brown, beans and toast",
+            "£9.50"
+          ]
+        ]
+      },
+      {
+        "title": "Hearty Offerings",
+        "items": [
+          [
+            "Nutella American Buttermilk Pancakes",
+            "Three pancakes with Nutella, strawberries and whipped cream",
+            "£7.00"
+          ],
+          [
+            "Maple Bacon Waffle",
+            "Waffle with maple syrup, streaky bacon, butter swirls and blueberries",
+            "£7.50"
+          ],
+          [
+            "Shashuka",
+            "Bell peppers, onion, garlic, tomato sauce, chives and poached egg with ciabatta",
+            "£10.00"
+          ]
+        ]
+      },
+      {
+        "title": "Smashed Avocado",
+        "items": [
+          [
+            "Classic",
+            "Poached eggs and smashed avocado with chilli flakes and pickled red onion on sourdough baguette",
+            "£8.50"
+          ],
+          [
+            "Bacon",
+            "Streaky bacon and poached eggs with smashed avocado and cherry tomatoes",
+            "£9.50"
+          ],
+          [
+            "Salmon",
+            "Smoked salmon with poached eggs, smashed avocado and granola",
+            "£10.50"
+          ]
+        ]
+      },
+      {
+        "title": "Kids Breakfast",
+        "items": [
+          [
+            "The Mini English",
+            "Sausage, bacon, fried egg, hash brown, beans and toast",
+            "£5.50"
+          ],
+          [
+            "The Mini Veggie",
+            "Veggie sausage, veggie bacon, hash brown, beans and toast",
+            "£5.50"
+          ],
+          [
+            "Mini Pancakes",
+            "American pancakes with Nutella, chocolate sauce and whipped cream",
+            "£5.50"
+          ]
+        ]
+      },
+      {
+        "title": "Toasted Sandwiches",
+        "items": [
+          [
+            "One Filling",
+            "White or brown bread with butter. Choose sausage, bacon, egg or tomato",
+            "£6.00"
+          ],
+          [
+            "Two Fillings",
+            "White or brown bread with butter. Choose sausage, bacon, egg or tomato",
+            "£6.50"
+          ],
+          [
+            "Three Fillings",
+            "White or brown bread with butter. Choose sausage, bacon, egg or tomato",
+            "£7.00"
+          ]
+        ]
+      },
+      {
+        "title": "Extras",
+        "items": [
+          [
+            "Black Pudding",
+            "Add a little extra to your breakfast",
+            "£1.00"
+          ],
+          [
+            "Sausage",
+            "Add a little extra to your breakfast",
+            "£1.50"
+          ],
+          [
+            "Bacon",
+            "Add a little extra to your breakfast",
+            "£1.00"
+          ],
+          [
+            "Hash Brown",
+            "Add a little extra to your breakfast",
+            "50p"
+          ],
+          [
+            "Egg",
+            "Add a little extra to your breakfast",
+            "£1.00"
+          ]
+        ]
+      }
+    ],
+    "Main Menu": [
+      {
+        "title": "Sharers",
+        "items": [
+          [
+            "Baked Camembert",
+            "Oven-baked Camembert with sun-dried tomatoes, rosemary, warm sourdough, celery and onion chutney",
+            "£15.00"
+          ],
+          [
+            "Seafood Platter",
+            "Smoked salmon, Bloody Marie Rose prawns, peppered mackerel, whitebait, scampi and warm bread",
+            "£24.00"
+          ],
+          [
+            "Cured Meat Platter",
+            "Salami, pancetta, mortadella and chorizo with olives, feta, pickles, aioli and warm baked bread",
+            "£24.00"
+          ],
+          [
+            "Vegetarian Platter",
+            "Samosas, jalapeño poppers, sweet chilli bites, tzatziki, hummus, grapes, pickles and flat breads",
+            "£24.00"
+          ],
+          [
+            "Chicken Wings or Cauli Wings",
+            "Korean-style with fresh chilli and spring onions, or BBQ with crispy onions and coleslaw",
+            "S £6.99 · L £12.15"
+          ]
+        ]
+      },
+      {
+        "title": "Starters",
+        "items": [
+          [
+            "Soup of the Day",
+            "Homemade daily soup served with crusty bread",
+            "£6.50"
+          ],
+          [
+            "Crispy Whitebait",
+            "Served with curried mayonnaise and lemon",
+            "£6.50"
+          ],
+          [
+            "Bloody Marie Prawn Salad",
+            "Succulent prawns and smoked salmon with baby gem, classic Marie Rose and warm ciabatta",
+            "£8.00"
+          ],
+          [
+            "Burrata & Prosciutto Bruschetta",
+            "Creamy burrata and prosciutto on toasted bread with arrabbiata, tomatoes, basil pesto and balsamic glaze",
+            "£7.50"
+          ],
+          [
+            "Crab Arancini",
+            "Golden fried crab risotto balls with parmesan, herb crumb, lemon and olive oil emulsion",
+            "£7.50"
+          ],
+          [
+            "Chicken Liver Parfait",
+            "Red onion chutney, salad and toasted ciabatta",
+            "£8.50"
+          ],
+          [
+            "Grilled Asparagus",
+            "With crispy smoked streaky bacon, poached egg and hollandaise",
+            "£7.50"
+          ]
+        ]
+      },
+      {
+        "title": "From the Grill",
+        "items": [
+          [
+            "10oz Ribeye or Sirloin Steak",
+            "Triple cooked chips, field mushroom, roasted tomato, beer-battered onion rings and garlic mushrooms",
+            "£29.00"
+          ],
+          [
+            "Mixed Grill",
+            "Rump steak, gammon, sausage, chicken, fried egg, mushroom, tomato and onion rings",
+            "£28.00"
+          ],
+          [
+            "10oz Gammon",
+            "Triple cooked chips, fried egg and salad",
+            "£16.00"
+          ],
+          [
+            "Full Rack of Sticky BBQ Ribs",
+            "Triple cooked chips, beer-battered onion rings, roasted tomatoes and slaw",
+            "£26.00"
+          ]
+        ]
+      },
+      {
+        "title": "Classics",
+        "items": [
+          [
+            "Homemade Pie of the Week",
+            "Triple cooked chips or creamy mash, seasonal peas and rich gravy",
+            "£17.00"
+          ],
+          [
+            "Fish & Chips",
+            "Beer-battered fish, triple cooked chips and a choice of mushy or garden peas, tartare and lemon",
+            "S £12.90 · L £17.00"
+          ],
+          [
+            "Vegetarian or Beef Lasagne",
+            "Dressed mixed salad and garlic ciabatta",
+            "£17.00"
+          ]
+        ]
+      },
+      {
+        "title": "Main Courses",
+        "items": [
+          [
+            "Half Piri Piri Chicken",
+            "Salad, slaw and fries",
+            "£19.00"
+          ],
+          [
+            "Chicken Tikka Loaded Fries",
+            "Spiced tikka over fries with mint yoghurt, fresh chilli, coriander, mini poppadoms and naan",
+            "£24.00"
+          ],
+          [
+            "Pan-Seared Duck Breast",
+            "Buttered baby carrots, heritage beets, dauphinoise potatoes and cherry red wine jus",
+            "£26.00"
+          ],
+          [
+            "Aubergine Schnitzel",
+            "Crispy aubergine with red pepper coulis, rocket, Grana Padano, semi-sundried tomato salad and fries",
+            "£17.00"
+          ],
+          [
+            "Spaghetti Carbonara",
+            "Classic carbonara with pancetta, egg and Grana Padano",
+            "£17.00"
+          ],
+          [
+            "Honey & Paprika Salmon",
+            "Mediterranean vegetables, wilted spinach and sweet potato mash",
+            "£23.00"
+          ],
+          [
+            "Korean Chicken",
+            "Crispy chicken with gochujang mayonnaise, spring onion and paprika-dusted fries",
+            "£18.00"
+          ],
+          [
+            "Slow-Cooked Lamb Shank",
+            "Minted gravy, creamy mash, tenderstem broccoli and honey roasted root vegetables",
+            "£26.00"
+          ]
+        ]
+      },
+      {
+        "title": "Fresh Salads",
+        "items": [
+          [
+            "Chicken Caesar Salad",
+            "Grilled chicken, crispy bacon, anchovies, croutons, romaine, shaved Parmesan and Caesar dressing",
+            "£15.00"
+          ],
+          [
+            "Steak Salad",
+            "Tender steak with leaves, cherry tomatoes, cucumber, beetroot, chimichurri and ciabatta",
+            "£17.00"
+          ],
+          [
+            "Greek Feta Salad",
+            "Leaves, tomato, cucumber, olives and red onion with baked bread",
+            "£16.00"
+          ]
+        ]
+      },
+      {
+        "title": "Gourmet Burgers",
+        "items": [
+          [
+            "Cheese & Bacon Burger",
+            "Beef patty with melted cheese, crispy bacon, tomato, pickled gherkin, burger sauce and fries",
+            "£18.00"
+          ],
+          [
+            "Buttermilk Chicken Burger",
+            "Crispy chicken, tomato, baby gem, pickled gherkin and sriracha mayo with fries",
+            "£18.00"
+          ],
+          [
+            "Falafel & Spinach Burger",
+            "Falafel and spinach patty with salad, pickled gherkin and vegan sriracha mayo",
+            "£17.00"
+          ]
+        ]
+      },
+      {
+        "title": "Sides",
+        "items": [
+          [
+            "Triple Cooked Chips",
+            "A Quicken Tree favourite",
+            "£4.50"
+          ],
+          [
+            "Fries",
+            "Golden and seasoned",
+            "£3.50"
+          ],
+          [
+            "Truffle Fries",
+            "Truffle mayo, Parmesan and chives",
+            "£8.00"
+          ],
+          [
+            "Sweet Potato Fries",
+            "Crisp and golden",
+            "£4.50"
+          ],
+          [
+            "Beer Battered Onion Rings",
+            "Crisp beer batter",
+            "£3.50"
+          ],
+          [
+            "Coleslaw",
+            "Fresh and creamy",
+            "£3.00"
+          ],
+          [
+            "Garlic Ciabatta",
+            "With garlic butter",
+            "£3.00"
+          ],
+          [
+            "Garlic Ciabatta & Cheese",
+            "Topped with cheese",
+            "£4.00"
+          ]
+        ]
+      },
+      {
+        "title": "Sauces",
+        "items": [
+          [
+            "Peppercorn",
+            "Creamy peppercorn sauce",
+            "£4.00"
+          ],
+          [
+            "Stilton",
+            "Rich Stilton sauce",
+            "£4.00"
+          ],
+          [
+            "Diane",
+            "Classic Diane sauce",
+            "£4.00"
+          ]
+        ]
+      }
+    ],
+    "Sunday Lunch": [
+      {
+        "title": "Traditional Roasts",
+        "items": [
+          [
+            "Prime Roast Sirloin of Beef",
+            "Perfectly aged beef, roasted pink and rested for tenderness",
+            "£19.00"
+          ],
+          [
+            "Honey & Mustard Glazed Gammon",
+            "Slow-roasted gammon with a honey and mustard glaze",
+            "£16.00"
+          ],
+          [
+            "Roast Turkey with Stuffing",
+            "Classic roast turkey with sage and onion stuffing",
+            "£16.00"
+          ],
+          [
+            "Trio of Meats",
+            "A generous selection of roast beef, turkey and gammon",
+            "£24.00"
+          ],
+          [
+            "QT Platter for 2",
+            "Beef, turkey, gammon, mash, roast potatoes, vegetables, stuffing, crackling, cauliflower cheese and pigs in blankets",
+            "£50.00"
+          ]
+        ]
+      },
+      {
+        "title": "Sunday Favourites",
+        "items": [
+          [
+            "Pan-Roasted Chicken Supreme",
+            "Wholegrain mustard mash, fine beans and a white wine, tarragon and mushroom cream sauce",
+            "£19.00"
+          ],
+          [
+            "Honey & Paprika Salmon",
+            "Mediterranean vegetables, wilted spinach and sweet potato mash",
+            "£23.00"
+          ],
+          [
+            "Aubergine Schnitzel",
+            "Red pepper coulis, rocket, Grana Padano, semi-sundried tomato salad and fries",
+            "£17.00"
+          ],
+          [
+            "Falafel & Spinach Burger",
+            "Fries, salad, pickled gherkin and vegan sriracha mayo",
+            "£17.00"
+          ],
+          [
+            "Slow-Cooked Lamb Shank",
+            "Minted gravy, creamy mash, tenderstem broccoli and honey roasted roots",
+            "£26.00"
+          ]
+        ]
+      },
+      {
+        "title": "Sunday Sides",
+        "items": [
+          [
+            "Cauliflower Cheese",
+            "A Sunday classic",
+            "£6.00"
+          ],
+          [
+            "Pigs in Blankets",
+            "Crisp and comforting",
+            "£5.00"
+          ],
+          [
+            "Yorkshire Pudding",
+            "The essential roast accompaniment",
+            "£1.50"
+          ],
+          [
+            "Creamy Mashed Potatoes",
+            "Silky mashed potatoes",
+            "£4.50"
+          ],
+          [
+            "Roast Potatoes",
+            "Crisp roast potatoes",
+            "£4.50"
+          ]
+        ]
+      },
+      {
+        "title": "Kids & Desserts",
+        "items": [
+          [
+            "Spaghetti & Tomato Sauce",
+            "Vegan available without cheese",
+            "£6.00"
+          ],
+          [
+            "Chicken Bites & Fries",
+            "Served with beans or peas",
+            "£7.00"
+          ],
+          [
+            "Children’s Roast",
+            "A junior-sized Sunday roast",
+            "£8.00"
+          ],
+          [
+            "Mixed Ice Cream",
+            "Classic mixed ice cream",
+            "£4.00"
+          ],
+          [
+            "Brownie & Ice Cream",
+            "A rich brownie with ice cream",
+            "£4.50"
+          ]
+        ]
+      }
+    ],
+    "Drinks": [
+      {
+        "title": "Draught Lager",
+        "items": [
+          [
+            "Carling",
+            "Crisp and refreshing lager on draught",
+            "£4.00"
+          ],
+          [
+            "Madri Excepcional",
+            "Continental-style lager on draught",
+            "£6.50"
+          ],
+          [
+            "Hawkstone Lager",
+            "Premium lager, 4.8% ABV",
+            "£6.50"
+          ]
+        ]
+      },
+      {
+        "title": "Draught Cider",
+        "items": [
+          [
+            "Aspall Draught Cyder",
+            "Suffolk draught cider",
+            "£6.50"
+          ]
+        ]
+      },
+      {
+        "title": "Draught Ale & Stout",
+        "items": [
+          [
+            "Guinness Extra Cold",
+            "Extra Cold stout on draught",
+            "£6.50"
+          ],
+          [
+            "Guinness",
+            "Classic draught stout",
+            "£6.50"
+          ],
+          [
+            "Sharp’s Atlantic Pale Ale",
+            "Refreshing pale ale on draught",
+            "£6.50"
+          ]
+        ]
+      },
+      {
+        "title": "Speciality Coffee",
+        "items": [
+          [
+            "Irish Coffee",
+            "Jameson’s whiskey, Americano and cream",
+            "£5.90"
+          ],
+          [
+            "Carajillo Liqueur Coffee",
+            "Rum, Americano and cream",
+            "£5.90"
+          ],
+          [
+            "Bailey’s Floater",
+            "Bailey’s, Americano and cream",
+            "£5.90"
+          ],
+          [
+            "Affogato",
+            "Double espresso poured over vanilla ice cream",
+            "£5.90"
+          ]
+        ]
+      },
+      {
+        "title": "Coffee & Iced Coffee",
+        "items": [
+          [
+            "Cappuccino",
+            "Freshly made coffee",
+            "£3.90"
+          ],
+          [
+            "Espresso",
+            "Freshly made coffee",
+            "£3.90"
+          ],
+          [
+            "Americano",
+            "Freshly made coffee",
+            "£3.50"
+          ],
+          [
+            "Latte",
+            "Freshly made coffee",
+            "£3.90"
+          ],
+          [
+            "Mocha",
+            "Freshly made coffee",
+            "£4.20"
+          ],
+          [
+            "Iced Latte",
+            "Served with whipped cream and chocolate or toffee sauce",
+            "£4.50"
+          ],
+          [
+            "Iced Black Coffee",
+            "Served with whipped cream and chocolate or toffee sauce",
+            "£4.00"
+          ]
+        ]
+      },
+      {
+        "title": "Tea, Chocolate & Juices",
+        "items": [
+          [
+            "Yorkshire Tea",
+            "A proper cup of tea",
+            "£3.90"
+          ],
+          [
+            "Selection of Flavoured Tea",
+            "Earl Grey, Chamomile, Mint, Raspberry & Pomegranate, Lemon or Lemon & Ginger",
+            "£3.90"
+          ],
+          [
+            "Hot Chocolate",
+            "Add cream and marshmallows for £1.00",
+            "£4.00"
+          ],
+          [
+            "Apple, Orange, Pineapple or Cranberry Juice",
+            "Choose your favourite",
+            "£4.00"
+          ]
+        ]
+      },
+      {
+        "title": "Bubbles",
+        "items": [
+          [
+            "Bucks Fizz",
+            "A celebratory glass",
+            "£6.50"
+          ],
+          [
+            "Glass of Prosecco",
+            "Sparkling wine by the glass",
+            "£6.50"
+          ],
+          [
+            "Small Bottle of Prosecco",
+            "A small bottle to share",
+            "£8.00"
+          ],
+          [
+            "Big Bottle of Prosecco",
+            "A full bottle to share",
+            "£23.00"
+          ]
+        ]
+      }
+    ]
+  },
+  "categories": [
+    {
+      "label": "Breakfasts",
+      "source": "Breakfast",
+      "service": "Breakfasts"
+    },
+    {
+      "label": "Sharers",
+      "source": "Main Menu",
+      "sections": [
+        0
+      ],
+      "service": "Main"
+    },
+    {
+      "label": "Starters",
+      "source": "Main Menu",
+      "sections": [
+        1
+      ],
+      "service": "Main"
+    },
+    {
+      "label": "Grill",
+      "source": "Main Menu",
+      "sections": [
+        2
+      ],
+      "service": "Main"
+    },
+    {
+      "label": "Mains",
+      "source": "Main Menu",
+      "sections": [
+        3,
+        4
+      ],
+      "service": "Main"
+    },
+    {
+      "label": "Salads",
+      "source": "Main Menu",
+      "sections": [
+        5
+      ],
+      "service": "Main"
+    },
+    {
+      "label": "Burgers",
+      "source": "Main Menu",
+      "sections": [
+        6
+      ],
+      "service": "Main"
+    },
+    {
+      "label": "Sides",
+      "source": "Main Menu",
+      "sections": [
+        7,
+        8
+      ],
+      "service": "Main"
+    },
+    {
+      "label": "Sunday",
+      "source": "Sunday Lunch",
+      "service": "Sunday"
+    },
+    {
+      "label": "Drinks",
+      "source": "Drinks",
+      "service": "Drinks"
+    }
+  ]
+}
