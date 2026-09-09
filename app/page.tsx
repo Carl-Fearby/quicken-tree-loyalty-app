@@ -1,188 +1,56 @@
 'use client';
 
-import JsBarcode from 'jsbarcode';
-import { useEffect, useRef, useState } from 'react';
-import appointmentsData from './data/appointments.json';
-import bookingsData from './data/bookings.json';
-import eventsData from './data/events.json';
-import menuData from './data/menu.json';
-import pointsData from './data/points-and-tier.json';
-import profileData from './data/profile.json';
-import rewardsData from './data/rewards.json';
-import appConfig from './data/app-config.json';
+import {useState} from 'react';
+import {Icon} from './components/Icon';
+import {IphoneContainer, type DeviceProfile, type IphoneSurfaceProps} from './components/IphoneContainer';
 
-type View = 'home' | 'book' | 'details' | 'checkout' | 'bookings' | 'menu' | 'cart' | 'rewards' | 'profile';
-type Redemption = { title: string; code: string };
-type PushNotification = { context: string; title: string; body: string };
-type Booking = { id: string; date: string; time: string; guests: string; experience?: string; price?: number; total?: number; name: string; email: string; notes: string };
+const deviceProfiles: DeviceProfile[] = [
+    {id: 'iphone-17-pro', label: 'iPhone 17 Pro', width: 402, height: 874, cornerRadius: 50, cutout: 'island', statusTop: 20, statusInset: 28, statusSize: 16},
+    {id: 'iphone-17-pro-max', label: 'iPhone 17 Pro Max', width: 440, height: 956, cornerRadius: 54, cutout: 'island', statusTop: 21, statusInset: 30, statusSize: 16},
+    {id: 'ipad-pro-11-m5', label: 'iPad Pro 11″ (M5)', width: 834, height: 1210, cornerRadius: 28, cutout: 'none', scale: .58, statusTop: 22, statusInset: 30, statusSize: 16},
+    {id: 'ipad-air-11-m4', label: 'iPad Air 11″ (M4)', width: 820, height: 1180, cornerRadius: 28, cutout: 'none', scale: .59, statusTop: 22, statusInset: 30, statusSize: 16},
+    {id: 'ipad-mini-a17', label: 'iPad mini (A17 Pro)', width: 744, height: 1133, cornerRadius: 28, cutout: 'none', scale: .62, statusTop: 20, statusInset: 28, statusSize: 15},
+    {id: 'iphone-16-pro', label: 'iPhone 16 Pro', width: 402, height: 874, cornerRadius: 50, cutout: 'island', statusTop: 20, statusInset: 28, statusSize: 16},
+    {id: 'iphone-15', label: 'iPhone 15', width: 393, height: 852, cornerRadius: 48, cutout: 'island', statusTop: 20, statusInset: 28, statusSize: 16},
+    {id: 'iphone-14', label: 'iPhone 14', width: 390, height: 844, cornerRadius: 48, cutout: 'notch', statusTop: 16, statusInset: 24, statusSize: 14, notchWidth: 156, notchHeight: 30},
+    {id: 'iphone-13', label: 'iPhone 13', width: 390, height: 844, cornerRadius: 48, cutout: 'notch', statusTop: 16, statusInset: 24, statusSize: 14, notchWidth: 154, notchHeight: 30},
+    {id: 'iphone-se', label: 'iPhone SE (3rd gen)', width: 375, height: 667, cornerRadius: 36, cutout: 'none', statusTop: 16, statusInset: 22, statusSize: 15}
+];
 
-const menuNotification: PushNotification = appConfig.menuNotification;
-const bookingStorageKey = bookingsData.storageKey;
-const profileStorageKey = profileData.storageKey;
-const experiencePrices = Object.fromEntries(appointmentsData.experiences.map(experience => [experience.name, experience.price])) as Record<'Table' | 'Afternoon Tea' | 'Bottomless Brunch', number>;
-const dietaryTags: Record<string, string[]> = menuData.dietaryTags;
-const dietaryTagNames: Record<string, string> = menuData.dietaryTagNames;
-const eventNotifications: PushNotification[] = eventsData.events.map(event => ({ context: 'THE QUICKEN TREE · EVENT', title: event.title, body: event.notification }));
-type MenuSection = { title: string; items: ReadonlyArray<readonly [string, string, string]> };
-const menuItems = menuData.menuItems as unknown as Record<'Breakfast' | 'Main Menu' | 'Sunday Lunch' | 'Drinks', MenuSection[]>;
-const menuCategories = menuData.categories.map(category => {
-  const source = menuItems[category.source as keyof typeof menuItems];
-  return { label: category.label, sections: category.sections ? category.sections.map(index => source[index]) : source, service: menuData.serviceMessages[category.service as keyof typeof menuData.serviceMessages] };
-});
-const allMenuSections = Object.values(menuItems).flat() as MenuSection[];
-
-function Icon({ name, className = '' }: { name: string; className?: string }) {
-  return <i aria-hidden="true" className={`fa-solid ${name} ${className}`.trim()} />;
+function QuickenTreeIcon() {
+    return <b style={{fontSize: 31, letterSpacing: -2, textShadow: '0 3px 8px #0008'}}>QT</b>;
 }
 
-const openingHours = (date: Date) => date.getDay() === 0 ? appointmentsData.openingHours.sunday : appointmentsData.openingHours.weekday;
-const toInputDate = (date: Date) => date.toISOString().slice(0, 10);
-const formatDate = (date: Date) => date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-const fromInputDate = (value: string) => new Date(`${value}T12:00:00`);
-const availableSlots = (value: string, now = new Date()) => {
-  const date = fromInputDate(value); const { open, close } = openingHours(date);
-  const sameDay = toInputDate(date) === toInputDate(now);
-  const earliest = sameDay ? Math.max(open, Math.ceil((now.getHours() + now.getMinutes() / 60 + 0.01) * 2) / 2) : open;
-  const slots: string[] = [];
-  for (let hour = earliest; hour <= close; hour += .5) { const h = Math.floor(hour); slots.push(`${String(h).padStart(2, '0')}:${hour % 1 ? '30' : '00'}`); }
-  return slots;
-};
-const nextBookableDate = (now = new Date()) => { const date = new Date(now); for (let i = 0; i < 8; i += 1) { if (availableSlots(toInputDate(date), now).length) return date; date.setDate(date.getDate() + 1); date.setHours(12, 0, 0, 0); } return date; };
-const priceValue = (price: string) => Number(price.match(/£([\d.]+)/)?.[1] ?? 0);
-
-export default function Home() {
-  const [view, setView] = useState<View>('home');
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [themeReady, setThemeReady] = useState(false);
-  const [showIphonePreview, setShowIphonePreview] = useState(false);
-  const [previewReady, setPreviewReady] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
-  const [appMotion, setAppMotion] = useState<'idle' | 'opening' | 'closing'>('idle');
-  const [iconBounce, setIconBounce] = useState(false);
-  const [menuCategory, setMenuCategory] = useState('Breakfasts');
-  const [bookingName, setBookingName] = useState(profileData.default.name);
-  const [bookingEmail, setBookingEmail] = useState('');
-  const [bookingNotes, setBookingNotes] = useState('');
-  const [profilePanel, setProfilePanel] = useState<'details' | 'taste' | 'venues' | 'gifts' | 'help' | null>(null);
-  const [profileName, setProfileName] = useState(profileData.default.name);
-  const [profileEmail, setProfileEmail] = useState(profileData.default.email);
-  const [tasteProfile, setTasteProfile] = useState<string[]>(profileData.default.tastes);
-  const [giftCode, setGiftCode] = useState('');
-  const [profileSaved, setProfileSaved] = useState(false);
-  const [profileLoaded, setProfileLoaded] = useState(false);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [bookingsOrigin, setBookingsOrigin] = useState<'home' | 'profile'>('home');
-  const [bookingsLoaded, setBookingsLoaded] = useState(false);
-  const [orderAheadBooking, setOrderAheadBooking] = useState<Booking | null>(null);
-  const [menuSearch, setMenuSearch] = useState('');
-  const [preOrderItems, setPreOrderItems] = useState<Record<string, number>>({});
-  const [wingSizePrompt, setWingSizePrompt] = useState(false);
-  const [wingSize, setWingSize] = useState<'Small' | 'Large' | null>(null);
-  const [guests, setGuests] = useState('5 Guests');
-  const [bookingExperience, setBookingExperience] = useState<'Table' | 'Afternoon Tea' | 'Bottomless Brunch'>('Table');
-  const [bookingDate, setBookingDate] = useState(() => toInputDate(nextBookableDate()));
-  const [time, setTime] = useState('');
-  const [showAllTimes, setShowAllTimes] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [paymentState, setPaymentState] = useState<'idle' | 'processing'>('idle');
-  const [checkoutMode, setCheckoutMode] = useState<'booking' | 'order'>('booking');
-  const [redemption, setRedemption] = useState<Redemption | null>(null);
-  const [isClosingRedemption, setIsClosingRedemption] = useState(false);
-  const [showPushNotification, setShowPushNotification] = useState(false);
-  const [pushNotification, setPushNotification] = useState<PushNotification>(menuNotification);
-  const [notificationKey, setNotificationKey] = useState(0);
-  const [visibleMonth, setVisibleMonth] = useState(() => {
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), 1, 12);
-  });
-  const times = availableSlots(bookingDate);
-  const bookingTimes = bookingExperience === 'Bottomless Brunch' ? (fromInputDate(bookingDate).getDay() === 0 ? [] : times.filter(slot => slot >= '12:00' && slot <= '19:30')) : bookingExperience === 'Afternoon Tea' ? times.filter(slot => slot >= '12:00' && slot <= '17:00') : times;
-  const experiencePrice = experiencePrices[bookingExperience];
-  const guestCount = parseInt(guests, 10);
-  const bookingTotal = experiencePrice * guestCount;
-  const calendarStart = new Date(visibleMonth);
-  calendarStart.setDate(1 - ((calendarStart.getDay() + 6) % 7));
-  const calendarDays = Array.from({ length: 42 }, (_, offset) => {
-    const date = new Date(calendarStart);
-    date.setDate(calendarStart.getDate() + offset);
-    return date;
-  });
-  const todayValue = toInputDate(new Date());
-  const selectedMenuCategory = menuCategories.find(category => category.label === menuCategory) ?? menuCategories[0];
-  const filteredMenuSections = selectedMenuCategory.sections.map(section => ({ ...section, items: section.items.filter(([name, description]) => `${name} ${description}`.toLowerCase().includes(menuSearch.trim().toLowerCase())) })).filter(section => section.items.length);
-  const preOrderCount = Object.values(preOrderItems).reduce((total, quantity) => total + quantity, 0);
-  const preOrderTotal = Object.entries(preOrderItems).reduce((total, [name, quantity]) => {
-    const item = allMenuSections.flatMap(section => section.items).find(([itemName]) => name.startsWith(itemName));
-    const price = name.includes('· Small ·') ? 6.99 : name.includes('· Large ·') ? 12.15 : item ? priceValue(item[2]) : 0;
-    return total + price * quantity;
-  }, 0);
-  const preOrderLines = Object.entries(preOrderItems).flatMap(([name, quantity]) => {
-    const item = allMenuSections.flatMap(section => section.items).find(([itemName]) => name.startsWith(itemName));
-    const price = name.includes('· Small ·') ? 6.99 : name.includes('· Large ·') ? 12.15 : item ? priceValue(item[2]) : 0;
-    return item ? [{ name, description: item[1], price, quantity }] : [];
-  });
-  useEffect(() => { if (!bookingTimes.includes(time)) setTime(bookingTimes[0] ?? ''); }, [bookingDate, bookingExperience]);
-  useEffect(() => { try { const stored = window.localStorage.getItem(bookingStorageKey); if (stored) setBookings(JSON.parse(stored)); } catch { setBookings([]); } finally { setBookingsLoaded(true); } }, []);
-  useEffect(() => { if (bookingsLoaded) window.localStorage.setItem(bookingStorageKey, JSON.stringify(bookings)); }, [bookings, bookingsLoaded]);
-  useEffect(() => {
-    if (!orderAheadBooking) return;
-    const key = `quicken-tree-order-ahead-${orderAheadBooking.id}`;
-    if (Object.keys(preOrderItems).length) window.localStorage.setItem(key, JSON.stringify(preOrderItems));
-    else window.localStorage.removeItem(key);
-  }, [orderAheadBooking, preOrderItems]);
-  useEffect(() => { try { const stored = window.localStorage.getItem(profileStorageKey); if (stored) { const profile = JSON.parse(stored); setProfileName(profile.name || profileData.default.name); setProfileEmail(profile.email || profileData.default.email); setTasteProfile(Array.isArray(profile.tastes) ? profile.tastes : profileData.default.tastes); } } finally { setProfileLoaded(true); } }, []);
-  useEffect(() => { if (profileLoaded) window.localStorage.setItem(profileStorageKey, JSON.stringify({ name: profileName, email: profileEmail, tastes: tasteProfile })); }, [profileName, profileEmail, tasteProfile, profileLoaded]);
-  useEffect(() => { if (isDesktop) return; const timer = window.setTimeout(() => { setPushNotification(menuNotification); setNotificationKey(value => value + 1); setShowPushNotification(true); }, 5000); return () => window.clearTimeout(timer); }, [isDesktop]);
-  useEffect(() => { setIsDarkMode(window.localStorage.getItem('quicken-tree-dark-mode') === 'true'); setThemeReady(true); }, []);
-  useEffect(() => { if (themeReady) window.localStorage.setItem('quicken-tree-dark-mode', String(isDarkMode)); }, [isDarkMode, themeReady]);
-  useEffect(() => { const preview = window.localStorage.getItem('quicken-tree-iphone-preview') === 'true'; setShowIphonePreview(preview); setIsDesktop(preview); setPreviewReady(true); }, []);
-  useEffect(() => { if (previewReady) window.localStorage.setItem('quicken-tree-iphone-preview', String(showIphonePreview)); }, [showIphonePreview, previewReady]);
-  const navigate = (next: View, preserveOrderAhead = false) => { setShowDatePicker(false); if (next !== 'profile') setProfilePanel(null); if (next === 'menu' && !preserveOrderAhead) { setOrderAheadBooking(null); setPreOrderItems({}); } setView(next); };
-  const bookEvent = (date: string) => { setBookingExperience('Table'); setBookingDate(date); setShowAllTimes(false); setShowDatePicker(false); navigate('book'); };
-  const closeRedemption = () => { setIsClosingRedemption(true); window.setTimeout(() => { setRedemption(null); setIsClosingRedemption(false); }, 220); };
-  const triggerEventNotification = () => { setPushNotification(eventNotifications[Math.floor(Math.random() * eventNotifications.length)]); setNotificationKey(value => value + 1); setShowPushNotification(true); };
-  const openApp = () => { if (appMotion !== 'idle') return; setShowPushNotification(false); setView('home'); setIsDesktop(false); setAppMotion('opening'); window.setTimeout(() => setAppMotion('idle'), 520); };
-  const returnToDesktop = () => { if (appMotion !== 'idle') return; setShowDatePicker(false); setAppMotion('closing'); window.setTimeout(() => { setIsDesktop(true); setAppMotion('idle'); setIconBounce(true); window.setTimeout(() => setIconBounce(false), 220); }, 300); };
-  const toggleIphonePreview = () => { setShowIphonePreview(current => { const next = !current; setIsDesktop(next); setAppMotion('idle'); setShowPushNotification(false); return next; }); };
-  const requestTable = () => { if (!time) return; const booking: Booking = { id: `${Date.now()}`, date: bookingDate, time, guests, experience: bookingExperience, price: experiencePrice || undefined, total: bookingTotal || undefined, name: bookingName.trim() || 'Guest', email: bookingEmail.trim(), notes: bookingNotes.trim() }; setBookings(current => [booking, ...current]); setBookingEmail(''); setBookingNotes(''); setPaymentState('idle'); navigate('bookings'); };
-  const continueFromDetails = () => bookingExperience === 'Table' ? requestTable() : (setCheckoutMode('booking'), navigate('checkout'));
-  const completeOrder = () => { setPaymentState('idle'); setPreOrderItems({}); setOrderAheadBooking(null); navigate('bookings'); };
-  const payWithApplePay = () => { if (paymentState === 'processing') return; setPaymentState('processing'); window.setTimeout(checkoutMode === 'order' ? completeOrder : requestTable, 1450); };
-  const startOrderAhead = (booking: Booking) => { let savedOrder: Record<string, number> = {}; try { savedOrder = JSON.parse(window.localStorage.getItem(`quicken-tree-order-ahead-${booking.id}`) ?? '{}'); } catch { savedOrder = {}; } setOrderAheadBooking(booking); setPreOrderItems(savedOrder); setMenuSearch(''); setMenuCategory('Sharers'); navigate('menu', true); };
-  const addToOrder = (name: string) => setPreOrderItems(current => ({ ...current, [name]: (current[name] ?? 0) + 1 }));
-  const removeFromOrder = (name: string) => setPreOrderItems(current => { const next = { ...current }; if (!next[name]) return current; if (next[name] === 1) delete next[name]; else next[name] -= 1; return next; });
-
-  return <main className={`stage${isDarkMode ? ' dark' : ''}`}><div className="presentationMenu" aria-label="Preview controls"><button className="themeToggle" onClick={() => setIsDarkMode(value => !value)} aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}><Icon name={isDarkMode ? 'fa-sun' : 'fa-moon'} /><span>{isDarkMode ? 'Light mode' : 'Dark mode'}</span></button><button className="deviceToggle" onClick={toggleIphonePreview} aria-label={`${showIphonePreview ? 'Hide' : 'Show'} iPhone preview`}><Icon name={showIphonePreview ? 'fa-mobile-screen-button' : 'fa-expand'} /><span>{showIphonePreview ? 'Hide iPhone' : 'iPhone preview'}</span></button></div><section className={`phone${showIphonePreview ? '' : ' standalone'}`} aria-label="The Quicken Tree loyalty app">
-    {showIphonePreview && <span className="notch"/>}
-    {showPushNotification && <button key={notificationKey} className="pushNotification" onClick={() => setShowPushNotification(false)} aria-label={`Dismiss ${pushNotification.title} notification`}><i>QT</i><span><small>{pushNotification.context}</small><b>{pushNotification.title}</b><em>{pushNotification.body}</em></span></button>}
-    {showIphonePreview && (isDesktop || appMotion !== 'idle') && <div className={`iphoneDesktop ${appMotion}`}><PhoneHeader light onClock={triggerEventNotification}/><div className="desktopApps">{([['fa-calendar-days','Calendar'],['fa-image','Photos'],['fa-music','Music'],['fa-map-location-dot','Maps'],['fa-cloud-sun','Weather'],['fa-note-sticky','Notes'],['fa-gear','Settings']] as const).map(([icon,label]) => <div className="desktopFiller" key={label}><span><Icon name={icon} /></span><small>{label}</small></div>)}<button className={`desktopApp${iconBounce ? ' settling' : ''}`} onClick={openApp} aria-label="Open The Quicken Tree"><span><b>QT</b></span><small>The Quicken Tree</small></button></div><div className="desktopDock"><span><Icon name="fa-phone" /></span><span><Icon name="fa-message" /></span><span><Icon name="fa-compass" /></span><span><Icon name="fa-camera" /></span></div></div>}
-    {(!showIphonePreview || !isDesktop || appMotion !== 'idle') && <div className={`appShell ${appMotion}`}>{showIphonePreview && <PhoneHeader onClock={triggerEventNotification}/>}<div className="content" key={`${view}-${profilePanel ?? 'root'}`}>
-      {view === 'home' && <><p className="eyebrow">Welcome back, Stephen</p><h1>Make every visit<br/>more memorable.</h1><section className="hero"><img src="/brand/quicken-tree-red.png" alt="The Quicken Tree Bar Grill Restaurant"/><span>Eat · Drink<br/>Repeat</span><h2>Your table awaits.</h2><p>At Heart of England Conference Centre</p></section><button className="points" onClick={() => navigate('rewards')}><i>QT</i><span><b>840 points</b><small>160 points until your next reward</small></span><em><Icon name="fa-chevron-right" /></em></button><Header title="Your visit, your way"/><div className="actions"><button onClick={() => navigate('book')}><strong><Icon name="fa-calendar-plus" /></strong>Book a table</button><button onClick={() => navigate('rewards')}><strong><Icon name="fa-star" /></strong>Use rewards</button><button onClick={() => navigate('menu')}><strong><Icon name="fa-utensils" /></strong>View menu</button></div><UpcomingBookings bookings={bookings} onOpen={() => { setBookingsOrigin('home'); navigate('bookings'); }} /><Header title="At The Quicken Tree"/><div className="eventList"><button className="event" onClick={() => bookEvent('2026-09-18')}><time>FRI<b>18</b>SEP</time><div><b>Late Harvest Supper Club</b><p>Four courses, paired wines · 7:30 PM</p></div></button><button className="event festive" onClick={() => bookEvent('2026-12-12')}><time>SAT<b>12</b>DEC</time><div><b>Ho Ho Ho Down</b><p>Christmas party night · food, music and festive drinks</p></div></button><button className="event" onClick={() => bookEvent('2026-12-20')}><time>SUN<b>20</b>DEC</time><div><b>Festive Family Brunch</b><p>Seasonal favourites and treats for the little ones</p></div></button></div></>}
-      {view === 'book' && <><p className="eyebrow">Reserve your visit</p><h1>Good food starts<br/>right here.</h1><div className="bookingTypes" aria-label="Choose your experience">{(['Table', 'Afternoon Tea', 'Bottomless Brunch'] as const).map(experience => <button type="button" className={bookingExperience === experience ? 'selected' : ''} onClick={() => { setBookingExperience(experience); setShowAllTimes(false); }} key={experience}><span>{experience}</span>{experiencePrices[experience] > 0 && <small>£{experiencePrices[experience].toFixed(2)} pp</small>}</button>)}</div>{experiencePrice > 0 && <section className="experiencePrice"><Icon name="fa-sparkles" /><span><small>{bookingExperience}</small><b>£{experiencePrice.toFixed(2)} <em>per guest</em></b></span><strong>£{bookingTotal.toFixed(2)}<small>for {guestCount} guests</small></strong></section>}<button type="button" className="dateField" aria-expanded={showDatePicker} onClick={() => { setVisibleMonth(new Date(fromInputDate(bookingDate).getFullYear(), fromInputDate(bookingDate).getMonth(), 1, 12)); setShowDatePicker(value => !value); }}><span>{formatDate(fromInputDate(bookingDate))}</span><Icon name="fa-chevron-down" /></button>{showDatePicker && <section className="datePicker" aria-label="Choose a booking date"><header><button type="button" aria-label="Previous month" disabled={visibleMonth.getFullYear() === new Date().getFullYear() && visibleMonth.getMonth() === new Date().getMonth()} onClick={() => setVisibleMonth(value => new Date(value.getFullYear(), value.getMonth() - 1, 1, 12))}><Icon name="fa-chevron-left" /></button><b>{visibleMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</b><button type="button" aria-label="Next month" onClick={() => setVisibleMonth(value => new Date(value.getFullYear(), value.getMonth() + 1, 1, 12))}><Icon name="fa-chevron-right" /></button></header><div className="weekdays">{['M','T','W','T','F','S','S'].map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div><div className="calendarDays">{calendarDays.map(date => { const value = toInputDate(date); const outsideMonth = date.getMonth() !== visibleMonth.getMonth(); const past = value < todayValue; return <button type="button" key={value} disabled={outsideMonth || past} className={bookingDate === value ? 'selected' : ''} onClick={() => { setBookingDate(value); setShowAllTimes(false); setShowDatePicker(false); }}>{date.getDate()}</button>; })}</div></section>}<div className="chips">{['2 Guests','3 Guests','4 Guests','5 Guests','6+ Guests'].map(x=><button className={guests===x?'selected':''} onClick={()=>setGuests(x)} key={x}>{x}</button>)}</div><div className="sectionTitle">Choose a time <button onClick={() => setShowAllTimes(value => !value)}>{showAllTimes ? 'Show fewer' : 'View all times'}</button></div>{bookingTimes.length ? <div className="times">{(showAllTimes ? bookingTimes : bookingTimes.slice(0, 6)).map(x=><button className={time===x?'selected':''} onClick={()=>setTime(x)} key={x}>{x}</button>)}</div> : <p className="noTimes">There are no more {bookingExperience.toLowerCase()} times today. Choose another date to see availability.</p>}<p className="notice"><b>{bookingExperience === 'Table' ? 'Member moment' : `${bookingExperience} booking`}</b><br/>{bookingExperience === 'Bottomless Brunch' ? 'Available Monday to Saturday from noon until 7:30 PM.' : bookingExperience === 'Afternoon Tea' ? 'Choose a relaxed afternoon sitting from noon until 5:00 PM.' : `Reserve at ${time || 'an available time'} and earn double points on your seasonal menu.`}</p><button className="cta" disabled={!time} onClick={() => navigate('details')}>Continue to details</button></>}
-      {view === 'details' && <><button className="topBack" onClick={() => navigate('book')}><Icon name="fa-chevron-left" /> Back to booking</button><p className="eyebrow">Review your booking</p><h1>You are almost<br/>there.</h1><section className="bookingSummary"><p>The Quicken Tree</p><b>{formatDate(fromInputDate(bookingDate))}</b><span>{bookingExperience} · {time} · {guests}</span>{experiencePrice > 0 && <strong className="bookingPrice">£{experiencePrice.toFixed(2)} per guest · £{bookingTotal.toFixed(2)} total</strong>}<small>Heart of England Conference Centre</small></section><label className="detailLabel">Booking name<input value={bookingName} onChange={event => setBookingName(event.target.value)} placeholder="Your name" /></label><label className="detailLabel">Email address<input value={bookingEmail} onChange={event => setBookingEmail(event.target.value)} type="email" placeholder="you@example.com" /></label><label className="detailLabel">Anything we should know<textarea value={bookingNotes} onChange={event => setBookingNotes(event.target.value)} placeholder="Dietary requirements or occasion" /></label><button className="cta" onClick={continueFromDetails}>{experiencePrice ? `Continue to payment · £${bookingTotal.toFixed(2)}` : 'Request reservation'}</button></>}
-      {view === 'checkout' && <><button className="topBack" onClick={() => navigate(checkoutMode === 'order' ? 'cart' : 'details')} disabled={paymentState === 'processing'}><Icon name="fa-chevron-left" /> {checkoutMode === 'order' ? 'Cart' : 'Back to details'}</button><p className="eyebrow">Secure checkout</p><h1>{checkoutMode === 'order' ? <>Confirm your<br/>order ahead.</> : <>One last step<br/>to reserve.</>}</h1><section className="checkoutCard"><div><span>THE QUICKEN TREE</span><Icon name="fa-wine-glass" /></div><b>{checkoutMode === 'order' ? 'Order ahead' : bookingExperience}</b><small>•••• 4242</small></section><section className="checkoutSummary"><p>{checkoutMode === 'order' ? 'Your order' : bookingExperience}</p><span>{checkoutMode === 'order' ? `${preOrderCount} ${preOrderCount === 1 ? 'item' : 'items'}` : `${guestCount} guests × £${experiencePrice.toFixed(2)}`}</span><b>Total due today <strong>£{(checkoutMode === 'order' ? preOrderTotal : bookingTotal).toFixed(2)}</strong></b><small>{checkoutMode === 'order' ? 'Your order is sent to the kitchen after payment.' : 'Your reservation is confirmed as soon as payment is complete.'}</small></section><button className={`applePay${paymentState === 'processing' ? ' processing' : ''}`} onClick={payWithApplePay} disabled={paymentState === 'processing'}>{paymentState === 'processing' ? <><i className="appleSpinner" /> Processing payment…</> : <><span></span> Pay <b>£{(checkoutMode === 'order' ? preOrderTotal : bookingTotal).toFixed(2)}</b></>}</button><p className="checkoutFine">Demo Apple Pay · no payment is taken.</p></>}
-      {view === 'bookings' && <><button className="topBack" onClick={() => navigate(bookingsOrigin)}><Icon name="fa-chevron-left" /> {bookingsOrigin === 'profile' ? 'Profile' : 'Home'}</button><p className="eyebrow">Your reservations</p><h1>Upcoming<br/>bookings.</h1>{bookings.length ? <div className="bookingList">{bookings.map(booking => <article className="savedBooking" key={booking.id}><p>The Quicken Tree</p><b>{formatDate(fromInputDate(booking.date))}</b><span>{booking.experience ?? 'Table'} · {booking.time} · {booking.guests}</span>{booking.total ? <strong className="paidBooking"><Icon name="fa-circle-check" /> Paid · £{booking.total.toFixed(2)}</strong> : null}<small>{booking.name}</small>{parseInt(booking.guests, 10) >= 4 && !booking.total && <button className="orderAhead" onClick={() => startOrderAhead(booking)}><Icon name="fa-utensils" /> Order ahead</button>}</article>)}</div> : <section className="emptyBookings"><Icon name="fa-calendar-plus" /><b>No bookings yet</b><p>Your confirmed reservations will appear here.</p><button className="cta" onClick={() => navigate('book')}>Book a table</button></section>}</>}
-      {view === 'menu' && <><p className="eyebrow">The Quicken Tree menu</p><h1>Good food,<br/>all day long.</h1>{orderAheadBooking && <p className="preOrderBanner"><Icon name="fa-utensils" /> Ordering ahead for {orderAheadBooking.guests} at {orderAheadBooking.time}</p>}<label className="menuSearch"><Icon name="fa-magnifying-glass" /><input value={menuSearch} onChange={event => setMenuSearch(event.target.value)} placeholder="Search the menu" /></label><div className="menuTabs">{menuCategories.map(category => <button key={category.label} className={menuCategory === category.label ? 'selected' : ''} onClick={() => setMenuCategory(category.label)}>{category.label}</button>)}</div><p className="menuService">{selectedMenuCategory.service}</p><p className="dietaryLegend">{(['V', 'VG', 'GF', 'VGO'] as const).map(tag => <span key={tag} title={dietaryTagNames[tag]}>{tag} <em>{dietaryTagNames[tag]}</em></span>)}</p><div className="menuList">{filteredMenuSections.length ? filteredMenuSections.map(section => <section className="menuSection" key={section.title}><h2>{section.title}</h2>{section.items.map(([name, description, price]) => <article className="menuItem" key={name}><div><b>{name}</b>{dietaryTags[name] && <span className="dietaryTags">{dietaryTags[name].map(tag => <mark key={tag} title={dietaryTagNames[tag]}>{tag}</mark>)}</span>}<p>{description}</p></div><aside><strong>{price}</strong>{orderAheadBooking && <button className="addToOrder" onClick={() => { if (name === 'Chicken Wings or Cauli Wings') { setWingSize(null); setWingSizePrompt(true); } else addToOrder(name); }} aria-label={`Add ${name} to order`}>Add</button>}</aside></article>)}</section>) : <p className="noMenuResults">No menu items match “{menuSearch}”.</p>}</div>{orderAheadBooking ? null : <button className="cta" onClick={() => navigate('book')}>Book a table</button>}</>}
-      {view === 'cart' && <><button className="topBack" onClick={() => navigate('menu', true)}><Icon name="fa-chevron-left" /> Menu</button><p className="eyebrow">Order ahead</p><h1>Your<br/>basket.</h1>{preOrderLines.length ? <><p className="cartBooking"><Icon name="fa-calendar-check" /> Ordering ahead for {orderAheadBooking?.guests} at {orderAheadBooking?.time}</p><div className="cartList">{preOrderLines.map(item => <article className="cartItem" key={item.name}><div><b>{item.name}</b><p>{item.description}</p><strong>£{item.price.toFixed(2)}</strong></div><aside><button onClick={() => removeFromOrder(item.name)} aria-label={'Remove one ' + item.name}><Icon name="fa-minus" /></button><b>{item.quantity}</b><button onClick={() => addToOrder(item.name)} aria-label={'Add one ' + item.name}><Icon name="fa-plus" /></button></aside><button className="removeCartItem" onClick={() => setPreOrderItems(current => { const next = { ...current }; delete next[item.name]; return next; })}>Remove</button></article>)}</div><button className="emptyCart" onClick={() => setPreOrderItems({})}>Empty basket</button><section className="cartTotal"><span>Total</span><b>£{preOrderTotal.toFixed(2)}</b></section><button className="applePay" onClick={() => { setCheckoutMode('order'); navigate('checkout', true); }}><span></span> Checkout <b>£{preOrderTotal.toFixed(2)}</b></button><p className="checkoutFine">Demo Apple Pay · no payment is taken.</p></> : <section className="emptyCartState"><Icon name="fa-basket-shopping" /><b>Your basket is empty</b><p>Add dishes from the menu when you are ready.</p><button className="cta" onClick={() => navigate('menu', true)}>Browse menu</button></section>}</>}
-      {view === 'rewards' && <><p className="eyebrow">Member rewards</p><h1>A little thank you,<br/>every time you visit.</h1><section className="tier"><img src="/brand/quicken-tree-white.png" alt="The Quicken Tree"/><small>Current tier</small><h2>{pointsData.tier}</h2><p>{pointsData.benefits}</p><div className="progress"><i/></div><footer>{pointsData.points.toLocaleString()} / {pointsData.nextRewardAt.toLocaleString()} points to Quicken Gold</footer></section><Header title="Ready for you"/>{rewardsData.rewards.map(({ icon, title, meta, code })=><article className="reward" key={title}><i><Icon name={icon} /></i><div><b>{title}</b><p>{meta}</p></div><button onClick={() => { setIsClosingRedemption(false); setRedemption({ title, code }); }}>Redeem</button></article>)}</>}
-      {view === 'profile' && !profilePanel && <><p className="eyebrow">Your Quicken Tree</p><button className="account accountButton" onClick={() => setProfilePanel('details')}><i>{profileName.slice(0, 1).toUpperCase()}</i><div><b>{profileName}</b><small>Quicken Member · since 2024</small></div><Icon name="fa-chevron-right" /></button><button className="setting" onClick={() => { setBookingsOrigin('profile'); navigate('bookings'); }}>Upcoming bookings<span><Icon name="fa-chevron-right" /></span></button><button className="setting" onClick={() => setProfilePanel('taste')}>Taste profile<span><Icon name="fa-chevron-right" /></span></button><button className="setting" onClick={() => setProfilePanel('venues')}>Saved venues<span><Icon name="fa-chevron-right" /></span></button><button className="setting" onClick={() => setProfilePanel('gifts')}>Gift cards & credit<span><Icon name="fa-chevron-right" /></span></button><button className="setting" onClick={() => setProfilePanel('help')}>Help & contact<span><Icon name="fa-chevron-right" /></span></button></>}
-      {view === 'profile' && profilePanel && <><button className="topBack" onClick={() => setProfilePanel(null)}><Icon name="fa-chevron-left" /> Profile</button>{profilePanel === 'details' && <><p className="eyebrow">Account details</p><h1>Make it<br/>yours.</h1><label className="detailLabel">Your name<input value={profileName} onChange={event => setProfileName(event.target.value)} /></label><label className="detailLabel">Email address<input type="email" value={profileEmail} onChange={event => setProfileEmail(event.target.value)} placeholder="you@example.com" /></label><button className="cta" onClick={() => { setProfileSaved(true); window.setTimeout(() => setProfileSaved(false), 1800); }}><Icon name="fa-check" /> {profileSaved ? 'Saved' : 'Save changes'}</button></>}{profilePanel === 'taste' && <><p className="eyebrow">Taste profile</p><h1>Your table,<br/>your taste.</h1><p className="profileIntro">Choose what you enjoy and we’ll make your member offers more relevant.</p><div className="tasteChoices">{['Grill favourites', 'Steak & chops', 'Burgers & loaded fries', 'British classics', 'Sunday roasts', 'Seafood', 'Fresh salads', 'Vegetarian dishes', 'Vegan options', 'Gluten-free choices', 'Brunch', 'Afternoon tea', 'Craft beer', 'Cocktails & bubbles', 'Coffee & dessert'].map(taste => <button key={taste} className={tasteProfile.includes(taste) ? 'selected' : ''} onClick={() => setTasteProfile(current => current.includes(taste) ? current.filter(item => item !== taste) : [...current, taste])}><Icon name={tasteProfile.includes(taste) ? 'fa-check' : 'fa-plus'} /> {taste}</button>)}</div></>}{profilePanel === 'venues' && <><p className="eyebrow">Saved venues</p><h1>Your favourite<br/>place.</h1><section className="venueCard"><Icon name="fa-location-dot" /><div><b>The Quicken Tree</b><p>Heart of England Conference Centre</p><small>Your preferred venue</small></div></section></>}{profilePanel === 'gifts' && <><p className="eyebrow">Gift cards & credit</p><h1>A little extra<br/>for your table.</h1><section className="creditCard"><small>QUICKEN TREE CREDIT</small><b>£0.00</b><span>No credit available</span></section><label className="detailLabel">Add a gift card or credit code<input value={giftCode} onChange={event => setGiftCode(event.target.value.toUpperCase())} placeholder="QT-XXXX-XXXX" /></label><button className="cta" disabled={!giftCode} onClick={() => { setGiftCode(''); setProfileSaved(true); window.setTimeout(() => setProfileSaved(false), 1800); }}>{profileSaved ? 'Code added' : 'Add code'}</button></>}{profilePanel === 'help' && <><p className="eyebrow">Help & contact</p><h1>We are here<br/>to help.</h1><p className="profileIntro">For booking changes, dietary requirements or a quick question, get in touch with the team.</p><a className="contactAction" href="tel:01676540444"><Icon name="fa-phone" /> Call The Quicken Tree</a><a className="contactAction" href="mailto:info@quickentree.uk"><Icon name="fa-envelope" /> Email the team</a></>}</>}
-    </div>
-    <nav>{([['home','fa-house','Home'],['book','fa-calendar-plus','Book'],['menu','fa-utensils','Menu'],['rewards','fa-star','Rewards'],['profile','fa-circle-user','Profile']] as const).map(([id,icon,label])=><button key={id} onClick={()=>navigate(id)} className={view===id || ((view==='details' || view==='checkout') && id==='book') || (view==='bookings' && id==='profile')?'active':''}><Icon name={icon}/>{label}</button>)}{showIphonePreview && <button className="iosHomeButton" onClick={returnToDesktop} aria-label="Return to iPhone Home"/>}</nav>{view === 'menu' && orderAheadBooking && <button className="orderCart" disabled={!preOrderCount} onClick={() => navigate('cart', true)}><span><Icon name="fa-cart-shopping" /></span><strong>{preOrderCount} {preOrderCount === 1 ? 'item' : 'items'}</strong><em>£{preOrderTotal.toFixed(2)}</em></button>}</div>}
-    {redemption && <RedemptionPass redemption={redemption} closing={isClosingRedemption} onClose={closeRedemption} />}
-    {wingSizePrompt && <div className="wingSizeOverlay" role="dialog" aria-modal="true" aria-label="Choose wing size and flavour"><section className="wingSizePrompt"><button className="closeRedeem" onClick={() => setWingSizePrompt(false)} aria-label="Close size picker"><Icon name="fa-xmark" /></button><p className="eyebrow">Chicken Wings or Cauli Wings</p><div className={`choiceSteps${wingSize ? ' complete' : ''}`} aria-label={wingSize ? 'Step 2 of 2: flavour' : 'Step 1 of 2: size'}><b className={!wingSize ? 'active' : ''}>1</b><i /><b className={wingSize ? 'active' : ''}>2</b></div><div className="wingChoiceContent" key={wingSize ?? 'size'}>{!wingSize ? <><h2>Choose a<br/>size.</h2><p>Start with the portion size.</p>{(['Small', 'Large'] as const).map(size => <button key={size} onClick={() => setWingSize(size)}><span><b>{size}</b><small>{size === 'Small' ? 'Perfect for sharing or a starter' : 'Made for the table'}</small></span><strong>£{size === 'Small' ? '6.99' : '12.15'}</strong><Icon name="fa-chevron-right" /></button>)}</> : <><button className="choiceBack" onClick={() => setWingSize(null)}><Icon name="fa-chevron-left" /> {wingSize} portion</button><h2>Choose a<br/>flavour.</h2><p>Select the finish for your {wingSize.toLowerCase()} portion.</p>{[['BBQ', 'Crispy onions and coleslaw'], ['Hot', 'Fresh chilli and spring onions']].map(([flavour, description]) => <button key={flavour} onClick={() => { addToOrder('Chicken Wings or Cauli Wings · ' + wingSize + ' · ' + flavour); setWingSizePrompt(false); setWingSize(null); }}><span><b>{flavour}</b><small>{description}</small></span><strong>£{wingSize === 'Small' ? '6.99' : '12.15'}</strong><Icon name="fa-chevron-right" /></button>)}</>}</div></section></div>}
-  </section></main>;
+function AppPlaceholder({dark = false, title = 'THE QUICKEN TREE', message = 'App surface placeholder', orientation = 'portrait', screen}: { dark?: boolean; title?: string; message?: string; orientation?: IphoneSurfaceProps['orientation']; screen: IphoneSurfaceProps['screen'] }) {
+    return <div data-ios-orientation={orientation} style={{height: '100%', display: 'grid', placeItems: 'center', background: dark ? '#171616' : '#fafafa', color: dark ? '#f7f3ee' : '#171717', textAlign: 'center', padding: 32}}>
+        <div><b style={{display: 'block', color: '#cf122d', fontSize: 14, letterSpacing: 2}}>{title}</b><p style={{margin: '10px 0 0', fontSize: 18}}>{message}</p><small style={{display: 'block', marginTop: 10, color: dark ? '#c5bcb3' : '#6d655e', fontSize: 12}}>screen.orientation: {screen.orientation.type} ({screen.orientation.angle}°)</small></div>
+    </div>;
 }
-function Header({title}:{title:string}) { return <div className="sectionTitle">{title}</div>; }
-function UpcomingBookings({ bookings, onOpen }: { bookings: Booking[]; onOpen: () => void }) {
-  if (!bookings.length) return null;
-  return <section className="homeBookings"><div className="sectionTitle">Upcoming bookings <button onClick={onOpen}>View all</button></div>{bookings.slice(0, 2).map(booking => <button className="homeBooking" key={booking.id} onClick={onOpen}><Icon name="fa-calendar-check" /><span><b>{formatDate(fromInputDate(booking.date))}</b><small>{booking.experience ?? 'Table'} · {booking.time} · {booking.guests}</small></span><Icon name="fa-chevron-right" /></button>)}</section>;
-}
-function Field({children}:{children:React.ReactNode}) { return <button className="field">{children}<span>⌄</span></button>; }
-function PhoneHeader({ onClock, light = false }: { onClock: () => void; light?: boolean }) { return <div className={`status${light ? ' statusLight' : ''}`}><button className="clock" onClick={onClock} aria-label="Show an event notification">9:41</button><span className="statusMetrics"><Icon name="fa-signal"/><b>100%</b><Icon name="fa-battery-full"/></span></div>; }
 
-function RedemptionPass({ redemption, closing, onClose }: { redemption: Redemption; closing: boolean; onClose: () => void }) {
-  const barcode = useRef<SVGSVGElement>(null);
-  useEffect(() => { if (barcode.current) JsBarcode(barcode.current, redemption.code, { format: 'CODE128', displayValue: false, width: 1.45, height: 58, margin: 0, background: '#ffffff', lineColor: '#111111' }); }, [redemption.code]);
-  return <div className={`redeemOverlay${closing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label="Reward redemption"><section className="redeemPass"><button className="closeRedeem" onClick={onClose} aria-label="Close redemption pass"><Icon name="fa-xmark" /></button><p className="eyebrow">Reward ready</p><h2>{redemption.title}</h2><p className="redeemIntro">Show this barcode to your server to redeem your reward.</p><div className="barcode"><svg ref={barcode} aria-label={`Barcode for ${redemption.code}`} /></div><small>Redemption key</small><strong>{redemption.code}</strong><p className="redeemFine">One-time use · Valid for this visit</p><button className="cta" onClick={onClose}>Done</button></section></div>;
+export default function Page() {
+    const [isDarkMode, setIsDarkMode] = useState(false);
+    const [showIphone, setShowIphone] = useState(true);
+    const [isLandscape, setIsLandscape] = useState(false);
+    const [deviceId, setDeviceId] = useState('iphone-17-pro');
+    const device = deviceProfiles.find(profile => profile.id === deviceId) ?? deviceProfiles[0];
+    const previewScale = device.scale ?? 1;
+    const renderApp = ({orientation, screen}: IphoneSurfaceProps) => <AppPlaceholder dark={isDarkMode} orientation={orientation} screen={screen}/>;
+    const renderRewardsApp = ({orientation, screen}: IphoneSurfaceProps) => <AppPlaceholder dark={isDarkMode} title="QT REWARDS" message="Rewards app surface placeholder" orientation={orientation} screen={screen}/>;
+    const previewSurfaceProps: IphoneSurfaceProps = {orientation: isLandscape ? 'landscape' : 'portrait', isLandscape, screen: {orientation: {type: isLandscape ? 'landscape-primary' : 'portrait-primary', angle: isLandscape ? 90 : 0}}, device};
+    const app = renderApp(previewSurfaceProps);
+
+    return <main className={`stage${isDarkMode ? ' dark' : ''}`}>
+        <div className="presentationMenu" aria-label="Preview controls">
+            <button className="themeToggle" onClick={() => setIsDarkMode(value => !value)} aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}><Icon name={isDarkMode ? 'fa-sun' : 'fa-moon'}/><span>{isDarkMode ? 'Light mode' : 'Dark mode'}</span></button>
+            <button className="deviceToggle" onClick={() => setShowIphone(value => !value)} aria-label={`${showIphone ? 'Hide' : 'Show'} iPhone preview`}><Icon name={showIphone ? 'fa-mobile-screen-button' : 'fa-expand'}/><span>{showIphone ? 'Hide iPhone' : 'iPhone preview'}</span></button>
+            <button className="orientationToggle" onClick={() => setIsLandscape(value => !value)} aria-label={`Switch to ${isLandscape ? 'portrait' : 'landscape'} orientation`}><Icon name="fa-rotate"/><span>{isLandscape ? 'Landscape' : 'Portrait'}</span></button>
+            <label className="deviceSelect"><Icon name="fa-tablet-screen-button"/><select value={deviceId} onChange={event => setDeviceId(event.target.value)} aria-label="Preview device">{deviceProfiles.map(profile => <option key={profile.id} value={profile.id}>{profile.label}</option>)}</select></label>
+        </div>
+        {showIphone ? <div className={`devicePreview${isLandscape ? ' landscape' : ''}`} style={{width: (isLandscape ? device.height : device.width) * previewScale, height: (isLandscape ? device.width : device.height) * previewScale}}><IphoneContainer className={`iphoneOrientation${isLandscape ? ' landscape' : ''}`} isDark={isDarkMode} isLandscape={isLandscape} device={device}
+            apps={[
+                {id: 'quicken-tree', label: 'The Quicken Tree', icon: <QuickenTreeIcon/>, app: renderApp},
+                {id: 'rewards', label: 'QT Rewards', icon: <Icon name="fa-gift"/>, app: renderRewardsApp}
+            ]}
+            dockApps={[<Icon key="phone" name="fa-phone"/>, <Icon key="messages" name="fa-message"/>, <Icon key="safari" name="fa-compass"/>, <Icon key="camera" name="fa-camera"/>]}/></div> : <section style={{position: 'absolute', top: 68, right: 0, bottom: 0, left: 0, overflow: 'hidden'}}>{app}</section>}
+    </main>;
 }
