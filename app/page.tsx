@@ -24,7 +24,7 @@ export default function Page() {
     const [isDeviceAppOpen, setIsDeviceAppOpen] = useState(false);
     const [isThreeDimensional, setIsThreeDimensional] = useState(false);
     const [isThreeDChassisMounted, setIsThreeDChassisMounted] = useState(false);
-    const [threeDRotation, setThreeDRotation] = useState({x: 12, y: -22});
+    const [threeDRotation, setThreeDRotation] = useState({x: 8, y: -8});
     const [isLandscape, setIsLandscape] = useState(false);
     const [manufacturerId, setManufacturerId] = useState<DeviceManufacturer>(defaultManufacturerId);
     const [deviceId, setDeviceId] = useState(defaultDeviceId);
@@ -146,7 +146,7 @@ export default function Page() {
             }, 720);
             return;
         }
-        setThreeDRotation({x: 12, y: -22});
+        setThreeDRotation({x: 8, y: -8});
         setIsThreeDChassisMounted(true);
         requestAnimationFrame(() => setIsThreeDimensional(true));
     };
@@ -163,7 +163,7 @@ export default function Page() {
         if (!drag.dragging && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 9) return;
         drag.dragging = true;
         event.preventDefault();
-        setThreeDRotation({x: Math.max(-18, Math.min(18, drag.rotationX - (event.clientY - drag.y) * .12)), y: Math.max(-28, Math.min(28, drag.rotationY + (event.clientX - drag.x) * .12))});
+        setThreeDRotation({x: Math.max(-45, Math.min(45, drag.rotationX - (event.clientY - drag.y) * .12)), y: Math.max(-45, Math.min(45, drag.rotationY + (event.clientX - drag.x) * .12))});
     };
 
     const endThreeDDrag = (event: PointerEvent<HTMLDivElement>) => {
