@@ -4,6 +4,7 @@ import {useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type P
 import {AndroidContainer} from './components/AndroidContainer';
 import {Icon} from './components/Icon';
 import {IphoneContainer, type IphoneSurfaceProps} from './components/IphoneContainer';
+import {QuickenTreeApp} from './components/QuickenTreeApp';
 import type {DeviceManufacturer} from './components/device/types';
 import {defaultDeviceId, defaultManufacturerId, getDefaultModelForManufacturer, getModelsForManufacturer, manufacturers} from './components/device/profiles';
 import {computePreviewScale} from './components/device/previewScale';
@@ -93,7 +94,7 @@ export default function Page() {
         screen: {orientation: {type: isLandscape ? 'landscape-primary' : 'portrait-primary', angle: isLandscape ? 90 : 0}},
         device
     };
-    const renderApp = ({orientation, screen}: IphoneSurfaceProps) => <AppPlaceholder dark={isDarkMode} orientation={orientation} screen={screen} platform={device.platform}/>;
+    const renderApp = (_props: IphoneSurfaceProps) => <QuickenTreeApp dark={isDarkMode}/>;
     const renderRewardsApp = ({orientation, screen}: IphoneSurfaceProps) => <AppPlaceholder dark={isDarkMode} title="QT REWARDS" message="Rewards app surface placeholder" orientation={orientation} screen={screen} platform={device.platform}/>;
     const app = renderApp(previewSurfaceProps);
     const previewApps = [

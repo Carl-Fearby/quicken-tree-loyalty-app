@@ -77,7 +77,7 @@ const nextBookableDate = (now = new Date()) => {
 };
 const priceValue = (price: string) => Number(price.match(/£([\d.]+)/)?.[1] ?? 0);
 
-export function QuickenTreeApp() {
+export function QuickenTreeApp({dark: controlledDark}: {dark?: boolean}) {
     const [view, setView] = useState<View>('home');
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [themeReady, setThemeReady] = useState(false);
@@ -186,12 +186,17 @@ export function QuickenTreeApp() {
         }));
     }, [profileName, profileEmail, tasteProfile, profileLoaded]);
     useEffect(() => {
+        if (controlledDark !== undefined) {
+            setIsDarkMode(controlledDark);
+            setThemeReady(true);
+            return;
+        }
         setIsDarkMode(window.localStorage.getItem('quicken-tree-dark-mode') === 'true');
         setThemeReady(true);
-    }, []);
+    }, [controlledDark]);
     useEffect(() => {
-        if (themeReady) window.localStorage.setItem('quicken-tree-dark-mode', String(isDarkMode));
-    }, [isDarkMode, themeReady]);
+        if (controlledDark === undefined && themeReady) window.localStorage.setItem('quicken-tree-dark-mode', String(isDarkMode));
+    }, [controlledDark, isDarkMode, themeReady]);
     const navigate = (next: View, preserveOrderAhead = false) => {
         setShowDatePicker(false);
         if (next !== 'profile') setProfilePanel(null);
@@ -274,7 +279,7 @@ export function QuickenTreeApp() {
             navigate('bookings');
         }
     }}>
-            <LoyaltyApp motion="idle" dark={isDarkMode}>
+            <LoyaltyApp motion="idle" dark={isDarkMode} embedded={controlledDark !== undefined}>
                         <div className="appSafeArea" aria-hidden="true"/>
                         <div className="content" key={`${view}-${profilePanel ?? 'root'}`}>
                             {view === 'home' && <HomeScreen bookings={bookings} onBookEvent={bookEvent}/>}
