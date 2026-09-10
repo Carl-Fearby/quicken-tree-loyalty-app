@@ -5,37 +5,34 @@ import {createPortal} from 'react-dom';
 import {Icon} from '../Icon';
 import {DeviceChassis} from '../device/DeviceChassis';
 import {buildDeviceStyle} from '../device/shell';
-import type {DeviceOrientation, DeviceProfile, DeviceSurfaceProps, ScreenOrientation} from '../device/types';
+import type {DeviceProfile, DeviceSurfaceProps} from '../device/types';
 import {DISMISS_MS, OPEN_MS, readTilePresentation, rectKeyframe, toViewportRect, TRANSITION_EASING, type PortalTransition, type TilePresentation} from '../device/portal';
 import styles from './styles.module.css';
 
-export type {DeviceProfile} from '../device/types';
-export type IphoneOrientation = DeviceOrientation;
-export type IphoneScreenOrientation = ScreenOrientation;
-export type IphoneSurfaceProps = DeviceSurfaceProps;
-export type IphoneApp = { id: string; label: string; icon: ReactNode; app: ReactNode | ((props: IphoneSurfaceProps) => ReactNode) };
-export type IphoneNotification = { context: string; title: string; body: string };
+export type AndroidApp = { id: string; label: string; icon: ReactNode; app: ReactNode | ((props: DeviceSurfaceProps) => ReactNode) };
 
 const systemApps = [
-    ['fa-calendar-days', 'Calendar'], ['fa-image', 'Photos'], ['fa-music', 'Music'], ['fa-map-location-dot', 'Maps'],
-    ['fa-cloud-sun', 'Weather'], ['fa-note-sticky', 'Notes']
+    ['fa-calendar-days', 'Calendar'], ['fa-image', 'Photos'], ['fa-envelope', 'Gmail'], ['fa-map-location-dot', 'Maps'],
+    ['fa-cloud-sun', 'Weather'], ['fa-note-sticky', 'Keep']
 ] as const;
 
 const formatCurrentTime = () => new Intl.DateTimeFormat(undefined, {hour: 'numeric', minute: '2-digit', hourCycle: 'h23'}).format(new Date());
-export {OPEN_MS, DISMISS_MS};
 
-export function IphoneContainer({apps, dockApps = [], initialAppId = null, notification = null, onDismissNotification, onClock = () => undefined, onAppOpenChange = () => undefined, isDark = false, isLandscape = false, isThreeD = false, caseColor, device, className = ''}: {
-    apps: IphoneApp[];
+function AndroidNavBar({onBack, onHome, onRecents, launcher = false}: {onBack?: () => void; onHome?: () => void; onRecents?: () => void; launcher?: boolean}) {
+    return <div role="navigation" className={`${styles.buttonNav}${launcher ? ` ${styles.buttonNavLauncher}` : ''}`} aria-label="System navigation" aria-hidden={launcher}>
+        <button type="button" className={styles.navButton} onClick={launcher ? undefined : onBack} aria-label="Back" tabIndex={launcher ? -1 : 0}><Icon name="fa-chevron-left"/></button>
+        <button type="button" className={styles.navButton} onClick={launcher ? undefined : onHome} aria-label="Home" tabIndex={launcher ? -1 : 0}><span className={styles.homeIcon} aria-hidden="true"/></button>
+        <button type="button" className={styles.navButton} onClick={launcher ? undefined : onRecents} aria-label="Recents" tabIndex={launcher ? -1 : 0}><span className={styles.recentsIcon} aria-hidden="true"/></button>
+    </div>;
+}
+
+export function AndroidContainer({apps, dockApps = [], initialAppId = null, isDark = false, isLandscape = false, isThreeD = false, device, className = ''}: {
+    apps: AndroidApp[];
     dockApps?: ReactNode[];
     initialAppId?: string | null;
-    notification?: IphoneNotification | null;
-    onDismissNotification?: () => void;
-    onClock?: () => void;
-    onAppOpenChange?: (isOpen: boolean) => void;
     isDark?: boolean;
     isLandscape?: boolean;
     isThreeD?: boolean;
-    caseColor?: string;
     device: DeviceProfile;
     className?: string;
 }) {
@@ -43,7 +40,6 @@ export function IphoneContainer({apps, dockApps = [], initialAppId = null, notif
     const [currentTime, setCurrentTime] = useState('9:41');
     const [motion, setMotion] = useState<'idle' | 'opening' | 'closing'>('idle');
     const [bouncingAppId, setBouncingAppId] = useState<string | null>(null);
-    const [dialledNumber, setDialledNumber] = useState('');
     const [browserAddress, setBrowserAddress] = useState('project-opus.netlify.app');
     const [browserUrl, setBrowserUrl] = useState('https://project-opus.netlify.app/');
     const [browserKey, setBrowserKey] = useState(0);
@@ -51,7 +47,7 @@ export function IphoneContainer({apps, dockApps = [], initialAppId = null, notif
     const [surfaceOrientationMotion, setSurfaceOrientationMotion] = useState<'idle' | 'fadingOut' | 'fadingIn'>('idle');
     const [portalTransition, setPortalTransition] = useState<PortalTransition | null>(null);
     const [portalMounted, setPortalMounted] = useState(false);
-    const phoneRef = useRef<HTMLElement>(null);
+    const [showRecents, setShowRecents] = useState(false);
     const appWindowRef = useRef<HTMLDivElement>(null);
     const overlayRef = useRef<HTMLDivElement>(null);
     const backdropRef = useRef<HTMLDivElement>(null);
@@ -61,20 +57,35 @@ export function IphoneContainer({apps, dockApps = [], initialAppId = null, notif
     const hasMountedOrientation = useRef(false);
     const activeApp = apps.find(app => app.id === activeAppId);
     const activeSystemApp = systemApps.find(([, label]) => `system-${label}` === activeAppId);
-    const dockLabels = ['Phone', 'Messages', 'Safari', 'Camera'];
-    const systemIconBackgrounds: Record<string, string> = {Calendar: 'linear-gradient(145deg,#fb6974,#b70e27)', Photos: 'linear-gradient(145deg,#ff6b78,#7754c6)', Music: 'linear-gradient(145deg,#ff7a68,#8b4bd2)', Maps: 'linear-gradient(145deg,#64d1f4,#2866c8)', Weather: 'linear-gradient(145deg,#69bcff,#5147bd)', Notes: 'linear-gradient(145deg,#ffe066,#e77820)'};
-    const dockIconBackgrounds: Record<string, string> = {Phone: 'linear-gradient(145deg,#70df74,#18a844)', Messages: 'linear-gradient(145deg,#5cc8ff,#1664d5)', Safari: 'linear-gradient(145deg,#72caff,#2f5ebb)', Camera: 'linear-gradient(145deg,#7c7d86,#121217)'};
+    const dockLabels = ['Phone', 'Messages', 'Chrome', 'Camera'];
+    const dockIconBackgrounds: Record<string, string> = {Phone: 'linear-gradient(145deg,#66bb6a,#2e7d32)', Messages: 'linear-gradient(145deg,#42a5f5,#1565c0)', Chrome: 'linear-gradient(145deg,#ef5350,#c62828)', Camera: 'linear-gradient(145deg,#78909c,#37474f)'};
     const activeDockIndex = dockLabels.findIndex(label => `dock-${label}` === activeAppId);
-    const activeDockApp = activeDockIndex >= 0 ? {id: `dock-${dockLabels[activeDockIndex]}`, label: dockLabels[activeDockIndex], icon: dockApps[activeDockIndex], app: activeDockIndex === 0 ? <div className={styles.phoneApp}><h1>Phone</h1><div className={styles.phoneTabs}><b>Favourites</b><span>Recents</span><span>Contacts</span></div><div className={styles.contactCard}><i>QT</i><span><b>The Quicken Tree</b><small>Mobile</small></span><button aria-label="Call The Quicken Tree"><Icon name="fa-phone"/></button></div><div className={styles.dialDisplay}>{dialledNumber || 'Enter a number'}</div><div className={styles.keypad}>{[['1', ''], ['2', 'ABC'], ['3', 'DEF'], ['4', 'GHI'], ['5', 'JKL'], ['6', 'MNO'], ['7', 'PQRS'], ['8', 'TUV'], ['9', 'WXYZ'], ['*', ''], ['0', '+'], ['#', '']].map(([key, letters]) => <button key={key} onClick={() => setDialledNumber(value => `${value}${key}`)}>{key}<small>{letters}</small></button>)}</div></div> : activeDockIndex === 2 ? <div className={styles.miniBrowser}><form className={styles.safariToolbar} onSubmit={event => { event.preventDefault(); if (!browserAddress.trim()) return; setBrowserUrl(browserAddress.startsWith('http') ? browserAddress : `https://${browserAddress}`); }}><button type="button" onClick={() => { setBrowserAddress(''); setBrowserUrl(''); }} aria-label="Safari start page"><Icon name="fa-chevron-left"/></button><input value={browserAddress} onChange={event => setBrowserAddress(event.target.value)} placeholder="Search or enter website" aria-label="Browser address"/><button type="submit" aria-label="Go"><Icon name="fa-arrow-right"/></button></form>{browserUrl ? <iframe key={browserKey} title="Safari page" src={browserUrl}/> : <div className={styles.safariStart}><Icon name="fa-compass"/><b>Safari</b><p>Type a URL in the address bar to browse.</p></div>}<footer><button onClick={() => { setBrowserAddress(''); setBrowserUrl(''); }} aria-label="Back"><Icon name="fa-chevron-left"/></button><button onClick={() => setBrowserKey(value => value + 1)} aria-label="Reload"><Icon name="fa-rotate"/></button><button onClick={() => navigator.clipboard?.writeText(browserUrl)} aria-label="Copy address"><Icon name="fa-share-from-square"/></button><button onClick={() => setBrowserAddress(browserUrl)} aria-label="Show address"><Icon name="fa-bookmark"/></button><button onClick={() => { setBrowserAddress(''); setBrowserUrl(''); }} aria-label="Tabs"><Icon name="fa-squares-stacked"/></button></footer></div> : <div className={styles.holdingPage}><span style={{background: dockIconBackgrounds[dockLabels[activeDockIndex]]}}>{dockApps[activeDockIndex]}</span><h1>{dockLabels[activeDockIndex]}</h1></div>} : undefined;
+    const activeDockApp = activeDockIndex >= 0 ? {
+        id: `dock-${dockLabels[activeDockIndex]}`,
+        label: dockLabels[activeDockIndex],
+        icon: dockApps[activeDockIndex],
+        app: activeDockIndex === 2 ? <div className={styles.miniBrowser}>
+            <form onSubmit={event => { event.preventDefault(); if (!browserAddress.trim()) return; setBrowserUrl(browserAddress.startsWith('http') ? browserAddress : `https://${browserAddress}`); }}>
+                <button type="button" onClick={() => { setBrowserAddress(''); setBrowserUrl(''); }} aria-label="Chrome start page"><Icon name="fa-chevron-left"/></button>
+                <input value={browserAddress} onChange={event => setBrowserAddress(event.target.value)} placeholder="Search or type URL" aria-label="Browser address"/>
+                <button type="submit" aria-label="Go"><Icon name="fa-arrow-right"/></button>
+            </form>
+            {browserUrl ? <iframe key={browserKey} title="Chrome page" src={browserUrl}/> : <div className={styles.chromeStart}><Icon name="fa-chrome"/><b>Chrome</b><p>Type a URL in the address bar to browse.</p></div>}
+            <footer>
+                <button onClick={() => { setBrowserAddress(''); setBrowserUrl(''); }} aria-label="Back"><Icon name="fa-chevron-left"/></button>
+                <button onClick={() => setBrowserKey(value => value + 1)} aria-label="Reload"><Icon name="fa-rotate"/></button>
+                <button onClick={() => navigator.clipboard?.writeText(browserUrl)} aria-label="Share"><Icon name="fa-share-from-square"/></button>
+                <button onClick={() => setBrowserAddress(browserUrl)} aria-label="Tabs"><Icon name="fa-squares-stacked"/></button>
+            </footer>
+        </div> : <div className={styles.holdingPage}><span style={{background: dockIconBackgrounds[dockLabels[activeDockIndex]]}}>{dockApps[activeDockIndex]}</span><h1>{dockLabels[activeDockIndex]}</h1></div>
+    } : undefined;
     const activeSurfaceApp = activeApp ?? (activeSystemApp ? {
         id: `system-${activeSystemApp[1]}`,
         label: activeSystemApp[1],
         icon: <Icon name={activeSystemApp[0]}/>,
-        app: <div className={styles.holdingPage}><span style={{background: systemIconBackgrounds[activeSystemApp[1]]}}><Icon name={activeSystemApp[0]}/></span><h1>{activeSystemApp[1]}</h1></div>
+        app: <div className={styles.holdingPage}><span><Icon name={activeSystemApp[0]}/></span><h1>{activeSystemApp[1]}</h1></div>
     } : activeDockApp);
-    const innerRadius = Math.max(device.cornerRadius - 10, 0);
-
-    useEffect(() => onAppOpenChange(Boolean(activeSurfaceApp)), [activeSurfaceApp, onAppOpenChange]);
+    const innerRadius = Math.max(device.cornerRadius - 8, 0); // matches buildDeviceStyle bezel
 
     const resolveIcon = (appId: string) => {
         const registered = apps.find(app => app.id === appId);
@@ -119,9 +130,11 @@ export function IphoneContainer({apps, dockApps = [], initialAppId = null, notif
     const openApp = (appId: string, icon: HTMLButtonElement) => {
         if (motion !== 'idle') return;
         if (isThreeD) {
+            setShowRecents(false);
             setActiveAppId(appId);
             return;
         }
+        setShowRecents(false);
         const presentation = readTilePresentation(icon);
         if (!presentation) return;
         presentation.icon = resolveIcon(appId);
@@ -133,9 +146,11 @@ export function IphoneContainer({apps, dockApps = [], initialAppId = null, notif
     const returnHome = () => {
         if (!activeAppId || motion !== 'idle' || !appWindowRef.current) return;
         if (isThreeD) {
+            setShowRecents(false);
             setActiveAppId(null);
             return;
         }
+        setShowRecents(false);
         const iconButton = iconRefs.current[activeAppId];
         const presentation = iconButton ? readTilePresentation(iconButton) : null;
         if (!presentation) return;
@@ -192,16 +207,12 @@ export function IphoneContainer({apps, dockApps = [], initialAppId = null, notif
         const motionAnim = overlay.animate([startFrame, endFrame], {duration, easing: TRANSITION_EASING, fill: 'forwards'});
         const backdrop = backdropRef.current;
         const backdropAnim = backdrop?.animate(
-            phase === 'opening'
-                ? [{opacity: 0}, {opacity: 1}]
-                : [{opacity: 1}, {opacity: 0}],
+            phase === 'opening' ? [{opacity: 0}, {opacity: 1}] : [{opacity: 1}, {opacity: 0}],
             {duration: Math.round(duration * 0.42), easing: 'ease-out', fill: 'forwards'}
         );
         const tile = overlay.querySelector(`.${styles.transitionTile}`);
         const tileAnim = tile?.animate(
-            phase === 'opening'
-                ? [{opacity: 1}, {opacity: 0}]
-                : [{opacity: 0}, {opacity: 1}],
+            phase === 'opening' ? [{opacity: 1}, {opacity: 0}] : [{opacity: 0}, {opacity: 1}],
             {duration: Math.round(duration * 0.38), delay: phase === 'closing' ? Math.round(duration * 0.08) : 0, easing: 'ease-out', fill: 'forwards'}
         );
         motionAnim.onfinish = () => {
@@ -223,18 +234,17 @@ export function IphoneContainer({apps, dockApps = [], initialAppId = null, notif
 
     const appMounted = Boolean(activeSurfaceApp) && motion !== 'closing';
     const appVisible = motion === 'idle';
-    const desktopHidden = Boolean(activeSurfaceApp) && motion !== 'closing';
+    const launcherHidden = Boolean(activeSurfaceApp) && motion !== 'closing';
     const morphingAppId = motion === 'closing' ? activeAppId : null;
-    const desktopLandscape = isLandscape && device.category === 'tablet';
-    const surfaceOrientation: IphoneOrientation = surfaceLandscape ? 'landscape' : 'portrait';
-    const surfaceProps: IphoneSurfaceProps = {
+    const surfaceOrientation = surfaceLandscape ? 'landscape' : 'portrait';
+    const surfaceProps: DeviceSurfaceProps = {
         orientation: surfaceOrientation,
         isLandscape: surfaceLandscape,
         screen: {orientation: {type: surfaceLandscape ? 'landscape-primary' : 'portrait-primary', angle: surfaceLandscape ? 90 : 0}},
         device
     };
 
-    const deviceStyle = buildDeviceStyle(device, caseColor ? {'--case-color': caseColor} as CSSProperties : undefined);
+    const deviceStyle = buildDeviceStyle(device);
 
     const portal = portalMounted && portalTransition ? createPortal(
         <div ref={overlayRef} className={styles.transitionOverlay} aria-hidden="true">
@@ -246,31 +256,44 @@ export function IphoneContainer({apps, dockApps = [], initialAppId = null, notif
         document.body
     ) : null;
 
-    const shellClassName = [styles.phone, isThreeD && styles.threeDShell, isDark && styles.dark, device.category === 'tablet' && styles.tablet, !isThreeD && className].filter(Boolean).join(' ');
+    const skinClass = device.manufacturer === 'samsung' ? styles.samsung : styles.google;
+    const launcherLandscape = isLandscape && device.category === 'tablet';
+
+    const shellClassName = [styles.androidDevice, isThreeD && styles.threeDShell, skinClass, isDark && styles.dark, device.category === 'tablet' && styles.tablet, !isThreeD && className].filter(Boolean).join(' ');
 
     return <>
-        <DeviceChassis enabled={isThreeD} device={device} caseColor={caseColor} className={isThreeD ? className : undefined} style={isThreeD ? deviceStyle : undefined}>
-        <section ref={phoneRef} style={isThreeD ? {width: '100%', height: '100%'} : deviceStyle} className={shellClassName} aria-label={`${device.label} preview`}>
-            {device.cutout === 'island' && <span className={styles.magicIsland} aria-hidden="true"/>}
-            {device.cutout === 'notch' && <span className={styles.notch} aria-hidden="true"/>}
-            {notification && <button className={styles.notification} onClick={onDismissNotification} aria-label={`Dismiss ${notification.title} notification`}><i>QT</i><span><small>{notification.context}</small><b>{notification.title}</b><em>{notification.body}</em></span></button>}
-            <div className={`${styles.desktop}${desktopLandscape ? ` ${styles.landscape}` : ''}${desktopHidden ? ` ${styles.desktopHidden}` : ''}`} aria-hidden={desktopHidden}>
-                <header className={styles.desktopStatusBar}>
-                    <button onClick={onClock} aria-label="Show an event notification">{currentTime}</button>
-                    <span><Icon name="fa-signal"/><b>100%</b><Icon name="fa-battery-full"/></span>
+        <DeviceChassis enabled={isThreeD} device={device} className={isThreeD ? className : undefined} style={isThreeD ? deviceStyle : undefined}>
+        <section style={isThreeD ? {width: '100%', height: '100%'} : deviceStyle} className={shellClassName} aria-label={`${device.label} preview`}>
+            {device.cutout === 'hole' && <span className={styles.punchHole} aria-hidden="true"/>}
+            <div className={`${styles.launcher}${launcherLandscape ? ` ${styles.landscape}` : ''}${launcherHidden ? ` ${styles.launcherHidden}` : ''}`} aria-hidden={launcherHidden}>
+                <header className={styles.statusBar}>
+                    <button aria-label="Current time">{currentTime}</button>
+                    <span><Icon name="fa-signal"/><Icon name="fa-wifi"/><Icon name="fa-battery-full"/></span>
                 </header>
-                <div className={styles.apps}>{systemApps.map(([icon, label]) => { const id = `system-${label}`; return <button key={label} ref={node => { iconRefs.current[id] = node; }} onClick={event => openApp(id, event.currentTarget)} className={`${styles.systemApp}${bouncingAppId === id ? ` ${styles.settling}` : ''}${morphingAppId === id ? ` ${styles.morphing}` : ''}`} aria-label={`Open ${label}`}><span><Icon name={icon}/></span><small>{label}</small></button>; })}{apps.map(app => <button key={app.id} ref={node => { iconRefs.current[app.id] = node; }} data-app-id={app.id} onClick={event => openApp(app.id, event.currentTarget)} className={`${styles.appIcon}${bouncingAppId === app.id ? ` ${styles.settling}` : ''}${morphingAppId === app.id ? ` ${styles.morphing}` : ''}`} aria-label={`Open ${app.label}`}><span>{app.icon}</span><small>{app.label}</small></button>)}</div>
-                {dockApps.length > 0 && <div className={styles.dock}>{dockApps.map((app, index) => { const label = dockLabels[index] ?? `App ${index + 1}`; const id = `dock-${label}`; return <button key={index} ref={node => { iconRefs.current[id] = node; }} onClick={event => openApp(id, event.currentTarget)} className={morphingAppId === id ? styles.morphing : undefined} aria-label={`Open ${label}`}><span>{app}</span></button>; })}</div>}
+                {device.manufacturer === 'google' && <div className={styles.searchBar}><Icon name="fa-search"/>Search apps, web and more</div>}
+                <div className={styles.apps}>
+                    {systemApps.map(([icon, label]) => {
+                        const id = `system-${label}`;
+                        return <button key={label} ref={node => { iconRefs.current[id] = node; }} onClick={event => openApp(id, event.currentTarget)} className={`${styles.systemApp}${bouncingAppId === id ? ` ${styles.settling}` : ''}${morphingAppId === id ? ` ${styles.morphing}` : ''}`} aria-label={`Open ${label}`}><span><Icon name={icon}/></span><small>{label}</small></button>;
+                    })}
+                    {apps.map(app => <button key={app.id} ref={node => { iconRefs.current[app.id] = node; }} onClick={event => openApp(app.id, event.currentTarget)} className={`${styles.appButton}${bouncingAppId === app.id ? ` ${styles.settling}` : ''}${morphingAppId === app.id ? ` ${styles.morphing}` : ''}`} aria-label={`Open ${app.label}`}><span>{app.icon}</span><small>{app.label}</small></button>)}
+                </div>
+                {dockApps.length > 0 && <div className={styles.dock}>{dockApps.map((app, index) => {
+                    const label = dockLabels[index] ?? `App ${index + 1}`;
+                    const id = `dock-${label}`;
+                    return <button key={index} ref={node => { iconRefs.current[id] = node; }} onClick={event => openApp(id, event.currentTarget)} className={morphingAppId === id ? styles.morphing : undefined} aria-label={`Open ${label}`}><span>{app}</span></button>;
+                })}</div>}
+                <AndroidNavBar launcher/>
             </div>
             {appMounted && activeSurfaceApp && <div ref={appWindowRef} className={`${styles.appWindow}${appVisible ? '' : ` ${styles.appHidden}`} ${styles[surfaceOrientationMotion]}${surfaceLandscape ? ` ${styles.landscape}` : ''}`}>
-                <header className={`${styles.statusBar}${isDark ? ` ${styles.dark}` : ''}`}>
-                    <button onClick={onClock} aria-label="Show an event notification">{currentTime}</button>
-                    <span><Icon name="fa-signal"/><b>100%</b><Icon name="fa-battery-full"/></span>
+                <header className={styles.statusBar}>
+                    <button aria-label="Current time">{currentTime}</button>
+                    <span><Icon name="fa-signal"/><Icon name="fa-wifi"/><Icon name="fa-battery-full"/></span>
                 </header>
-                <div className={styles.appSurface} data-ios-orientation={surfaceOrientation} style={{'--iphone-orientation': surfaceOrientation} as CSSProperties}>{typeof activeSurfaceApp.app === 'function' ? activeSurfaceApp.app(surfaceProps) : activeSurfaceApp.app}</div>
-                <button className={styles.homeIndicator} onClick={returnHome} aria-label="Return to iPhone Home"/>
+                <div className={styles.appSurface} data-android-orientation={surfaceOrientation}>{typeof activeSurfaceApp.app === 'function' ? activeSurfaceApp.app(surfaceProps) : activeSurfaceApp.app}</div>
+                {showRecents && <button type="button" className={styles.recentsOverlay} onClick={() => setShowRecents(false)} aria-label="Close recents"><span>No recent apps</span></button>}
+                <AndroidNavBar onBack={returnHome} onHome={returnHome} onRecents={() => setShowRecents(value => !value)}/>
             </div>}
-            {appMounted && appVisible && surfaceLandscape && <button className={`${styles.landscapeHomeIndicator} ${styles[surfaceOrientationMotion]}`} onClick={returnHome} aria-label="Return to iPhone Home"/>}
         </section>
         </DeviceChassis>
         {portal}
