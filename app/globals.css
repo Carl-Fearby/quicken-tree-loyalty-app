@@ -128,6 +128,13 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}h
   .stage.appOnly .appShell nav{position:absolute!important;right:0!important;bottom:0!important;left:0!important;z-index:20!important;display:flex!important;width:100%!important;height:calc(64px + env(safe-area-inset-bottom))!important;margin:0!important;padding:5px 4px calc(10px + env(safe-area-inset-bottom))!important}
 }
 
+/* The stage rule used for the device preview must retain the app's screen
+   entrance motion; otherwise its higher specificity reduces every navigation
+   to a plain opacity fade, particularly in the installed PWA. */
+.stage .content{
+  animation:screenEnter .32s cubic-bezier(.2,.8,.2,1) both!important;
+}
+
 /* WebKit can retain its own link paint in a standalone web app. Explicitly
    control both paint properties so phone and email actions stay on-brand. */
 .appShell a,
