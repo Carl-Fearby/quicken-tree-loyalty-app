@@ -13,12 +13,8 @@ const paragraphs = [
 
 export function ScrollTestScreen() {
   return <article className={styles.root}>
-    <p className="eyebrow">Layout test</p>
-    <h1>Scroll<br/>surface.</h1>
-    <p className={styles.intro}>This intentionally long page tests that content scrolls independently beneath a permanently anchored app navigation.</p>
-    {Array.from({length: 4}, (_, group) => <section className={styles.section} key={group}>
-      <h2>Section {group + 1}</h2>
-      {paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
-    </section>)}
+    <div className={styles.document}>
+      {Array.from({length: 7}, (_, group) => paragraphs.map((paragraph, index) => <p key={`${group}-${index}`}>{paragraph}</p>))}
+    </div>
   </article>;
 }

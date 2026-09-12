@@ -2,57 +2,32 @@
   position: absolute;
   z-index: 300;
   inset: 0;
-  display: grid;
-  gap: 14px;
-  align-content: start;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 0 26px max(28px, env(safe-area-inset-bottom));
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 18px max(20px, env(safe-area-inset-bottom));
   background: #fafafa;
   color: #342d27;
 }
 
-.intro {
-  margin: -4px 0 6px;
-  color: #665b50;
-  font-size: 14px;
-  line-height: 1.45;
-}
-
-.section {
-  display: grid;
-  gap: 10px;
-  padding: 16px;
-  border: 1px solid #e7d8c8;
+.document {
+  min-height: 100%;
+  padding: 0 0 24px 12px;
   border-left: 5px solid #cf122d;
-  border-radius: 16px;
-  background: #fff;
 }
 
-.section h2 {
-  margin: 0;
-  color: #342d27;
-  font-size: 17px;
-}
-
-.section p {
-  margin: 0;
+.document p {
+  margin: 0 0 15px;
   color: #665b50;
   font-size: 13px;
   line-height: 1.5;
 }
 
-:global(.dark) .intro,
-:global(.dark) .section p {
+:global(.dark) .document p {
   color: #c5bcb3;
 }
 
-:global(.dark) .section {
-  border-color: #514941;
-  border-left-color: #cf122d;
-  background: #252321;
-}
-
-:global(.dark) .section h2 {
-  color: #f7f3ee;
+:global(.dark) .root {
+  background: #171616;
 }
