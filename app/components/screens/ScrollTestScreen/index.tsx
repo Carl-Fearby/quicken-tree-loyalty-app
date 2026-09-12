@@ -1,7 +1,3 @@
-'use client';
-
-import {useEffect, useState} from 'react';
-import {createPortal} from 'react-dom';
 import styles from './styles.module.css';
 
 const paragraphs = [
@@ -16,13 +12,7 @@ const paragraphs = [
 ];
 
 export function ScrollTestScreen() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
-
-  if (!mounted) return null;
-
-  return createPortal(<article className={styles.root}>
+  return <article className={styles.root}>
     <p className="eyebrow">Layout test</p>
     <h1>Scroll<br/>surface.</h1>
     <p className={styles.intro}>This intentionally long page tests that content scrolls independently beneath a permanently anchored app navigation.</p>
@@ -30,5 +20,5 @@ export function ScrollTestScreen() {
       <h2>Section {group + 1}</h2>
       {paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
     </section>)}
-  </article>, document.body);
+  </article>;
 }

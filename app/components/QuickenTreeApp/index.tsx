@@ -17,13 +17,12 @@ import {CartScreen, type CartLine} from '../screens/CartScreen';
 import {OrderSummaryScreen} from '../screens/OrderSummaryScreen';
 import {MenuScreen} from '../screens/MenuScreen';
 import {BookingScreen} from '../screens/BookingScreen';
-import {ScrollTestScreen} from '../screens/ScrollTestScreen';
 import {BookingCancellationDialog} from '../BookingCancellationDialog';
 import {AppNavigationProvider} from '../../contexts/AppNavigation';
 import {LoyaltyApp} from '../LoyaltyApp';
 import {PaymentCards, PaymentMethodPicker, usePaymentCards} from '../PaymentCards';
 
-type View = 'scroll-test' | 'home' | 'book' | 'details' | 'checkout' | 'bookings' | 'menu' | 'cart' | 'order-summary' | 'rewards' | 'profile';
+type View = 'home' | 'book' | 'details' | 'checkout' | 'bookings' | 'menu' | 'cart' | 'order-summary' | 'rewards' | 'profile';
 type Booking = {
     id: string;
     date: string;
@@ -104,7 +103,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     const [paymentMethod, setPaymentMethod] = useState('apple-pay');
     const selectedCard = cards.find(card => card.id === paymentMethod);
     const effectivePaymentMethod = selectedCard ? selectedCard.id : 'apple-pay';
-    const [view, setView] = useState<View>('scroll-test');
+    const [view, setView] = useState<View>('home');
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [themeReady, setThemeReady] = useState(false);
     const [menuCategory, setMenuCategory] = useState('Breakfasts');
@@ -421,7 +420,6 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
             <LoyaltyApp motion="idle" dark={isDarkMode} embedded={controlledDark !== undefined}>
                         <div className="appSafeArea" aria-hidden="true"/>
                         <div className="content" key={`${view}-${profilePanel ?? 'root'}`}>
-                            {view === 'scroll-test' && <ScrollTestScreen/>}
                             {view === 'home' && <HomeScreen bookings={bookings} onBookEvent={bookEvent} onLogoClick={onShowNotification}/>}
                             {view === 'book' && <BookingScreen experience={bookingExperience} prices={experiencePrices}
                                                                price={experiencePrice} total={bookingTotal}
