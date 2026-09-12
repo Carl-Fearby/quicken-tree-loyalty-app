@@ -85,6 +85,9 @@ body .appShell .orderCart{background:#fff!important;color:#342d27!important;bord
 .stage.appOnly>section,.stage.appOnly .appShell{height:100vh!important;height:100lvh!important}.stage.appOnly .content{height:calc(100vh - 72px - env(safe-area-inset-bottom))!important;height:calc(100lvh - 72px - env(safe-area-inset-bottom))!important;padding-top:28px!important}.stage.appOnly nav{padding:5px 4px calc(2px + env(safe-area-inset-bottom))!important}
 /* The fixed outer stage was still clipping the full-height app at `dvh`. */
 .stage.appOnly{height:100vh!important;height:100lvh!important}.stage.appOnly .content{padding-top:max(56px,calc(env(safe-area-inset-top) + 18px))!important}
+/* iOS exposes its lower gesture region outside the clipped app stage on some
+   standalone installs. Match the document fallback to the active app skin. */
+html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}html:has(.stage.appOnly.dark),body:has(.stage.appOnly.dark){background:#171616!important}
 .bookingActions{display:flex;gap:7px;margin-top:8px}.bookingActions button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:32px;flex:1;border:1px solid #e7d8c8;border-radius:10px;background:#fff;color:#594d41;font:inherit;font-size:10px;font-weight:600}.bookingActions button .fa-solid{color:#cf122d}.bookingActions .cancelBooking{color:#b42330}.bookingActions .cancelBooking .fa-solid{color:inherit}.stage.dark .bookingActions button{border-color:#514941;background:#302b27;color:#f7f3ee}.stage.dark .bookingActions .cancelBooking{color:#ff8090}
 /* Theme-aware device menu surface for the full-bleed presentation shell. */
 .stage.fullBleed:not(.dark) .deviceMenu summary{border-color:#6a4a4230!important;background:#ffffffb8!important;color:#332b27!important}
