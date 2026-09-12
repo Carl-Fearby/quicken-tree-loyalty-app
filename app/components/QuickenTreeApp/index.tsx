@@ -17,7 +17,6 @@ import {CartScreen, type CartLine} from '../screens/CartScreen';
 import {OrderSummaryScreen} from '../screens/OrderSummaryScreen';
 import {MenuScreen} from '../screens/MenuScreen';
 import {BookingScreen} from '../screens/BookingScreen';
-import {ScrollTestScreen} from '../screens/ScrollTestScreen';
 import {BookingCancellationDialog} from '../BookingCancellationDialog';
 import {AppNavigationProvider} from '../../contexts/AppNavigation';
 import {LoyaltyApp} from '../LoyaltyApp';
@@ -653,7 +652,6 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                     setWingSizePrompt(false);
                     setWingSize(null);
                 }}/>} 
-                <ScrollTestScreen/>
             </LoyaltyApp>
     </AppNavigationProvider>;
 }
