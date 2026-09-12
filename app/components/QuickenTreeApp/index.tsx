@@ -132,7 +132,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     const [bookingName, setBookingName] = useState(profileData.default.name);
     const [bookingEmail, setBookingEmail] = useState('');
     const [bookingNotes, setBookingNotes] = useState('');
-    const [profilePanel, setProfilePanel] = useState<'details' | 'taste' | 'dietary' | 'venues' | 'gifts' | 'help' | 'cards' | 'reset' | null>(null);
+    const [profilePanel, setProfilePanel] = useState<'details' | 'taste' | 'dietary' | 'gifts' | 'help' | 'cards' | 'reset' | null>(null);
     const [profileName, setProfileName] = useState(profileData.default.name);
     const [profileEmail, setProfileEmail] = useState(profileData.default.email);
     const [tasteProfile, setTasteProfile] = useState<string[]>(profileData.default.tastes);
@@ -646,8 +646,6 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                     name="fa-chevron-right"/></span></button>
                                 <button className="setting" onClick={() => setProfilePanel('dietary')}>Dietary needs & allergens<span><Icon
                                     name="fa-chevron-right"/></span></button>
-                                <button className="setting" onClick={() => setProfilePanel('venues')}>Saved venues<span><Icon
-                                    name="fa-chevron-right"/></span></button>
                                 <button className="setting" onClick={() => setProfilePanel('gifts')}>Gift cards & credit<span><Icon
                                     name="fa-chevron-right"/></span></button>
                                 <button className="setting" onClick={() => setProfilePanel('help')}>Help & contact<span><Icon
@@ -680,12 +678,6 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                         <Icon name={tasteProfile.includes(taste) ? 'fa-check' : 'fa-plus'}/> {taste}
                                     </button>)}</div>
                             </>}{profilePanel === 'dietary' && <><p className="eyebrow">Dietary profile</p><h1>Good food,<br/>for you.</h1><p className="profileIntro">Save dietary requirements and allergies so we can make menu information easier to find. Always tell your server about an allergy before ordering.</p><section className="dietaryProfileSection"><b>Dietary requirements</b><div className="tasteChoices">{profileData.dietaryRequirementOptions.map(option => <button key={option} className={dietaryNeeds.includes(option) ? 'selected' : ''} onClick={() => setDietaryNeeds(current => current.includes(option) ? current.filter(item => item !== option) : [...current, option])}><Icon name={dietaryNeeds.includes(option) ? 'fa-check' : 'fa-plus'}/> {option}</button>)}</div></section><section className="dietaryProfileSection"><b>Allergies & intolerances</b><p>Select anything you need us to know about.</p><div className="tasteChoices allergenChoices">{profileData.allergenOptions.map(option => <button key={option} className={dietaryNeeds.includes(option) ? 'selected' : ''} onClick={() => setDietaryNeeds(current => current.includes(option) ? current.filter(item => item !== option) : [...current, option])}><Icon name={dietaryNeeds.includes(option) ? 'fa-check' : 'fa-plus'}/> {option}</button>)}</div></section>
-                            </>}{profilePanel === 'venues' && <><p className="eyebrow">Saved venues</p><h1>Your
-                                favourite<br/>place.</h1>
-                                <section className="venueCard"><Icon name="fa-location-dot"/>
-                                    <div><b>The Quicken Tree</b><p>Heart of England Conference Centre</p><small>Your
-                                        preferred venue</small></div>
-                                </section>
                             </>}{profilePanel === 'gifts' && <><p className="eyebrow">Gift cards & credit</p><h1>A
                                 little extra<br/>for your table.</h1>
                                 <section className="creditCard"><small>QUICKEN TREE CREDIT</small><b>£0.00</b><span>No credit available</span>
