@@ -88,6 +88,9 @@ body .appShell .orderCart{background:#fff!important;color:#342d27!important;bord
 /* iOS exposes its lower gesture region outside the clipped app stage on some
    standalone installs. Match the document fallback to the active app skin. */
 html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}html:has(.stage.appOnly.dark),body:has(.stage.appOnly.dark){background:#171616!important}
+/* Keep the complete app tab bar in the interactive viewport. iOS owns the
+   gesture region below it, so labels must not be pushed into that space. */
+.stage.appOnly nav{z-index:20!important;height:72px!important;align-items:flex-start!important;padding:5px 4px 10px!important;background:#f7f7f7!important;border-top-color:#dedede!important}.stage.appOnly.dark nav{background:#171616!important;border-top-color:#3d3732!important}
 .bookingActions{display:flex;gap:7px;margin-top:8px}.bookingActions button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:32px;flex:1;border:1px solid #e7d8c8;border-radius:10px;background:#fff;color:#594d41;font:inherit;font-size:10px;font-weight:600}.bookingActions button .fa-solid{color:#cf122d}.bookingActions .cancelBooking{color:#b42330}.bookingActions .cancelBooking .fa-solid{color:inherit}.stage.dark .bookingActions button{border-color:#514941;background:#302b27;color:#f7f3ee}.stage.dark .bookingActions .cancelBooking{color:#ff8090}
 /* Theme-aware device menu surface for the full-bleed presentation shell. */
 .stage.fullBleed:not(.dark) .deviceMenu summary{border-color:#6a4a4230!important;background:#ffffffb8!important;color:#332b27!important}
