@@ -1,1 +1,5 @@
-.root { isolation: isolate; }
+.root {
+    isolation: isolate;
+    /* Redemption is modal: it must cover the persistent bottom navigation. */
+    z-index: 220 !important;
+}
