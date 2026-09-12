@@ -3,7 +3,7 @@
   "guestOptions": ["2 Guests", "3 Guests", "4 Guests", "5 Guests", "6+ Guests"],
   "experiences": [
     { "name": "Table", "price": 0, "start": 7.5, "end": 20.5, "days": [0,1,2,3,4,5,6] },
-    { "name": "Afternoon Tea", "price": 29.95, "start": 12, "end": 17, "days": [0,1,2,3,4,5,6] },
-    { "name": "Bottomless Brunch", "price": 39.95, "start": 12, "end": 19.5, "days": [1,2,3,4,5,6] }
+    { "name": "Afternoon Tea", "price": 26, "start": 12, "end": 17, "days": [0,1,2,3,4,5,6] },
+    { "name": "Bottomless Brunch", "price": 38, "start": 12, "end": 19.5, "days": [1,2,3,4,5,6] }
   ]
 }

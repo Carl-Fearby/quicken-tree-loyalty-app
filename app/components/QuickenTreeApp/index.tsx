@@ -44,7 +44,7 @@ const experiencePrices = Object.fromEntries(appointmentsData.experiences.map(exp
 const dietaryTags: Record<string, string[]> = menuData.dietaryTags;
 const dietaryTagNames: Record<string, string> = menuData.dietaryTagNames;
 type MenuSection = { title: string; items: ReadonlyArray<readonly [string, string, string]> };
-const menuItems = menuData.menuItems as unknown as Record<'Breakfast' | 'Main Menu' | 'Sunday Lunch' | 'Drinks', MenuSection[]>;
+const menuItems = menuData.menuItems as unknown as Record<'Breakfast' | 'Main Menu' | 'Sunday Lunch' | 'Drinks' | 'Afternoon Tea' | 'Bottomless Brunch', MenuSection[]>;
 const menuCategories = menuData.categories.map(category => {
     const source = menuItems[category.source as keyof typeof menuItems];
     return {
@@ -88,7 +88,7 @@ const iCalendarTimestamp = (date: Date) => `${date.getFullYear()}${String(date.g
 const iCalendarUtcTimestamp = (date: Date) => `${date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`;
 const orderItemPrice = (name: string) => {
     const item = allMenuSections.flatMap(section => section.items).find(([itemName]) => name.startsWith(itemName));
-    return name.includes('· Small ·') ? 6.99 : name.includes('· Large ·') ? 12.15 : item ? priceValue(item[2]) : 0;
+    return name.includes('· Small ·') ? 9 : name.includes('· Large ·') ? 15 : item ? priceValue(item[2]) : 0;
 };
 const summariseOrder = (items: Record<string, number>): OrderSummary => Object.entries(items).reduce(
     (summary, [name, quantity]) => ({

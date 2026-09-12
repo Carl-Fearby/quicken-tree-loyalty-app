@@ -3,7 +3,9 @@
     "Breakfasts": "Breakfast served from 7:30 AM until 12:00 PM",
     "Main": "Main menu served from 12:00 PM",
     "Sunday": "Sunday lunch served from 12:00 PM",
-    "Drinks": "Drinks available throughout service"
+    "Drinks": "Drinks available throughout service",
+    "AfternoonTea": "Afternoon tea is available by advance booking",
+    "Brunch": "Bottomless brunch is available Monday to Saturday from noon"
   },
   "dietaryTagNames": {
     "V": "Vegetarian",
@@ -105,22 +107,22 @@
           [
             "The Full English",
             "Award-winning sausage, bacon, fried egg, tomatoes, beans, mushrooms, hash brown and toast",
-            "£9.50"
+            "£8.50"
           ],
           [
             "The Even Fuller English",
             "Two sausages, two bacon rashers, fried egg, tomatoes, beans, mushrooms, hash brown and toast",
-            "£11.50"
+            "£10.50"
           ],
           [
             "The Veggie",
             "Smashed avocado, veggie sausage, plant-based bacon, egg, tomatoes, beans, mushrooms and toast",
-            "£9.50"
+            "£8.50"
           ],
           [
             "The Vegan",
             "Smashed avocado, veggie sausage, plant-based bacon, mushrooms, tomato, wilted spinach, hash brown, beans and toast",
-            "£9.50"
+            "£8.50"
           ]
         ]
       },
@@ -190,17 +192,17 @@
           [
             "One Filling",
             "White or brown bread with butter. Choose sausage, bacon, egg or tomato",
-            "£6.00"
+            "£5.00"
           ],
           [
             "Two Fillings",
             "White or brown bread with butter. Choose sausage, bacon, egg or tomato",
-            "£6.50"
+            "£5.50"
           ],
           [
             "Three Fillings",
             "White or brown bread with butter. Choose sausage, bacon, egg or tomato",
-            "£7.00"
+            "£6.00"
           ]
         ]
       },
@@ -262,7 +264,7 @@
           [
             "Chicken Wings or Cauli Wings",
             "Korean-style with fresh chilli and spring onions, or BBQ with crispy onions and coleslaw",
-            "S £6.99 · L £12.15"
+            "S (6) £9.00 · L (12) £15.00"
           ]
         ]
       },
@@ -790,6 +792,100 @@
           ]
         ]
       }
+    ],
+    "Afternoon Tea": [
+      {
+        "title": "Summer Afternoon Tea",
+        "items": [
+          [
+            "Summer Afternoon Tea",
+            "Finger sandwiches, chicken and bacon Caesar slider, egg and cress, cucumber and cream cheese, arancini, cakes, a warm scone with clotted cream and strawberry jam, plus tea or coffee",
+            "£26.00 pp"
+          ],
+          [
+            "Pimms or Prosecco upgrade",
+            "Enjoy a glass of Pimms or Prosecco with your afternoon tea. Juice or non-alcoholic Prosecco available on request",
+            "£5.00"
+          ]
+        ]
+      }
+    ],
+    "Bottomless Brunch": [
+      {
+        "title": "Bottomless Brunch",
+        "items": [
+          [
+            "Bottomless Brunch",
+            "90 minutes of Prosecco, Pimms, house gin or vodka with draught soft drinks, plus your choice of brunch dish. Pre-booking and full payment required",
+            "£38.00 pp"
+          ],
+          [
+            "Brunch upgrade",
+            "Upgrade your brunch drinks selection to cocktails, mocktails or non-alcoholic choices",
+            "+£5.00 pp"
+          ]
+        ]
+      },
+      {
+        "title": "Choose your brunch dish",
+        "items": [
+          [
+            "S'More Waffle",
+            "Served with syrup, blueberries and streaky bacon",
+            "Included"
+          ],
+          [
+            "Beef Burger & Fries",
+            "Served with fries",
+            "Included"
+          ],
+          [
+            "Katsu Chicken Pizza",
+            "A brunch menu favourite",
+            "Included"
+          ],
+          [
+            "Ham & Cheese Croissant",
+            "Served with rocket",
+            "Included"
+          ],
+          [
+            "Halloumi Salad",
+            "A lighter brunch choice",
+            "Included"
+          ],
+          [
+            "Loaded Chicken Tikka Fries",
+            "Served with mint yoghurt and chillies",
+            "Included"
+          ],
+          [
+            "Breakfast Wrap",
+            "Meat or vegetarian bacon, sausage, hash brown, egg and cheese",
+            "Included"
+          ],
+          [
+            "Hot or BBQ Wings",
+            "Chicken or cauliflower wings",
+            "Included"
+          ],
+          [
+            "Penne Carbonara",
+            "Pancetta, Parmesan, chives, pancetta dust and cream",
+            "Included"
+          ],
+          [
+            "Shakshuka",
+            "Vegan option available with tofu",
+            "Included"
+          ],
+          [
+            "Smashed Avocado",
+            "Poached eggs, smashed avocado, chilli flakes and pickled red onion on a sourdough baguette",
+            "Included"
+          ]
+        ]
+      }
     ]
   },
   "categories": [
@@ -865,6 +961,16 @@
       "label": "Drinks",
       "source": "Drinks",
       "service": "Drinks"
+    },
+    {
+      "label": "Afternoon Tea",
+      "source": "Afternoon Tea",
+      "service": "AfternoonTea"
+    },
+    {
+      "label": "Brunch",
+      "source": "Bottomless Brunch",
+      "service": "Brunch"
     }
   ]
 }
