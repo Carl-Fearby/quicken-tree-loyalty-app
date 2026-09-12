@@ -13,6 +13,7 @@ import {Icon} from '../Icon';
 import {RedemptionPass, type Redemption} from '../RedemptionPass';
 import {UpcomingBookings} from '../UpcomingBookings';
 import {WingOptionsDialog} from '../WingOptionsDialog';
+import {PieChoiceDialog} from '../PieChoiceDialog';
 import {HomeScreen} from '../screens/HomeScreen';
 import {CartScreen, type CartLine} from '../screens/CartScreen';
 import {OrderSummaryScreen} from '../screens/OrderSummaryScreen';
@@ -132,6 +133,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     const [orderToast, setOrderToast] = useState('');
     const [orderToastClosing, setOrderToastClosing] = useState(false);
     const [wingSizePrompt, setWingSizePrompt] = useState(false);
+    const [pieChoicePrompt, setPieChoicePrompt] = useState(false);
     const [wingSize, setWingSize] = useState<'Small' | 'Large' | null>(null);
     const [guests, setGuests] = useState('5 Guests');
     const [bookingExperience, setBookingExperience] = useState<'Table' | 'Afternoon Tea' | 'Bottomless Brunch'>('Table');
@@ -539,7 +541,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                                             onPromptWings={() => {
                                                                 setWingSize(null);
                                                                 setWingSizePrompt(true);
-                                                            }} onBook={() => navigate('book')}/>}
+                                                            }} onPromptPie={() => setPieChoicePrompt(true)} onBook={() => navigate('book')}/>}
                             {view === 'cart' &&
                                 <CartScreen key={`cart-${preOrderLines.map(line => `${line.name}:${line.quantity}`).join('|')}`} lines={preOrderLines} total={preOrderTotal} booking={orderAheadBooking}
                                             onBack={() => navigate('menu', true)} onAdd={addToOrder}
@@ -654,11 +656,15 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                     setBookingPendingCancellation(null);
                 }}/>}
                 {orderToast && <p className={`orderToast${orderToastClosing ? ' closing' : ''}`} role="status"><Icon name="fa-check"/><span><b>{orderToast.includes('Booking') ? 'Canceled' : 'Added!'}</b><small>{orderToast === 'Booking and order cancelled' ? 'Your booking and order has been canceled' : orderToast === 'Booking cancelled' ? 'Your booking has been canceled' : `${orderToast.replace(' added to your order', '')} is ready in your order`}</small></span></p>}
-                        {wingSizePrompt && <WingOptionsDialog size={wingSize} onSizeChange={setWingSize}
+                {wingSizePrompt && <WingOptionsDialog size={wingSize} onSizeChange={setWingSize}
                                                       onClose={() => setWingSizePrompt(false)} onAdd={item => {
                     addToOrder(item);
                     setWingSizePrompt(false);
                     setWingSize(null);
+                }}/>}
+                {pieChoicePrompt && <PieChoiceDialog onClose={() => setPieChoicePrompt(false)} onAdd={item => {
+                    addToOrder(item);
+                    setPieChoicePrompt(false);
                 }}/>} 
             </LoyaltyApp>
     </AppNavigationProvider>;
