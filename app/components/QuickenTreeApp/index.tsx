@@ -79,6 +79,8 @@ const menuServiceFor = (booking: Pick<Booking, 'date' | 'time'>) => {
     return menuServicePeriods.find(period =>
         (!period.days || period.days.includes(day)) && minutes >= timeInMinutes(period.start) && minutes < timeInMinutes(period.end));
 };
+const isTimeInWindow = (time: string, start: string, end: string) =>
+    timeInMinutes(time) >= timeInMinutes(start) && timeInMinutes(time) < timeInMinutes(end);
 const availableSlots = (value: string, now = new Date()) => {
     const date = fromInputDate(value);
     const {open, close} = openingHours(date);
@@ -186,6 +188,8 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     const todayValue = toInputDate(new Date());
     const activeMenuService = orderAheadBooking ? menuServiceFor(orderAheadBooking) : null;
     const selectedBookingService = time ? menuServiceFor({date: bookingDate, time}) : null;
+    const doublePointsPromotion = pointsData.promotions.doublePoints;
+    const bookingEarnsDoublePoints = Boolean(time) && doublePointsPromotion.days.includes(fromInputDate(bookingDate).getDay()) && isTimeInWindow(time, doublePointsPromotion.start, doublePointsPromotion.end);
     const availableMenuCategories = activeMenuService
         ? menuCategories.filter(category => activeMenuService.categories.includes(category.label))
         : menuCategories;
@@ -478,6 +482,8 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                                                dietaryNeeds={dietaryNeeds}
                                                                availableMenuService={selectedBookingService?.label}
                                                                availableMenuCategories={selectedBookingService?.categories ?? []}
+                                                               doublePointsPromotion={doublePointsPromotion}
+                                                               bookingEarnsDoublePoints={bookingEarnsDoublePoints}
                                                                guestCount={guestCount} date={bookingDate}
                                                                formatDate={value => formatDate(fromInputDate(value))}
                                                                showDatePicker={showDatePicker}
