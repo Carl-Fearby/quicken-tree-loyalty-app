@@ -179,7 +179,7 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:var(--qt-color-app-
 .appShell .bookingSummary p,.appShell .bookingSummary small,.appShell .detailLabel,
 .appShell .checkoutSummary p,.appShell .checkoutSummary small,.appShell .checkoutFine,
 .appShell .preOrderBanner,.appShell .noTimes,.appShell .emptyBookings p{font-size:13px!important;}
-.appShell .setting{font-size:15px!important;}
+.appShell .setting{font-size:15px!important;font-weight:400!important;}
 .appShell .account small,.appShell .venueCard small,.appShell .profileIntro,
 .appShell .contactAction,.appShell .tasteChoices button{font-size:14px!important;}
 .appShell .redeemPass>small,.appShell .redeemFine,.appShell .weekdays span{font-size:11px!important;}
