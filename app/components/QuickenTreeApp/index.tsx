@@ -527,7 +527,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                     const placedOrderItemCount = placedOrder?.lines.reduce((count, line) => count + line.quantity, 0) ?? 0;
                                     return <article className="savedBooking" key={booking.id}><p>The
                                     Quicken Tree</p>
-                                    <b>{formatDate(fromInputDate(booking.date))}</b><span>{booking.experience ?? 'Table'} · {booking.time} · {booking.guests}</span>{booking.total ?
+                                    <b>{formatDate(fromInputDate(booking.date))}</b><span>{booking.experience ?? 'Table'}{booking.bottomlessBrunchMeal ? ` · ${booking.bottomlessBrunchMeal}` : ''}{booking.bottomlessBrunchUpgrade ? ' · Drinks upgrade' : ''} · {booking.time} · {booking.guests}</span>{booking.total ?
                                         <strong className="paidBooking"><Icon name="fa-circle-check"/> Paid ·
                                             £{booking.total.toFixed(2)}
                                         </strong> : null}<small>{booking.name}</small>{parseInt(booking.guests, 10) >= 4 && !booking.total &&
