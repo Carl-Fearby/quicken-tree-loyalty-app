@@ -7,7 +7,7 @@
   align-content: start;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: max(28px, env(safe-area-inset-top)) 26px max(28px, env(safe-area-inset-bottom));
+  padding: 0 26px max(28px, env(safe-area-inset-bottom));
   background: #fafafa;
   color: #342d27;
 }

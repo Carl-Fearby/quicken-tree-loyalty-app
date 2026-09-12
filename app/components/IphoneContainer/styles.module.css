@@ -7,7 +7,7 @@
 .appSurface{background:transparent}
 @keyframes launch{0%{opacity:.72;transform:translate(var(--launch-x),var(--launch-y)) scale(var(--launch-scale-x),var(--launch-scale-y));border-radius:14px}62%{border-radius:44px}100%{opacity:1;transform:translate(0) scale(1);border-radius:0}}
 @keyframes returnHome{0%{opacity:1;transform:translate(0) scale(1);border-radius:0}45%{border-radius:34px}100%{opacity:.72;transform:translate(var(--launch-x),var(--launch-y)) scale(var(--launch-scale-x),var(--launch-scale-y));border-radius:14px}}
-.statusBar{z-index:16;background:#f7f7f7;color:#111}.statusBar.dark{background:#171616;color:#f7f3ee}.homeIndicator{bottom:13px}
+.statusBar{z-index:16;background:transparent;color:#111}.statusBar.dark{background:transparent;color:#f7f3ee}.homeIndicator{bottom:13px}
 .appWindow{position:absolute;inset:0;z-index:15;overflow:hidden;transform-origin:top left;will-change:transform,border-radius}.appWindow .statusBar{position:relative;z-index:2}.appWindow .appSurface{position:absolute;inset:0;z-index:0}.appWindow .homeIndicator{position:absolute;z-index:3}
 .desktopStatusBar{position:relative;z-index:2;display:flex;align-items:flex-start;justify-content:space-between;height:58px;padding:20px 28px 0;color:#fff}.desktopStatusBar button{height:auto;margin:0;padding:0;border:0;background:transparent;color:inherit;font:inherit;font-size:16px;font-weight:700;line-height:1}.desktopStatusBar span{display:flex;align-items:center;gap:4px;font-size:11px;line-height:1}.desktopStatusBar b{font-size:11px;font-weight:700}
 .statusBar,.desktopStatusBar{padding-right:22px}.statusBar span,.desktopStatusBar span{gap:5px;font-size:16px}.statusBar b,.desktopStatusBar b{font-size:16px}
