@@ -118,13 +118,7 @@ export function IphoneContainer({apps, dockApps = [], initialAppId = null, notif
 
     const openApp = (appId: string, icon: HTMLButtonElement) => {
         if (motion !== 'idle') return;
-        // The portal animation is a desktop-preview enhancement. On a real
-        // touch device Safari can apply the pressed state then cancel the
-        // animation before its first frame, leaving the launcher visible.
-        // Reveal the surface immediately there; the app remains fully usable
-        // and desktop previews keep the icon-to-surface morph.
-        const supportsDesktopPortal = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-        if (isThreeD || !supportsDesktopPortal) {
+        if (isThreeD) {
             setActiveAppId(appId);
             return;
         }
