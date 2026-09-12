@@ -103,6 +103,13 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}h
 /* Safari's standalone viewport ends above the lower gesture inset. Extend the
    app shell itself into that inset, then let the grid place navigation there. */
 .stage.appOnly,.stage.appOnly>section{overflow:visible!important}.stage.appOnly .appShell{display:grid!important;grid-template-rows:max(0px,env(safe-area-inset-top)) minmax(0,1fr) auto!important;bottom:calc(0px - env(safe-area-inset-bottom))!important;height:calc(100% + env(safe-area-inset-bottom))!important;overflow:hidden!important}.stage.appOnly .appSafeArea{position:static!important;inset:auto!important;height:auto!important}.stage.appOnly .content{position:static!important;height:auto!important;min-height:0!important;overflow-y:auto!important;padding:18px 26px!important}.stage.appOnly nav{position:static!important;height:calc(64px + env(safe-area-inset-bottom))!important;padding:5px 4px calc(10px + env(safe-area-inset-bottom))!important}
+/* The installed app has one scrolling region. Keep the tab bar out of that
+   region so it is always the final row of the app surface, including when
+   iOS reports a larger visual viewport than its safe-area viewport. */
+.stage.appOnly .appShell{display:flex!important;flex-direction:column!important;grid-template-rows:none!important}
+.stage.appOnly .appShell .appSafeArea{display:block!important;position:relative!important;flex:0 0 0!important;width:100%!important;height:0!important}
+.stage.appOnly .appShell .content{position:relative!important;flex:1 1 0!important;width:100%!important;height:auto!important;min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important}
+.stage.appOnly .appShell nav{position:relative!important;flex:0 0 calc(64px + env(safe-area-inset-bottom))!important;width:100%!important;height:calc(64px + env(safe-area-inset-bottom))!important;margin-top:auto!important}
 .bookingActions{display:flex;gap:7px;margin-top:8px}.bookingActions button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:32px;flex:1;border:1px solid #e7d8c8;border-radius:10px;background:#fff;color:#594d41;font:inherit;font-size:10px;font-weight:600}.bookingActions button .fa-solid{color:#cf122d}.bookingActions .cancelBooking{color:#b42330}.bookingActions .cancelBooking .fa-solid{color:inherit}.stage.dark .bookingActions button{border-color:#514941;background:#302b27;color:#f7f3ee}.stage.dark .bookingActions .cancelBooking{color:#ff8090}
 /* Theme-aware device menu surface for the full-bleed presentation shell. */
 .stage.fullBleed:not(.dark) .deviceMenu summary{border-color:#6a4a4230!important;background:#ffffffb8!important;color:#332b27!important}
