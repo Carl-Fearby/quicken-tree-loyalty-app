@@ -94,6 +94,9 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}h
 /* The app shell extends into the iPhone safe area; do not clip its tab bar
    at the intermediate standalone wrapper. */
 .stage.appOnly,.stage.appOnly>section{overflow:visible!important}.stage.appOnly nav{height:calc(72px + env(safe-area-inset-bottom))!important;align-items:flex-start!important;padding:5px 4px calc(10px + env(safe-area-inset-bottom))!important}
+/* iOS zooms the entire page when a focused editable control is under 16px.
+   Keep real mobile/PWA fields at that threshold rather than disabling zoom. */
+@media (display-mode: standalone),(display-mode: fullscreen),(max-width:430px){input:not([type="checkbox"]):not([type="radio"]),select,textarea{font-size:16px!important}}
 .bookingActions{display:flex;gap:7px;margin-top:8px}.bookingActions button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:32px;flex:1;border:1px solid #e7d8c8;border-radius:10px;background:#fff;color:#594d41;font:inherit;font-size:10px;font-weight:600}.bookingActions button .fa-solid{color:#cf122d}.bookingActions .cancelBooking{color:#b42330}.bookingActions .cancelBooking .fa-solid{color:inherit}.stage.dark .bookingActions button{border-color:#514941;background:#302b27;color:#f7f3ee}.stage.dark .bookingActions .cancelBooking{color:#ff8090}
 /* Theme-aware device menu surface for the full-bleed presentation shell. */
 .stage.fullBleed:not(.dark) .deviceMenu summary{border-color:#6a4a4230!important;background:#ffffffb8!important;color:#332b27!important}
@@ -102,3 +105,19 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}h
 .stage.fullBleed:not(.dark) .deviceMenuOptions .manufacturerSelect .fa-solid,.stage.fullBleed:not(.dark) .deviceMenuOptions .deviceSelect .fa-solid{color:#a45b28!important}
 .stage.fullBleed.dark .deviceMenu summary{border-color:#ffffff2e;background:#ffffff16;color:#fff}
 .stage.fullBleed.dark .deviceMenuOptions{border-color:#ffffff2e;background:#211f24f2}
+.mobileControlMenu{display:none}
+@media(max-width:640px){
+  .stage.fullBleed .presentationMenu{position:relative!important;justify-content:flex-end!important;min-height:52px!important;padding:7px 10px!important}
+  .stage.fullBleed .presentationMenu>.themeToggle,.stage.fullBleed .presentationMenu>.deviceToggle,.stage.fullBleed .presentationMenu>.threeDToggle,.stage.fullBleed .presentationMenu>.orientationToggle,.stage.fullBleed .presentationMenu>.deviceMenu{display:none!important}
+  .stage.fullBleed .mobileControlMenu{display:block;position:relative;z-index:30}
+  .stage.fullBleed .mobileControlMenu summary{display:flex;align-items:center;gap:8px;min-height:38px;list-style:none;cursor:pointer;border:1px solid #ffffff38;border-radius:12px;background:#ffffff1c;color:#fff;padding:8px 11px;font-size:12px;font-weight:700}
+  .stage.fullBleed .mobileControlMenu summary::-webkit-details-marker{display:none}
+  .stage.fullBleed .mobileControlMenu summary>.fa-solid:first-child{color:#f2d07a}
+  .stage.fullBleed .mobileControlMenu summary>.fa-solid:last-child{margin-left:2px;font-size:10px}
+  .stage.fullBleed .mobileControlOptions{position:absolute;top:calc(100% + 7px);right:0;display:grid;gap:7px;width:min(300px,calc(100vw - 20px));padding:10px;border:1px solid #ffffff2e;border-radius:16px;background:#17141aec;box-shadow:0 16px 32px #0007;backdrop-filter:blur(18px)}
+  .stage.fullBleed .mobileControlOptions button,.stage.fullBleed .mobileControlOptions label{display:flex;align-items:center;gap:9px;min-height:42px;width:100%;border:1px solid #ffffff22;border-radius:11px;background:#ffffff12;color:#fff;padding:8px 10px;font:inherit;font-size:12px;font-weight:650;text-align:left}
+  .stage.fullBleed .mobileControlOptions button .fa-solid,.stage.fullBleed .mobileControlOptions label>.fa-solid{width:15px;color:#f2d07a;text-align:center}
+  .stage.fullBleed .mobileControlOptions label>span:not(:first-child){color:#fff;font-size:11px}
+  .stage.fullBleed .mobileControlOptions select{min-width:0;flex:1;border:0;outline:0;background:transparent;color:#fff;font:inherit;font-size:12px;font-weight:700;text-align:right}
+  .stage.fullBleed .mobileControlOptions option{color:#111;background:#fff}
+}
