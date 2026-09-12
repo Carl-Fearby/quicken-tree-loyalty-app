@@ -1,4 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700;900&display=swap');
+/* Keep links within the app on the surrounding screen's palette rather than
+   allowing the browser's default visited/unvisited blue to leak through. */
+body a,
+body a:visited{color:inherit}
+button{color:inherit}
 .presentationMenu .orientationToggle{position:relative;top:auto;right:auto}.orientationToggle,.manufacturerSelect,.deviceSelect,.caseSelect{display:inline-flex;align-items:center;gap:7px;border:1px solid #ffffff2e;border-radius:99px;background:#ffffff16;color:#fff;padding:9px 12px;font:inherit;font-size:11px;font-weight:600;backdrop-filter:blur(12px)}.orientationToggle .fa-solid,.manufacturerSelect .fa-solid,.deviceSelect .fa-solid,.caseSelect .fa-solid{color:#f2d07a}.manufacturerSelect select,.deviceSelect select,.caseSelect select{border:0;outline:0;background:transparent;color:inherit;font:inherit;font-size:11px;font-weight:600}.manufacturerSelect option,.deviceSelect option,.caseSelect option{color:#111}.stage{display:grid!important;grid-template-rows:auto minmax(0,1fr)!important;place-items:stretch!important;padding:16px 20px 20px!important}.presentationMenu{position:relative!important;top:auto!important;right:auto!important;left:auto!important;min-height:56px!important;padding:10px 16px!important}.devicePreviewArea{display:flex;align-items:center;justify-content:center;min-width:0;min-height:0;overflow:hidden}.devicePreviewArea.threeDimensional{overflow:visible}.devicePreview{position:relative;display:block;flex:none;min-width:0;min-height:0;overflow:visible;transition:width .45s ease-out,height .45s ease-out}.devicePreview .deviceOrientation{position:absolute;top:50%;left:50%;--preview-scale:1;transition:transform .45s ease-out;transform:translate(-50%,-50%) scale(var(--preview-scale));transform-origin:center}.devicePreview .deviceOrientation.landscape{transform:translate(-50%,-50%) rotate(90deg) scale(var(--preview-scale))}.stage.dark .orientationToggle,.stage.dark .deviceSelect,.stage.dark .caseSelect{background:#ffffff18}
 .stage:not(.dark){background:radial-gradient(circle at 16% 18%,#f8d9d480 0 10%,transparent 28%),radial-gradient(circle at 86% 80%,#e9d4a470 0 9%,transparent 27%),linear-gradient(135deg,#fffaf5 0%,#f6ece6 48%,#efe4d7 100%)}.stage:not(.dark):before,.stage:not(.dark):after{border-color:#6a4a4220}.stage:not(.dark) .presentationMenu{background:#fffaf5d9;border-color:#6a4a4220}.stage:not(.dark) .themeToggle,.stage:not(.dark) .deviceToggle,.stage:not(.dark) .orientationToggle,.stage:not(.dark) .manufacturerSelect,.stage:not(.dark) .deviceSelect{border-color:#6a4a4230;background:#ffffffb8;color:#332b27}.stage:not(.dark) .themeToggle .fa-solid,.stage:not(.dark) .deviceToggle .fa-solid,.stage:not(.dark) .orientationToggle .fa-solid,.stage:not(.dark) .manufacturerSelect .fa-solid,.stage:not(.dark) .deviceSelect .fa-solid{color:#a45b28}
 .stage.dark{background:radial-gradient(circle at 12% 16%,#ec31545c 0 8%,transparent 29%),radial-gradient(circle at 84% 16%,#7446c45c 0 7%,transparent 27%),radial-gradient(circle at 82% 85%,#f0a72e68 0 9%,transparent 30%),radial-gradient(circle at 28% 78%,#1878ad48 0 8%,transparent 28%),linear-gradient(135deg,#10090e 0%,#27101c 46%,#161018 100%)}.stage.dark:before,.stage.dark:after{border-color:#fff3}.stage:not(.dark){background:radial-gradient(circle at 12% 16%,#f16c7b75 0 8%,transparent 29%),radial-gradient(circle at 84% 15%,#8c75e971 0 8%,transparent 28%),radial-gradient(circle at 85% 85%,#efb25672 0 10%,transparent 30%),radial-gradient(circle at 23% 78%,#68bce15e 0 9%,transparent 29%),linear-gradient(135deg,#fffaf7 0%,#f7e7ec 48%,#eee7d5 100%)}
@@ -122,6 +127,30 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}h
   .stage.appOnly .appShell .content{position:absolute!important;top:0!important;right:0!important;bottom:calc(64px + env(safe-area-inset-bottom))!important;left:0!important;display:block!important;width:auto!important;height:auto!important;min-height:0!important;padding:max(18px,calc(env(safe-area-inset-top) + 18px)) 26px 18px!important;overflow-x:hidden!important;overflow-y:scroll!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important}
   .stage.appOnly .appShell nav{position:absolute!important;right:0!important;bottom:0!important;left:0!important;z-index:20!important;display:flex!important;width:100%!important;height:calc(64px + env(safe-area-inset-bottom))!important;margin:0!important;padding:5px 4px calc(10px + env(safe-area-inset-bottom))!important}
 }
+
+/* WebKit can retain its own link paint in a standalone web app. Explicitly
+   control both paint properties so phone and email actions stay on-brand. */
+.appShell a,
+.appShell a:link,
+.appShell a:visited,
+.appShell a:hover,
+.appShell a:active{
+  color:#4e453d!important;
+  -webkit-text-fill-color:#4e453d!important;
+}
+
+/* Profile option labels and their chevrons share a true vertical centre. */
+.setting{align-items:center}
+.setting>span{display:grid;place-items:center;line-height:1}
+
+.stage.dark .appShell a,
+.stage.dark .appShell a:link,
+.stage.dark .appShell a:visited,
+.stage.dark .appShell a:hover,
+.stage.dark .appShell a:active{
+  color:#f7f3ee!important;
+  -webkit-text-fill-color:#f7f3ee!important;
+}
 .bookingActions{display:flex;gap:7px;margin-top:8px}.bookingActions button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:32px;flex:1;border:1px solid #e7d8c8;border-radius:10px;background:#fff;color:#594d41;font:inherit;font-size:10px;font-weight:600}.bookingActions button .fa-solid{color:#cf122d}.bookingActions .cancelBooking{color:#b42330}.bookingActions .cancelBooking .fa-solid{color:inherit}.stage.dark .bookingActions button{border-color:#514941;background:#302b27;color:#f7f3ee}.stage.dark .bookingActions .cancelBooking{color:#ff8090}
 /* Theme-aware device menu surface for the full-bleed presentation shell. */
 .stage.fullBleed:not(.dark) .deviceMenu summary{border-color:#6a4a4230!important;background:#ffffffb8!important;color:#332b27!important}
@@ -174,7 +203,14 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}h
     bottom:auto!important;
   }
 
-  .stage.appOnly [data-scroll-test]{
-    padding-top:max(26px,calc(env(safe-area-inset-top) + 26px))!important;
+  /* Keep the navigation's existing internal spacing, but let its safe-area
+     tail extend below the visible viewport so the bar itself meets the edge. */
+  .stage.appOnly .appShell .content{
+    bottom:64px!important;
   }
+
+  .stage.appOnly .appShell nav{
+    bottom:calc(0px - env(safe-area-inset-bottom))!important;
+  }
+
 }
