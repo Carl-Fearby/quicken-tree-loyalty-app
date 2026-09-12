@@ -419,7 +419,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     }}>
             <LoyaltyApp motion="idle" dark={isDarkMode} embedded={controlledDark !== undefined}>
                         <div className="appSafeArea" aria-hidden="true"/>
-                        <div className="content" key={`${view}-${profilePanel ?? 'root'}`}>
+                        <div className="content appScreenTransition" key={`${view}-${profilePanel ?? 'root'}`}>
                             {view === 'home' && <HomeScreen bookings={bookings} onBookEvent={bookEvent} onLogoClick={onShowNotification}/>}
                             {view === 'book' && <BookingScreen experience={bookingExperience} prices={experiencePrices}
                                                                price={experiencePrice} total={bookingTotal}

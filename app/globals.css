@@ -135,6 +135,22 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}h
   animation:screenEnter .32s cubic-bezier(.2,.8,.2,1) both!important;
 }
 
+/* Keep page navigation on one composited layer. Safari can otherwise drop the
+   entrance transform when the screen remount and its child animations happen
+   in the same frame. */
+.stage .content.appScreenTransition{
+  animation:appScreenEnter .42s cubic-bezier(.16,1,.3,1) both!important;
+  -webkit-backface-visibility:hidden;
+  backface-visibility:hidden;
+  -webkit-transform:translate3d(0,0,0);
+  transform:translate3d(0,0,0);
+  will-change:opacity,transform;
+}
+@keyframes appScreenEnter{
+  from{opacity:0;transform:translate3d(0,15px,0) scale(.992)}
+  to{opacity:1;transform:translate3d(0,0,0) scale(1)}
+}
+
 /* WebKit can retain its own link paint in a standalone web app. Explicitly
    control both paint properties so phone and email actions stay on-brand. */
 .appShell a,
