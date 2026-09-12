@@ -51,9 +51,10 @@ const dietaryTags: Record<string, string[]> = menuData.dietaryTags;
 const dietaryTagNames: Record<string, string> = menuData.dietaryTagNames;
 const outOfStockItems = new Set(menuData.outOfStockItems);
 type MenuSection = { title: string; items: ReadonlyArray<readonly [string, string, string]> };
+type OrderAheadServicePeriod = {id: string; label: string; start: string; end: string; days?: number[]; categories: string[]};
 const menuItems = {...menuData.menuItems, 'Main Menu': septemberMainMenu.sections} as unknown as Record<'Breakfast' | 'Main Menu' | 'Sunday Lunch' | 'Drinks' | 'Bottomless Brunch', MenuSection[]>;
 const bottomlessBrunchMeals = menuData.menuItems['Bottomless Brunch'][1].items.map(([name, description]) => ({name, description}));
-const menuCategories = menuData.categories.filter(category => category.label !== 'Bottomless Brunch').map(category => {
+const menuCategories = menuData.categories.filter(category => category.label !== 'Brunch').map(category => {
     const source = menuItems[category.source as keyof typeof menuItems];
     return {
         label: category.label,
@@ -67,6 +68,17 @@ const openingHours = (date: Date) => date.getDay() === 0 ? appointmentsData.open
 const toInputDate = (date: Date) => date.toISOString().slice(0, 10);
 const formatDate = (date: Date) => date.toLocaleDateString('en-GB', {weekday: 'long', day: 'numeric', month: 'long'});
 const fromInputDate = (value: string) => new Date(`${value}T12:00:00`);
+const timeInMinutes = (value: string) => {
+    const [hours, minutes] = value.split(':').map(Number);
+    return hours * 60 + minutes;
+};
+const orderAheadServicePeriods = menuData.orderAheadServicePeriods as OrderAheadServicePeriod[];
+const orderAheadServiceFor = (booking: Pick<Booking, 'date' | 'time'>) => {
+    const minutes = timeInMinutes(booking.time);
+    const day = fromInputDate(booking.date).getDay();
+    return orderAheadServicePeriods.find(period =>
+        (!period.days || period.days.includes(day)) && minutes >= timeInMinutes(period.start) && minutes < timeInMinutes(period.end));
+};
 const availableSlots = (value: string, now = new Date()) => {
     const date = fromInputDate(value);
     const {open, close} = openingHours(date);
@@ -172,7 +184,11 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
         return date;
     });
     const todayValue = toInputDate(new Date());
-    const selectedMenuCategory = menuCategories.find(category => category.label === menuCategory) ?? menuCategories[0];
+    const activeOrderAheadService = orderAheadBooking ? orderAheadServiceFor(orderAheadBooking) : null;
+    const availableMenuCategories = activeOrderAheadService
+        ? menuCategories.filter(category => activeOrderAheadService.categories.includes(category.label))
+        : menuCategories;
+    const selectedMenuCategory = availableMenuCategories.find(category => category.label === menuCategory) ?? availableMenuCategories[0];
     const filteredMenuSections = selectedMenuCategory.sections.map(section => ({
         ...section,
         items: section.items.filter(([name, description]) => `${name} ${description}`.toLowerCase().includes(menuSearch.trim().toLowerCase()))
@@ -367,7 +383,9 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
         setOrderAheadBooking(booking);
         setPreOrderItems(savedOrder);
         setMenuSearch('');
-        setMenuCategory('Sharers');
+        const service = orderAheadServiceFor(booking);
+        const firstAvailableCategory = service?.categories.find(label => menuCategories.some(category => category.label === label));
+        setMenuCategory(firstAvailableCategory ?? menuCategories[0].label);
         navigate('menu', true);
     };
     const openPlacedOrder = (booking: Booking) => {
@@ -558,12 +576,13 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                 <OrderSummaryScreen booking={selectedPlacedOrderBooking} lines={placedOrders[selectedPlacedOrderBooking.id].lines}
                                                     total={placedOrders[selectedPlacedOrderBooking.id].total}
                                                     onBack={() => navigate('bookings')}/>}
-                            {view === 'menu' && <MenuScreen categories={menuCategories} selectedCategory={menuCategory}
+                            {view === 'menu' && <MenuScreen categories={availableMenuCategories} selectedCategory={selectedMenuCategory.label}
                                                             onCategoryChange={setMenuCategory} search={menuSearch}
                                                             onSearchChange={setMenuSearch}
                                                             sections={filteredMenuSections} dietaryTags={dietaryTags}
                                                             dietaryTagNames={dietaryTagNames}
                                                             outOfStockItems={outOfStockItems}
+                                                            serviceLabel={activeOrderAheadService?.label}
                                                             orderAheadBooking={orderAheadBooking} onAdd={addToOrder}
                                                             onPromptWings={() => {
                                                                 setWingSize(null);

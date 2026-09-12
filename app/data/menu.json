@@ -6,6 +6,37 @@
     "Drinks": "Drinks available throughout service",
     "Brunch": "Bottomless brunch is available Monday to Saturday from noon"
   },
+  "orderAheadServicePeriods": [
+    {
+      "id": "breakfast",
+      "label": "Breakfast menu",
+      "start": "07:30",
+      "end": "12:00",
+      "categories": ["Breakfasts"]
+    },
+    {
+      "id": "sunday-lunch",
+      "label": "Sunday lunch menu",
+      "start": "12:00",
+      "end": "17:00",
+      "days": [0],
+      "categories": ["Sunday", "Drinks"]
+    },
+    {
+      "id": "day",
+      "label": "Day menu",
+      "start": "12:00",
+      "end": "17:00",
+      "categories": ["Appetisers", "Nibbles", "Starters", "Mains", "Burgers", "Sides", "Desserts", "Drinks"]
+    },
+    {
+      "id": "evening",
+      "label": "Evening menu",
+      "start": "17:00",
+      "end": "20:30",
+      "categories": ["Appetisers", "Nibbles", "Starters", "Mains", "Burgers", "Sides", "Desserts", "Drinks"]
+    }
+  ],
   "dietaryTagNames": {
     "V": "Vegetarian",
     "VG": "Vegan",
