@@ -1,0 +1,62 @@
+{
+  "sections": [
+    {"title":"Appetisers","items":[
+      ["Roasted Garlic Ciabatta","Vegetarian roasted garlic ciabatta","£4.50"],
+      ["Mixed Olives","Vegetarian and vegan mixed olives","£4.50"]
+    ]},
+    {"title":"Nibbles","items":[
+      ["Buttermilk Chicken Goujons","Crispy buttermilk chicken goujons with harissa mayo","£7.50"],
+      ["Honey Mustard Chipolatas","Honey and wholegrain mustard glazed chipolatas with crispy onions","£7.50"],
+      ["Crispy Halloumi Fries","Crispy halloumi fries with hot honey sauce","£7.50"],
+      ["Mini Charcuterie & Cornichons","A perfect snack or ideal for sharing","£7.50"],
+      ["Hummus Flatbread","Flatbread, hummus, harissa oil, dukkah, crispy chickpeas and coriander","£7.50"],
+      ["Whitebait & Aioli","Crispy whitebait with aioli","£7.50"],
+      ["Ham Hock Croquettes","Smoked ham hock, leek and cheddar croquettes with roasted tomato chutney and rocket","£7.50"]
+    ]},
+    {"title":"Starters","items":[
+      ["Soup of the Day","Served with toasted sourdough","£7.50"],
+      ["Smoked Salmon","Capers, shallots, rocket, lemon, dill oil and toasted sourdough","£10.50"],
+      ["Creamy Garlic & Truffle Mushrooms","Wild mushrooms, toasted sourdough, crispy Serrano ham and rocket","£8.50"],
+      ["Pil Pil King Prawns","Chilli, garlic and tomato king prawns with toasted sourdough","£12.00"],
+      ["Baked Camembert","Garlic and herb crumb","£8.50"],
+      ["Roasted Chicken Terrine","Baby gem, toasted croûtes, Parmesan shavings and crispy Serrano ham","£8.50"]
+    ]},
+    {"title":"Mains","items":[
+      ["Korean Chicken","Crispy chicken with gochujang mayonnaise, spring onion and paprika-dusted fries","£18.00"],
+      ["Sri Lankan Sweet Potato Curry","Roasted sweet potato, chickpea and spinach curry with basmati rice and chapati. Add chicken £4 or prawns £6","£17.00"],
+      ["Pie of the Day","See the specials board","£18.00"],
+      ["Pan Fried Seabass","Crushed and buttered herb potatoes, creamed leeks and bacon, dill oil and peashoots","£24.00"],
+      ["Slow Braised Pork Belly","Black pudding and wholegrain mustard mash, crackling, smoked bacon crumb, seasonal greens and apple & cider jus","£24.00"],
+      ["Beer Battered Haddock","Hawkstone beer batter, triple cooked chips, mushy peas, tartare sauce and lemon","£18.50"],
+      ["Grilled Chicken Caesar Salad","Anchovies, Parmesan shavings, crispy Serrano ham and croûtes","£16.00"],
+      ["Wild Mushroom & Truffle Pappardelle","Creamy pappardelle pasta with rocket and Parmesan shavings","£17.00"],
+      ["Slow-Cooked Lamb Shank","Minted gravy, creamy mash and honey roasted root vegetables","£26.00"],
+      ["10oz Gammon Steak","Fried egg, triple cooked chips and rocket","£18.00"],
+      ["10oz Ribeye","Triple cooked chips, slow roasted garlic and thyme, flat mushroom, tomato and rocket","£29.00"],
+      ["Steak of the Day","See the specials board. Add béarnaise or peppercorn sauce","£4.00"]
+    ]},
+    {"title":"Burgers","items":[
+      ["Beyond Vegan Burger","Vegan Applewood cheese, roasted tomato chutney, lettuce and skinny fries","£18.00"],
+      ["Cheese Burger","Lettuce, burger relish, pickles and skinny fries","£18.00"],
+      ["Harissa Chicken Burger","Grilled harissa spiced chicken, harissa mayo, lime and coriander red cabbage slaw and skinny fries","£18.00"]
+    ]},
+    {"title":"Sides","items":[
+      ["Triple Cooked Chips","Crisp triple cooked chips","£4.50"],
+      ["Fries","Skinny fries. Double up for £4","£4.50"],
+      ["Truffle & Parmesan Fries","Crispy onions, chives and spring onions","£7.50"],
+      ["Mac 'n' Cheese","Roasted garlic and herb crumb. Add truffle £1.50","£5.50"],
+      ["Seasonal Greens","Fresh seasonal greens","£4.50"],
+      ["Beer Battered Onion Rings","Six beer battered onion rings","£4.50"]
+    ]},
+    {"title":"Desserts","items":[
+      ["Crème Brûlée","Served with shortbread biscuits","£8.50"],
+      ["Triple Chocolate Brownie","With Madagascar vanilla ice cream","£7.50"],
+      ["Cheesecake of the Day","With vanilla ice cream","£7.50"],
+      ["QT House Favourite","Please speak to your server","£8.50"],
+      ["Pistachio & White Chocolate Tiramisu","Pistachio and baked white chocolate tiramisu","£8.50"],
+      ["Churros Chocolate Fondue","With marshmallows and strawberries","£9.50"],
+      ["Single Smidgen of Cheese","With a coffee £7.50","£4.50"],
+      ["British Cheese & Biscuits","Three cheeses £12 or four cheeses £15, served with celery and chutney","£12.00"]
+    ]}
+  ]
+}

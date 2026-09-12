@@ -895,7 +895,7 @@
       "service": "Breakfasts"
     },
     {
-      "label": "Sharers",
+      "label": "Appetisers",
       "source": "Main Menu",
       "sections": [
         0
@@ -903,7 +903,7 @@
       "service": "Main"
     },
     {
-      "label": "Starters",
+      "label": "Nibbles",
       "source": "Main Menu",
       "sections": [
         1
@@ -911,7 +911,7 @@
       "service": "Main"
     },
     {
-      "label": "Grill",
+      "label": "Starters",
       "source": "Main Menu",
       "sections": [
         2
@@ -922,16 +922,7 @@
       "label": "Mains",
       "source": "Main Menu",
       "sections": [
-        3,
-        4
-      ],
-      "service": "Main"
-    },
-    {
-      "label": "Salads",
-      "source": "Main Menu",
-      "sections": [
-        5
+        3
       ],
       "service": "Main"
     },
@@ -939,7 +930,7 @@
       "label": "Burgers",
       "source": "Main Menu",
       "sections": [
-        6
+        4
       ],
       "service": "Main"
     },
@@ -947,8 +938,15 @@
       "label": "Sides",
       "source": "Main Menu",
       "sections": [
-        7,
-        8
+        5
+      ],
+      "service": "Main"
+    },
+    {
+      "label": "Desserts",
+      "source": "Main Menu",
+      "sections": [
+        6
       ],
       "service": "Main"
     },

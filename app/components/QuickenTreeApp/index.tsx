@@ -4,6 +4,7 @@ import {useEffect, useState} from 'react';
 import appointmentsData from '../../data/appointments.json';
 import bookingsData from '../../data/bookings.json';
 import menuData from '../../data/menu.json';
+import septemberMainMenu from '../../data/main-menu-september.json';
 import pointsData from '../../data/points-and-tier.json';
 import profileData from '../../data/profile.json';
 import rewardsData from '../../data/rewards.json';
@@ -44,7 +45,7 @@ const experiencePrices = Object.fromEntries(appointmentsData.experiences.map(exp
 const dietaryTags: Record<string, string[]> = menuData.dietaryTags;
 const dietaryTagNames: Record<string, string> = menuData.dietaryTagNames;
 type MenuSection = { title: string; items: ReadonlyArray<readonly [string, string, string]> };
-const menuItems = menuData.menuItems as unknown as Record<'Breakfast' | 'Main Menu' | 'Sunday Lunch' | 'Drinks' | 'Afternoon Tea' | 'Bottomless Brunch', MenuSection[]>;
+const menuItems = {...menuData.menuItems, 'Main Menu': septemberMainMenu.sections} as unknown as Record<'Breakfast' | 'Main Menu' | 'Sunday Lunch' | 'Drinks' | 'Afternoon Tea' | 'Bottomless Brunch', MenuSection[]>;
 const menuCategories = menuData.categories.map(category => {
     const source = menuItems[category.source as keyof typeof menuItems];
     return {
