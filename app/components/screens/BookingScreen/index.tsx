@@ -1,6 +1,6 @@
 import styles from './styles.module.css';
 import {Icon} from '../../Icon';
-import {useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 
 type Experience = 'Table' | 'Afternoon Tea' | 'Bottomless Brunch';
 type Props = {experience: Experience; prices: Record<Experience, number>; price: number; total: number; guestCount: number; date: string; formatDate: (date: string) => string; showDatePicker: boolean; onToggleDatePicker: () => void; visibleMonth: Date; onPreviousMonth: () => void; onNextMonth: () => void; calendarDays: Date[]; today: string; onSelectDate: (value: string) => void; guests: string; onGuestsChange: (value: string) => void; times: string[]; selectedTime: string; onTimeChange: (value: string) => void; showAllTimes: boolean; onToggleTimes: () => void; onExperienceChange: (value: Experience) => void; afternoonTeaUpgrade: boolean; onAfternoonTeaUpgradeChange: (value: boolean) => void; bottomlessBrunchUpgrade: boolean; onBottomlessBrunchUpgradeChange: (value: boolean) => void; bottomlessBrunchMeal: string; bottomlessBrunchMeals: {name: string; description: string}[]; onBottomlessBrunchMealChange: (value: string) => void; onContinue: () => void};
@@ -11,7 +11,17 @@ export function BookingScreen({experience, prices, price, total, guestCount, dat
   const inputDate = (value: Date) => value.toISOString().slice(0, 10);
   const isLargeParty = guestCount >= 6;
   const [showBrunchMeals, setShowBrunchMeals] = useState(false);
-  return <div className={styles.root}>
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showBrunchMeals) return;
+    const scrollSurface = rootRef.current?.closest('.content') as HTMLElement | null;
+    if (!scrollSurface) return;
+    const previousValue = scrollSurface.style.getPropertyValue('overflow-y');
+    const previousPriority = scrollSurface.style.getPropertyPriority('overflow-y');
+    scrollSurface.style.setProperty('overflow-y', 'hidden', 'important');
+    return () => scrollSurface.style.setProperty('overflow-y', previousValue, previousPriority);
+  }, [showBrunchMeals]);
+  return <div ref={rootRef} className={styles.root}>
     <p className="eyebrow">Reserve your visit</p><h1>Good food starts<br/>right here.</h1>
     <div className="bookingTypes" aria-label="Choose your experience">{(['Table', 'Afternoon Tea', 'Bottomless Brunch'] as const).map(option => <button type="button" className={experience === option ? 'selected' : ''} onClick={() => onExperienceChange(option)} key={option}><span>{option}</span>{prices[option] > 0 && <small>£{prices[option].toFixed(2)} pp</small>}</button>)}</div>
     {experience === 'Afternoon Tea' && <fieldset className={styles.afternoonTeaUpgrade}><legend>Afternoon Tea upgrade</legend><label><input type="radio" name="afternoon-tea-upgrade" checked={!afternoonTeaUpgrade} onChange={() => onAfternoonTeaUpgradeChange(false)}/><span><b>No drink upgrade</b><small>Summer Afternoon Tea · £{prices['Afternoon Tea'].toFixed(2)} per person</small></span></label><label><input type="radio" name="afternoon-tea-upgrade" checked={afternoonTeaUpgrade} onChange={() => onAfternoonTeaUpgradeChange(true)}/><span><b>Add Pimms or Prosecco</b><small>£5.00 per person · Juice and non-alcoholic Prosecco available</small></span></label></fieldset>}
