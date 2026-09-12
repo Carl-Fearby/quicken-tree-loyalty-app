@@ -75,5 +75,7 @@ body .appShell .orderCart{background:#fff!important;color:#342d27!important;bord
 /* Theme-aware device menu surface for the full-bleed presentation shell. */
 .stage.fullBleed:not(.dark) .deviceMenu summary{border-color:#6a4a4230!important;background:#ffffffb8!important;color:#332b27!important}
 .stage.fullBleed:not(.dark) .deviceMenuOptions{border-color:#6a4a4230;background:#fffaf5f5}
+.stage.fullBleed:not(.dark) .deviceMenuOptions .manufacturerSelect,.stage.fullBleed:not(.dark) .deviceMenuOptions .deviceSelect,.stage.fullBleed:not(.dark) .deviceMenuOptions .caseSelect,.stage.fullBleed:not(.dark) .deviceMenuOptions select{color:#332b27!important}
+.stage.fullBleed:not(.dark) .deviceMenuOptions .manufacturerSelect .fa-solid,.stage.fullBleed:not(.dark) .deviceMenuOptions .deviceSelect .fa-solid{color:#a45b28!important}
 .stage.fullBleed.dark .deviceMenu summary{border-color:#ffffff2e;background:#ffffff16;color:#fff}
 .stage.fullBleed.dark .deviceMenuOptions{border-color:#ffffff2e;background:#211f24f2}
