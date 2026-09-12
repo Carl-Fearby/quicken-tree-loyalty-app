@@ -7,7 +7,9 @@ export const metadata: Metadata = {
   description: 'Book, earn and enjoy more at The Quicken Tree.',
   applicationName: 'The Quicken Tree',
   manifest: '/manifest.webmanifest',
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'The Quicken Tree' },
+  // In iOS standalone mode this lets the app surface continue behind the
+  // system status area. Content itself is padded with safe-area insets.
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'The Quicken Tree' },
   formatDetection: { telephone: false },
   icons: {
     icon: [
