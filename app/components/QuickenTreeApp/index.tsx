@@ -18,6 +18,7 @@ import {MenuScreen} from '../screens/MenuScreen';
 import {BookingScreen} from '../screens/BookingScreen';
 import {AppNavigationProvider} from '../../contexts/AppNavigation';
 import {LoyaltyApp} from '../LoyaltyApp';
+import {PaymentCards, PaymentMethodPicker, usePaymentCards} from '../PaymentCards';
 
 type View = 'home' | 'book' | 'details' | 'checkout' | 'bookings' | 'menu' | 'cart' | 'rewards' | 'profile';
 type Booking = {
@@ -77,7 +78,11 @@ const nextBookableDate = (now = new Date()) => {
 };
 const priceValue = (price: string) => Number(price.match(/£([\d.]+)/)?.[1] ?? 0);
 
-export function QuickenTreeApp({dark: controlledDark}: {dark?: boolean}) {
+export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark?: boolean; onShowNotification?: () => void}) {
+    const {cards, setCards, ready: cardsReady} = usePaymentCards();
+    const [paymentMethod, setPaymentMethod] = useState('apple-pay');
+    const selectedCard = cards.find(card => card.id === paymentMethod);
+    const effectivePaymentMethod = selectedCard ? selectedCard.id : 'apple-pay';
     const [view, setView] = useState<View>('home');
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [themeReady, setThemeReady] = useState(false);
@@ -85,7 +90,7 @@ export function QuickenTreeApp({dark: controlledDark}: {dark?: boolean}) {
     const [bookingName, setBookingName] = useState(profileData.default.name);
     const [bookingEmail, setBookingEmail] = useState('');
     const [bookingNotes, setBookingNotes] = useState('');
-    const [profilePanel, setProfilePanel] = useState<'details' | 'taste' | 'venues' | 'gifts' | 'help' | null>(null);
+    const [profilePanel, setProfilePanel] = useState<'details' | 'taste' | 'venues' | 'gifts' | 'help' | 'cards' | null>(null);
     const [profileName, setProfileName] = useState(profileData.default.name);
     const [profileEmail, setProfileEmail] = useState(profileData.default.email);
     const [tasteProfile, setTasteProfile] = useState<string[]>(profileData.default.tastes);
@@ -98,6 +103,8 @@ export function QuickenTreeApp({dark: controlledDark}: {dark?: boolean}) {
     const [orderAheadBooking, setOrderAheadBooking] = useState<Booking | null>(null);
     const [menuSearch, setMenuSearch] = useState('');
     const [preOrderItems, setPreOrderItems] = useState<Record<string, number>>({});
+    const [orderToast, setOrderToast] = useState('');
+    const [orderToastClosing, setOrderToastClosing] = useState(false);
     const [wingSizePrompt, setWingSizePrompt] = useState(false);
     const [wingSize, setWingSize] = useState<'Small' | 'Large' | null>(null);
     const [guests, setGuests] = useState('5 Guests');
@@ -199,7 +206,14 @@ export function QuickenTreeApp({dark: controlledDark}: {dark?: boolean}) {
     }, [controlledDark, isDarkMode, themeReady]);
     const navigate = (next: View, preserveOrderAhead = false) => {
         setShowDatePicker(false);
-        if (next !== 'profile') setProfilePanel(null);
+        // Tapping a bottom-nav item always returns that section to its root screen.
+        if (next === 'profile') setProfilePanel(null);
+        else setProfilePanel(null);
+        if (next === 'home') {
+            setOrderAheadBooking(null);
+            setPreOrderItems({});
+            setRedemption(null);
+        }
         if (next === 'menu' && !preserveOrderAhead) {
             setOrderAheadBooking(null);
             setPreOrderItems({});
@@ -265,7 +279,12 @@ export function QuickenTreeApp({dark: controlledDark}: {dark?: boolean}) {
         setMenuCategory('Sharers');
         navigate('menu', true);
     };
-    const addToOrder = (name: string) => setPreOrderItems(current => ({...current, [name]: (current[name] ?? 0) + 1}));
+    const addToOrder = (name: string) => {
+        setPreOrderItems(current => ({...current, [name]: (current[name] ?? 0) + 1}));
+        setOrderToast(`${name} added to your order`);
+        setOrderToastClosing(false);
+        window.setTimeout(() => { setOrderToastClosing(true); window.setTimeout(() => setOrderToast(''), 260); }, 2200);
+    };
     const removeFromOrder = (name: string) => setPreOrderItems(current => {
         const next = {...current};
         if (!next[name]) return current;
@@ -282,7 +301,7 @@ export function QuickenTreeApp({dark: controlledDark}: {dark?: boolean}) {
             <LoyaltyApp motion="idle" dark={isDarkMode} embedded={controlledDark !== undefined}>
                         <div className="appSafeArea" aria-hidden="true"/>
                         <div className="content" key={`${view}-${profilePanel ?? 'root'}`}>
-                            {view === 'home' && <HomeScreen bookings={bookings} onBookEvent={bookEvent}/>}
+                            {view === 'home' && <HomeScreen bookings={bookings} onBookEvent={bookEvent} onLogoClick={onShowNotification}/>}
                             {view === 'book' && <BookingScreen experience={bookingExperience} prices={experiencePrices}
                                                                price={experiencePrice} total={bookingTotal}
                                                                guestCount={guestCount} date={bookingDate}
@@ -339,20 +358,20 @@ export function QuickenTreeApp({dark: controlledDark}: {dark?: boolean}) {
                                 ahead.</> : <>One last step<br/>to reserve.</>}</h1>
                                 <section className="checkoutCard">
                                     <div><span>THE QUICKEN TREE</span><Icon name="fa-wine-glass"/></div>
-                                    <b>{checkoutMode === 'order' ? 'Order ahead' : bookingExperience}</b><small>••••
-                                    4242</small></section>
+                                    <b>{checkoutMode === 'order' ? 'Order ahead' : bookingExperience}</b><small>{selectedCard ? `${selectedCard.brand} · •••• ${selectedCard.last4}` : 'Apple Pay'}</small></section>
                                 <section className="checkoutSummary">
                                     <p>{checkoutMode === 'order' ? 'Your order' : bookingExperience}</p>
                                     <span>{checkoutMode === 'order' ? `${preOrderCount} ${preOrderCount === 1 ? 'item' : 'items'}` : `${guestCount} guests × £${experiencePrice.toFixed(2)}`}</span><b>Total
                                     due
                                     today <strong>£{(checkoutMode === 'order' ? preOrderTotal : bookingTotal).toFixed(2)}</strong></b><small>{checkoutMode === 'order' ? 'Your order is sent to the kitchen after payment.' : 'Your reservation is confirmed as soon as payment is complete.'}</small>
                                 </section>
+                                <PaymentMethodPicker cards={cards} value={effectivePaymentMethod} onChange={setPaymentMethod} disabled={!cardsReady || paymentState === 'processing'}/>
                                 <button className={`applePay${paymentState === 'processing' ? ' processing' : ''}`}
                                         onClick={payWithApplePay}
-                                        disabled={paymentState === 'processing'}>{paymentState === 'processing' ? <><i
+                                        disabled={!cardsReady || paymentState === 'processing'}>{paymentState === 'processing' ? <><i
                                     className="appleSpinner"/> Processing payment…</> : <>
-                                    <span></span> Pay <b>£{(checkoutMode === 'order' ? preOrderTotal : bookingTotal).toFixed(2)}</b></>}</button>
-                                <p className="checkoutFine">Demo Apple Pay · no payment is taken.</p></>}
+                                    {selectedCard ? <span>{selectedCard.brand}</span> : <span></span>} Pay <b>£{(checkoutMode === 'order' ? preOrderTotal : bookingTotal).toFixed(2)}</b></>}</button>
+                                <p className="checkoutFine">Demo payment · no payment is taken.</p></>}
                             {view === 'bookings' && <>
                                 <button className="topBack" onClick={() => navigate(bookingsOrigin)}><Icon
                                     name="fa-chevron-left"/> {bookingsOrigin === 'profile' ? 'Profile' : 'Home'}
@@ -383,7 +402,7 @@ export function QuickenTreeApp({dark: controlledDark}: {dark?: boolean}) {
                                                                 setWingSizePrompt(true);
                                                             }} onBook={() => navigate('book')}/>}
                             {view === 'cart' &&
-                                <CartScreen lines={preOrderLines} total={preOrderTotal} booking={orderAheadBooking}
+                                <CartScreen key={`cart-${preOrderLines.map(line => `${line.name}:${line.quantity}`).join('|')}`} lines={preOrderLines} total={preOrderTotal} booking={orderAheadBooking}
                                             onBack={() => navigate('menu', true)} onAdd={addToOrder}
                                             onRemove={removeFromOrder} onDelete={name => setPreOrderItems(current => {
                                     const next = {...current};
@@ -421,6 +440,7 @@ export function QuickenTreeApp({dark: controlledDark}: {dark?: boolean}) {
                                     setBookingsOrigin('profile');
                                     navigate('bookings');
                                 }}>Upcoming bookings<span><Icon name="fa-chevron-right"/></span></button>
+                                <button className="setting" onClick={() => setProfilePanel('cards')}>Payment cards<span><Icon name="fa-chevron-right"/></span></button>
                                 <button className="setting" onClick={() => setProfilePanel('taste')}>Taste profile<span><Icon
                                     name="fa-chevron-right"/></span></button>
                                 <button className="setting" onClick={() => setProfilePanel('venues')}>Saved venues<span><Icon
@@ -434,6 +454,7 @@ export function QuickenTreeApp({dark: controlledDark}: {dark?: boolean}) {
                                 <button className="topBack" onClick={() => setProfilePanel(null)}><Icon
                                     name="fa-chevron-left"/> Profile
                                 </button>
+                                {profilePanel === 'cards' && (cardsReady ? <PaymentCards cards={cards} onChange={setCards}/> : <p>Loading cards…</p>)}
                                 {profilePanel === 'details' && <><p className="eyebrow">Account details</p><h1>Make
                                     it<br/>yours.</h1><label className="detailLabel">Your name<input value={profileName}
                                                                                                      onChange={event => setProfileName(event.target.value)}/></label><label
@@ -489,6 +510,7 @@ export function QuickenTreeApp({dark: controlledDark}: {dark?: boolean}) {
                         </button>}
                 {redemption &&
                     <RedemptionPass redemption={redemption} closing={isClosingRedemption} onClose={closeRedemption}/>} 
+                {orderToast && <p className={`orderToast${orderToastClosing ? ' closing' : ''}`} role="status"><Icon name="fa-check"/><span><b>Added!</b><small>{orderToast.replace(' added to your order', '')} is ready in your order</small></span></p>}
                 {wingSizePrompt && <WingOptionsDialog size={wingSize} onSizeChange={setWingSize}
                                                       onClose={() => setWingSizePrompt(false)} onAdd={item => {
                     addToOrder(item);

@@ -1,0 +1,8 @@
+{
+  "storageKey": "quicken-tree-test-cards-v1",
+  "source": "https://docs.stripe.com/testing",
+  "cards": [
+    {"id": "test-visa", "brand": "Visa", "number": "4242424242424242", "last4": "4242", "expiry": "12/30", "name": "Stephen"},
+    {"id": "test-mastercard", "brand": "Mastercard", "number": "5555555555554444", "last4": "4444", "expiry": "12/30", "name": "Stephen"}
+  ]
+}

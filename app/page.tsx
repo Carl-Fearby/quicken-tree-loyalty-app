@@ -1,9 +1,11 @@
 'use client';
 
-import {useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent} from 'react';
+import {useCallback, useMemo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent} from 'react';
 import {AndroidContainer} from './components/AndroidContainer';
 import {Icon} from './components/Icon';
-import {IphoneContainer, type IphoneSurfaceProps} from './components/IphoneContainer';
+import {IphoneContainer, type IphoneSurfaceProps, type IphoneNotification} from './components/IphoneContainer';
+import eventsData from './data/events.json';
+import appConfig from './data/app-config.json';
 import {QuickenTreeApp} from './components/QuickenTreeApp';
 import type {DeviceManufacturer} from './components/device/types';
 import {defaultDeviceId, defaultManufacturerId, getDefaultModelForManufacturer, getModelsForManufacturer, manufacturers} from './components/device/profiles';
@@ -13,16 +15,16 @@ function QuickenTreeIcon() {
     return <b style={{fontSize: 31, letterSpacing: -2, textShadow: '0 3px 8px #0008'}}>QT</b>;
 }
 
-function AppPlaceholder({dark = false, title = 'THE QUICKEN TREE', message = 'App surface placeholder', orientation = 'portrait', screen, platform}: { dark?: boolean; title?: string; message?: string; orientation?: IphoneSurfaceProps['orientation']; screen: IphoneSurfaceProps['screen']; platform: 'ios' | 'android' }) {
-    return <div data-ios-orientation={platform === 'ios' ? orientation : undefined} data-android-orientation={platform === 'android' ? orientation : undefined} style={{height: '100%', display: 'grid', placeItems: 'center', background: dark ? '#171616' : '#fafafa', color: dark ? '#f7f3ee' : '#171717', textAlign: 'center', padding: 32}}>
-        <div><b style={{display: 'block', color: '#cf122d', fontSize: 14, letterSpacing: 2}}>{title}</b><p style={{margin: '10px 0 0', fontSize: 18}}>{message}</p><small style={{display: 'block', marginTop: 10, color: dark ? '#c5bcb3' : '#6d655e', fontSize: 12}}>screen.orientation: {screen.orientation.type} ({screen.orientation.angle}°)</small></div>
-    </div>;
-}
-
 export default function Page() {
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [showDevice, setShowDevice] = useState(true);
     const [isDeviceAppOpen, setIsDeviceAppOpen] = useState(false);
+    const [notification, setNotification] = useState<IphoneNotification | null>(null);
+    const notificationIndex = useRef(0);
+    const triggerNotification = useCallback(() => {
+        const event = eventsData.events[notificationIndex.current++ % eventsData.events.length];
+        setNotification({context: 'THE QUICKEN TREE · EVENT', title: event.title, body: event.notification});
+    }, []);
     const [isThreeDimensional, setIsThreeDimensional] = useState(false);
     const [isThreeDChassisMounted, setIsThreeDChassisMounted] = useState(false);
     const [threeDRotation, setThreeDRotation] = useState({x: 8, y: -8});
@@ -94,12 +96,14 @@ export default function Page() {
         screen: {orientation: {type: isLandscape ? 'landscape-primary' : 'portrait-primary', angle: isLandscape ? 90 : 0}},
         device
     };
-    const renderApp = (_props: IphoneSurfaceProps) => <QuickenTreeApp dark={isDarkMode}/>;
-    const renderRewardsApp = ({orientation, screen}: IphoneSurfaceProps) => <AppPlaceholder dark={isDarkMode} title="QT REWARDS" message="Rewards app surface placeholder" orientation={orientation} screen={screen} platform={device.platform}/>;
-    const app = renderApp(previewSurfaceProps);
+    const advertIndex = useRef(0);
+    const showAppAdvert = useCallback(() => {
+        if (advertIndex.current++ % 2 === 0) setNotification({...appConfig.menuNotification});
+        else triggerNotification();
+    }, [triggerNotification]);
+    const app = useMemo(() => <QuickenTreeApp dark={isDarkMode} onShowNotification={showAppAdvert}/>, [isDarkMode, showAppAdvert]);
     const previewApps = [
-        {id: 'quicken-tree', label: 'The Quicken Tree', icon: <QuickenTreeIcon/>, app: renderApp},
-        {id: 'rewards', label: 'QT Rewards', icon: <Icon name="fa-gift"/>, app: renderRewardsApp}
+        {id: 'quicken-tree', label: 'The Quicken Tree', icon: <QuickenTreeIcon/>, app, keepMounted: true}
     ];
     const iosDockApps = [<Icon key="phone" name="fa-phone"/>, <Icon key="messages" name="fa-message"/>, <Icon key="safari" name="fa-compass"/>, <Icon key="camera" name="fa-camera"/>];
     const androidDockApps = [<Icon key="phone" name="fa-phone"/>, <Icon key="messages" name="fa-message"/>, <Icon key="chrome" name="fa-chrome"/>, <Icon key="camera" name="fa-camera"/>];
@@ -188,14 +192,12 @@ export default function Page() {
             <button className="deviceToggle" disabled={showDevice && !isDeviceAppOpen} style={showDevice && !isDeviceAppOpen ? {opacity: .38, cursor: 'not-allowed'} : undefined} onClick={() => setShowDevice(value => !value)} aria-label={`${showDevice ? 'Hide' : 'Show'} device preview`}><Icon name={showDevice ? 'fa-mobile-screen-button' : 'fa-expand'}/><span>{showDevice ? 'Hide preview' : 'Device preview'}</span></button>
             <button className="threeDToggle" onClick={toggleThreeD} aria-pressed={isThreeDimensional} aria-label={`${isThreeDimensional ? 'Disable' : 'Enable'} 3D view`}><Icon name="fa-cube"/><span>3D view</span></button>
             <button className="orientationToggle" onClick={() => setIsLandscape(value => !value)} aria-label={`Switch to ${isLandscape ? 'portrait' : 'landscape'} orientation`}><Icon name="fa-rotate"/><span>{isLandscape ? 'Landscape' : 'Portrait'}</span></button>
-            <label className="manufacturerSelect"><Icon name="fa-industry"/><select value={manufacturerId} onChange={event => handleManufacturerChange(event.target.value as DeviceManufacturer)} aria-label="Device manufacturer">{manufacturers.map(manufacturer => <option key={manufacturer.id} value={manufacturer.id}>{manufacturer.label}</option>)}</select></label>
-            <label className="deviceSelect"><Icon name="fa-tablet-screen-button"/><select value={device.id} onChange={event => setDeviceId(event.target.value)} aria-label="Device model">{models.map(profile => <option key={profile.id} value={profile.id}>{profile.label}</option>)}</select></label>
-            {manufacturerId === 'apple' && <label className="caseSelect"><span style={{width: 10, height: 10, borderRadius: '50%', background: selectedAppleCase.value, boxShadow: '0 0 0 1px #fff5'}}/><select value={appleCaseColor} onChange={event => setAppleCaseColor(event.target.value)} aria-label="Apple case colour">{appleCaseColors.map(colour => <option key={colour.id} value={colour.id}>{colour.label}</option>)}</select></label>}
+            <details className="deviceMenu"><summary><Icon name="fa-mobile-screen-button"/><span>Device</span><b>{device.label}</b><Icon name="fa-chevron-down"/></summary><div className="deviceMenuOptions"><label className="manufacturerSelect"><Icon name="fa-industry"/><select value={manufacturerId} onChange={event => handleManufacturerChange(event.target.value as DeviceManufacturer)} aria-label="Device manufacturer">{manufacturers.map(manufacturer => <option key={manufacturer.id} value={manufacturer.id}>{manufacturer.label}</option>)}</select></label><label className="deviceSelect"><Icon name="fa-tablet-screen-button"/><select value={device.id} onChange={event => setDeviceId(event.target.value)} aria-label="Device model">{models.map(profile => <option key={profile.id} value={profile.id}>{profile.label}</option>)}</select></label>{manufacturerId === 'apple' && <label className="caseSelect"><span style={{width: 10, height: 10, borderRadius: '50%', background: selectedAppleCase.value, boxShadow: '0 0 0 1px #fff5'}}/><select value={appleCaseColor} onChange={event => setAppleCaseColor(event.target.value)} aria-label="Apple case colour">{appleCaseColors.map(colour => <option key={colour.id} value={colour.id}>{colour.label}</option>)}</select></label>}</div></details>
         </div>
         <div ref={previewAreaRef} className={`devicePreviewArea${isThreeDChassisMounted ? ' threeDimensional' : ''}`} style={{display: showDevice ? undefined : 'none'}}>
             <div className={`devicePreview${isLandscape ? ' landscape' : ''}${isThreeDChassisMounted ? ' threeDimensional' : ''}${isThreeDimensional ? ' isTilted' : ''}`} style={{width: layoutWidth * previewScale, height: layoutHeight * previewScale, '--three-d-x': `${threeDRotation.x}deg`, '--three-d-y': `${threeDRotation.y}deg`} as CSSProperties} onPointerDown={startThreeDDrag} onPointerMove={moveThreeDDrag} onPointerUp={endThreeDDrag} onPointerCancel={endThreeDDrag}>
                 {device.platform === 'android' ? <AndroidContainer className={orientationClass} isDark={isDarkMode} isLandscape={isLandscape} isThreeD={isThreeDChassisMounted} device={previewDevice} apps={previewApps} dockApps={androidDockApps}/>
-                    : <IphoneContainer className={orientationClass} isDark={isDarkMode} isLandscape={isLandscape} isThreeD={isThreeDChassisMounted} device={previewDevice} caseColor={selectedAppleCase.value} apps={previewApps} dockApps={iosDockApps} onAppOpenChange={setIsDeviceAppOpen}/>} 
+                    : <IphoneContainer className={orientationClass} isDark={isDarkMode} isLandscape={isLandscape} isThreeD={isThreeDChassisMounted} device={previewDevice} caseColor={selectedAppleCase.value} apps={previewApps} dockApps={iosDockApps} notification={notification} onDismissNotification={() => setNotification(null)} onClock={triggerNotification} onAppOpenChange={setIsDeviceAppOpen}/>} 
             </div>
         </div>
         {!showDevice && <section style={{gridColumn: 1, gridRow: 2, minHeight: 0, overflow: 'hidden'}}>{app}</section>}

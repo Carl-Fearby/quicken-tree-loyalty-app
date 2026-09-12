@@ -15,7 +15,7 @@
 .phone{background:#080808}.desktop,.appWindow{border-radius:38px;clip-path:inset(0 round 38px)}
 .phone{border-radius:var(--device-radius)}.desktop,.appWindow{border-radius:var(--device-inner-radius);clip-path:inset(0 round var(--device-inner-radius))}.notch{position:absolute;z-index:20;top:0;left:50%;width:var(--notch-width);height:var(--notch-height);border-radius:0 0 17px 17px;transform:translateX(-50%);background:#080808;pointer-events:none}.statusBar,.desktopStatusBar{padding:var(--status-top) var(--status-inset) 0}.statusBar button,.desktopStatusBar button{font-size:var(--status-size)}.statusBar span,.desktopStatusBar span{font-size:var(--status-size)}.statusBar b,.desktopStatusBar b{font-size:var(--status-size)}
 .appIcon>span>.fa-solid{font-size:33px}
-.appHidden{visibility:hidden;pointer-events:none}
+.appHidden{opacity:0;pointer-events:none}
 .settling{animation-timing-function:ease-out}.notification{animation-timing-function:ease-out}
 .appWindow.landscape{inset:auto;width:var(--device-height);height:var(--device-width);transform:translateY(var(--device-height)) rotate(-90deg);transform-origin:top left}.appWindow.fadingOut:after,.appWindow.fadingIn:after{content:'';position:absolute;z-index:10;inset:0;background:#fafafa;pointer-events:none}.appWindow.fadingOut:after{animation:surfaceCoverIn .08s ease-out both}.appWindow.fadingIn:after{animation:surfaceCoverOut .12s ease-out both}.dark .appWindow.fadingOut:after,.dark .appWindow.fadingIn:after{background:#171616}@keyframes surfaceCoverIn{from{opacity:0}to{opacity:1}}@keyframes surfaceCoverOut{from{opacity:1}to{opacity:0}}@keyframes landscapeLaunch{from{opacity:.72;transform:translateY(var(--device-height)) rotate(-90deg) translate(calc(var(--device-height) - var(--launch-y)),var(--launch-x)) scale(var(--launch-scale-x),var(--launch-scale-y));border-radius:14px}to{opacity:1;transform:translateY(var(--device-height)) rotate(-90deg);border-radius:0}}@keyframes landscapeReturn{from{opacity:1;transform:translateY(var(--device-height)) rotate(-90deg);border-radius:0}to{opacity:.72;transform:translateY(var(--device-height)) rotate(-90deg) translate(calc(var(--device-height) - var(--launch-y)),var(--launch-x)) scale(var(--launch-scale-x),var(--launch-scale-y));border-radius:14px}}
 .desktop.landscape{inset:auto;width:var(--device-height);height:var(--device-width);transform:translateY(var(--device-height)) rotate(-90deg);transform-origin:top left}
@@ -77,4 +77,11 @@
 .appWindow.landscape .miniBrowser{padding-top:0}
 
 /* Phone screens need a narrower content gutter than tablets. */
+.notificationLayer{position:absolute;inset:0;z-index:40;pointer-events:none}
+.notificationLayer .notification{pointer-events:auto;max-width:420px;margin:0 auto}
+.notificationLayer .notification em{white-space:normal;overflow-wrap:anywhere}
+.notificationLayer.landscape{inset:auto;top:0;left:0;width:calc(var(--device-height) - 2 * var(--device-bezel));height:calc(var(--device-width) - 2 * var(--device-bezel));transform-origin:top left;transform:translateY(calc(var(--device-height) - 2 * var(--device-bezel))) rotate(-90deg)}
+.notificationLayer.landscape .notification{top:32px;left:40px;right:40px}
+.dark .notification{background:#29272bf2;color:#f7f3ee}
+.dark .notification small,.dark .notification em{color:#ccc5cd}
 .phone:not(.tablet) .appWindow :global(.appShell) :global(.content){padding-left:18px!important;padding-right:18px!important}

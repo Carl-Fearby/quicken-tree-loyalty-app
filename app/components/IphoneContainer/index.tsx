@@ -13,7 +13,7 @@ export type {DeviceProfile} from '../device/types';
 export type IphoneOrientation = DeviceOrientation;
 export type IphoneScreenOrientation = ScreenOrientation;
 export type IphoneSurfaceProps = DeviceSurfaceProps;
-export type IphoneApp = { id: string; label: string; icon: ReactNode; app: ReactNode | ((props: IphoneSurfaceProps) => ReactNode) };
+export type IphoneApp = { id: string; label: string; icon: ReactNode; keepMounted?: boolean; app: ReactNode | ((props: IphoneSurfaceProps) => ReactNode) };
 export type IphoneNotification = { context: string; title: string; body: string };
 
 const systemApps = [
@@ -190,11 +190,43 @@ export function IphoneContainer({apps, dockApps = [], initialAppId = null, notif
         const endFrame = rectKeyframe(to, endRadius);
         Object.assign(overlay.style, startFrame);
         const motionAnim = overlay.animate([startFrame, endFrame], {duration, easing: TRANSITION_EASING, fill: 'forwards'});
+        // Reveal the already-mounted app while the icon expands, rather than
+        // replacing an opaque placeholder with the app at the final frame.
+        const liveSurface = appWindowRef.current;
+        const liveContent = liveSurface?.querySelector<HTMLElement>(`.${styles.appSurface}`);
+        const closeZoom = phase === 'closing' && liveContent ? liveContent.animate([
+            {transformOrigin: '0 0', transform: 'translate(0px, 0px) scale(1, 1)'},
+            {transformOrigin: '0 0', transform: `translate(${(to.left - from.left) / from.width * liveContent.clientWidth}px, ${(to.top - from.top) / from.height * liveContent.clientHeight}px) scale(${to.width / from.width}, ${to.height / from.height})`}
+        ], {duration, easing: TRANSITION_EASING, fill: 'both'}) : undefined;
+        const closeClip = phase === 'closing' && liveSurface ? liveSurface.animate([
+            {clipPath: `inset(0% 0% 0% 0% round ${startRadius}px)`},
+            {clipPath: `inset(${(to.top - from.top) / from.height * 100}% ${(from.left + from.width - to.left - to.width) / from.width * 100}% ${(from.top + from.height - to.top - to.height) / from.height * 100}% ${(to.left - from.left) / from.width * 100}% round ${endRadius}px)`}
+        ], {duration, easing: TRANSITION_EASING, fill: 'both'}) : undefined;
+        const closeFade = phase === 'closing' && liveSurface ? liveSurface.animate([
+            {opacity: 1}, {opacity: 0}
+        ], {duration: duration * .5, delay: duration * .08, easing: 'ease-in-out', fill: 'both'}) : undefined;
+        const contentZoom = phase === 'opening' && liveContent ? liveContent.animate([
+            {
+                transformOrigin: '0 0',
+                transform: `translate(${(from.left - to.left) / to.width * liveContent.clientWidth}px, ${(from.top - to.top) / to.height * liveContent.clientHeight}px) scale(${from.width / to.width}, ${from.height / to.height})`
+            },
+            {transformOrigin: '0 0', transform: 'translate(0px, 0px) scale(1, 1)'}
+        ], {duration, easing: TRANSITION_EASING, fill: 'both'}) : undefined;
+        const revealAnim = phase === 'opening' && liveSurface ? liveSurface.animate([
+            {clipPath: `inset(${(from.top - to.top) / to.height * 100}% ${(to.left + to.width - from.left - from.width) / to.width * 100}% ${(to.top + to.height - from.top - from.height) / to.height * 100}% ${(from.left - to.left) / to.width * 100}% round ${startRadius}px)`},
+            {clipPath: `inset(0% 0% 0% 0% round ${endRadius}px)`}
+        ], {duration, easing: TRANSITION_EASING, fill: 'both'}) : undefined;
+        const overlayFade = phase === 'opening' ? overlay.animate([
+            {opacity: 1, offset: 0},
+            {opacity: 1, offset: 0.15},
+            {opacity: 0, offset: 0.85},
+            {opacity: 0, offset: 1}
+        ], {duration, easing: 'ease-out', fill: 'forwards'}) : undefined;
         const backdrop = backdropRef.current;
         const backdropAnim = backdrop?.animate(
             phase === 'opening'
                 ? [{opacity: 0}, {opacity: 1}]
-                : [{opacity: 1}, {opacity: 0}],
+                : [{opacity: 0}, {opacity: 0}],
             {duration: Math.round(duration * 0.42), easing: 'ease-out', fill: 'forwards'}
         );
         const tile = overlay.querySelector(`.${styles.transitionTile}`);
@@ -202,7 +234,7 @@ export function IphoneContainer({apps, dockApps = [], initialAppId = null, notif
             phase === 'opening'
                 ? [{opacity: 1}, {opacity: 0}]
                 : [{opacity: 0}, {opacity: 1}],
-            {duration: Math.round(duration * 0.38), delay: phase === 'closing' ? Math.round(duration * 0.08) : 0, easing: 'ease-out', fill: 'forwards'}
+            {duration: Math.round(duration * (phase === 'closing' ? 0.5 : 0.38)), delay: phase === 'closing' ? Math.round(duration * 0.08) : 0, easing: 'ease-in-out', fill: 'both'}
         );
         motionAnim.onfinish = () => {
             if (phase === 'closing') {
@@ -218,11 +250,17 @@ export function IphoneContainer({apps, dockApps = [], initialAppId = null, notif
             motionAnim.cancel();
             backdropAnim?.cancel();
             tileAnim?.cancel();
+            revealAnim?.cancel();
+            contentZoom?.cancel();
+            overlayFade?.cancel();
+            closeZoom?.cancel();
+            closeClip?.cancel();
+            closeFade?.cancel();
         };
     }, [portalTransition]);
 
-    const appMounted = Boolean(activeSurfaceApp) && motion !== 'closing';
-    const appVisible = motion === 'idle';
+    const appMounted = Boolean(activeSurfaceApp);
+    const appVisible = Boolean(activeSurfaceApp);
     const desktopHidden = Boolean(activeSurfaceApp) && motion !== 'closing';
     const morphingAppId = motion === 'closing' ? activeAppId : null;
     const desktopLandscape = isLandscape && device.category === 'tablet';
@@ -253,7 +291,7 @@ export function IphoneContainer({apps, dockApps = [], initialAppId = null, notif
         <section ref={phoneRef} style={isThreeD ? {width: '100%', height: '100%'} : deviceStyle} className={shellClassName} aria-label={`${device.label} preview`}>
             {device.cutout === 'island' && <span className={styles.magicIsland} aria-hidden="true"/>}
             {device.cutout === 'notch' && <span className={styles.notch} aria-hidden="true"/>}
-            {notification && <button className={styles.notification} onClick={onDismissNotification} aria-label={`Dismiss ${notification.title} notification`}><i>QT</i><span><small>{notification.context}</small><b>{notification.title}</b><em>{notification.body}</em></span></button>}
+            {notification && <div className={`${styles.notificationLayer}${isLandscape ? ` ${styles.landscape}` : ''}`} role="status" aria-live="polite"><button key={`${notification.title}-${notification.body}`} className={styles.notification} onClick={onDismissNotification} aria-label={`Dismiss ${notification.title} notification`}><i>QT</i><span><small>{notification.context}</small><b>{notification.title}</b><em>{notification.body}</em></span></button></div>}
             <div className={`${styles.desktop}${desktopLandscape ? ` ${styles.landscape}` : ''}${desktopHidden ? ` ${styles.desktopHidden}` : ''}`} aria-hidden={desktopHidden}>
                 <header className={styles.desktopStatusBar}>
                     <button onClick={onClock} aria-label="Show an event notification">{currentTime}</button>
@@ -262,14 +300,19 @@ export function IphoneContainer({apps, dockApps = [], initialAppId = null, notif
                 <div className={styles.apps}>{systemApps.map(([icon, label]) => { const id = `system-${label}`; return <button key={label} ref={node => { iconRefs.current[id] = node; }} onClick={event => openApp(id, event.currentTarget)} className={`${styles.systemApp}${bouncingAppId === id ? ` ${styles.settling}` : ''}${morphingAppId === id ? ` ${styles.morphing}` : ''}`} aria-label={`Open ${label}`}><span><Icon name={icon}/></span><small>{label}</small></button>; })}{apps.map(app => <button key={app.id} ref={node => { iconRefs.current[app.id] = node; }} data-app-id={app.id} onClick={event => openApp(app.id, event.currentTarget)} className={`${styles.appIcon}${bouncingAppId === app.id ? ` ${styles.settling}` : ''}${morphingAppId === app.id ? ` ${styles.morphing}` : ''}`} aria-label={`Open ${app.label}`}><span>{app.icon}</span><small>{app.label}</small></button>)}</div>
                 {dockApps.length > 0 && <div className={styles.dock}>{dockApps.map((app, index) => { const label = dockLabels[index] ?? `App ${index + 1}`; const id = `dock-${label}`; return <button key={index} ref={node => { iconRefs.current[id] = node; }} onClick={event => openApp(id, event.currentTarget)} className={morphingAppId === id ? styles.morphing : undefined} aria-label={`Open ${label}`}><span>{app}</span></button>; })}</div>}
             </div>
-            {appMounted && activeSurfaceApp && <div ref={appWindowRef} className={`${styles.appWindow}${appVisible ? '' : ` ${styles.appHidden}`} ${styles[surfaceOrientationMotion]}${surfaceLandscape ? ` ${styles.landscape}` : ''}`}>
+            <div ref={appWindowRef} inert={!appMounted || motion !== 'idle'} aria-hidden={!appMounted || !appVisible} className={`${styles.appWindow}${appMounted && appVisible ? '' : ` ${styles.appHidden}`} ${styles[surfaceOrientationMotion]}${surfaceLandscape ? ` ${styles.landscape}` : ''}`}>
                 <header className={`${styles.statusBar}${isDark ? ` ${styles.dark}` : ''}`}>
                     <button onClick={onClock} aria-label="Show an event notification">{currentTime}</button>
                     <span><Icon name="fa-signal"/><b>100%</b><Icon name="fa-battery-full"/></span>
                 </header>
-                <div className={styles.appSurface} data-ios-orientation={surfaceOrientation} style={{'--iphone-orientation': surfaceOrientation} as CSSProperties}>{typeof activeSurfaceApp.app === 'function' ? activeSurfaceApp.app(surfaceProps) : activeSurfaceApp.app}</div>
+                <div className={styles.appSurface} data-ios-orientation={surfaceOrientation} style={{'--iphone-orientation': surfaceOrientation} as CSSProperties}>
+                    {apps.filter(app => app.keepMounted).map(app => <div key={app.id} inert={activeAppId !== app.id || !appMounted} aria-hidden={activeAppId !== app.id || !appMounted} style={{position: 'absolute', inset: 0, opacity: activeAppId === app.id && appMounted && appVisible ? 1 : 0, pointerEvents: activeAppId === app.id && appMounted && appVisible ? 'auto' : 'none'}}>
+                        {typeof app.app === 'function' ? app.app(surfaceProps) : app.app}
+                    </div>)}
+                    {appMounted && activeSurfaceApp && !activeApp?.keepMounted && <div key={activeSurfaceApp.id} style={{position: 'absolute', inset: 0}}>{typeof activeSurfaceApp.app === 'function' ? activeSurfaceApp.app(surfaceProps) : activeSurfaceApp.app}</div>}
+                </div>
                 <button className={styles.homeIndicator} onClick={returnHome} aria-label="Return to iPhone Home"/>
-            </div>}
+            </div>
             {appMounted && appVisible && surfaceLandscape && <button className={`${styles.landscapeHomeIndicator} ${styles[surfaceOrientationMotion]}`} onClick={returnHome} aria-label="Return to iPhone Home"/>}
         </section>
         </DeviceChassis>
