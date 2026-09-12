@@ -220,6 +220,5 @@ export default function Page() {
             </div>
         </div>}
         {!showDevice && <section style={{gridColumn: 1, gridRow: 2, minHeight: 0, overflow: 'hidden'}}>{app}</section>}
-        {isStandalonePwa && <div className="pwaViewportFrame" aria-hidden="true"/>}
     </main>;
 }
