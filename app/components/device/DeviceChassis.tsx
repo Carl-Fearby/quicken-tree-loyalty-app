@@ -18,13 +18,13 @@ export function DeviceChassis({enabled, device, caseColor, className = '', style
     if (!enabled) return <>{children}</>;
 
     const depth = chassisDepth(device);
-    const shellColor = caseColor ?? (device.platform === 'ios' ? '#141417' : '#1c1c1e');
+    const shellColor = caseColor ?? (device.platform === 'ios' ? 'var(--qt-color-141417)' : 'var(--qt-color-1c1c1e)');
     const chassisStyle = {
         ...style,
         '--device-depth': `${depth}px`,
         '--case-color': shellColor,
-        '--case-side': `color-mix(in srgb, ${shellColor} 86%, #000000)`,
-        '--case-shadow': `color-mix(in srgb, ${shellColor} 74%, #000000)`
+        '--case-side': `color-mix(in srgb, ${shellColor} 86%, var(--qt-color-000000))`,
+        '--case-shadow': `color-mix(in srgb, ${shellColor} 74%, var(--qt-color-000000))`
     } as CSSProperties;
 
     return <div className={[styles.chassisWrap, className].filter(Boolean).join(' ')} style={chassisStyle}>

@@ -58,7 +58,7 @@ export function AndroidContainer({apps, dockApps = [], initialAppId = null, isDa
     const activeApp = apps.find(app => app.id === activeAppId);
     const activeSystemApp = systemApps.find(([, label]) => `system-${label}` === activeAppId);
     const dockLabels = ['Phone', 'Messages', 'Chrome', 'Camera'];
-    const dockIconBackgrounds: Record<string, string> = {Phone: 'linear-gradient(145deg,#66bb6a,#2e7d32)', Messages: 'linear-gradient(145deg,#42a5f5,#1565c0)', Chrome: 'linear-gradient(145deg,#ef5350,#c62828)', Camera: 'linear-gradient(145deg,#78909c,#37474f)'};
+    const dockIconBackgrounds: Record<string, string> = {Phone: 'linear-gradient(145deg,var(--qt-color-66bb6a),var(--qt-color-2e7d32))', Messages: 'linear-gradient(145deg,var(--qt-color-42a5f5),var(--qt-color-1565c0))', Chrome: 'linear-gradient(145deg,var(--qt-color-ef5350),var(--qt-color-c62828))', Camera: 'linear-gradient(145deg,var(--qt-color-78909c),var(--qt-color-37474f))'};
     const activeDockIndex = dockLabels.findIndex(label => `dock-${label}` === activeAppId);
     const activeDockApp = activeDockIndex >= 0 ? {
         id: `dock-${dockLabels[activeDockIndex]}`,

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import './globals.css';
+import {designTokens} from './designTokens';
 
 export const metadata: Metadata = {
   title: 'The Quicken Tree | Loyalty',
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = { themeColor: '#cf122d', viewportFit: 'cover' };
+export const viewport: Viewport = { themeColor: designTokens.brand, viewportFit: 'cover' };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <html lang="en"><body>{children}</body></html>;
