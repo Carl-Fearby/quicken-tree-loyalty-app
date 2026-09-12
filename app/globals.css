@@ -132,6 +132,12 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}h
 .stage.fullBleed.dark .deviceMenuOptions{border-color:#ffffff2e;background:#211f24f2}
 .mobileControlMenu{display:none}
 @media(max-width:640px){
+  /* The browser preview is still a scaled virtual device on narrow Safari.
+     Keep its physical device dimensions, then fit the whole chassis within
+     the available preview stage instead of promoting it to viewport size. */
+  .stage.fullBleed:not(.appOnly) .devicePreview .phone{width:var(--device-width)!important;height:var(--device-height)!important}
+  .stage.fullBleed:not(.appOnly) .devicePreview .deviceOrientation{--preview-scale:.54!important}
+  .stage.fullBleed:not(.appOnly) .devicePreview .appIcon{touch-action:manipulation!important;pointer-events:auto!important}
   .stage.fullBleed .presentationMenu{position:relative!important;justify-content:flex-end!important;min-height:52px!important;padding:7px 10px!important}
   .stage.fullBleed .presentationMenu>.themeToggle,.stage.fullBleed .presentationMenu>.deviceToggle,.stage.fullBleed .presentationMenu>.threeDToggle,.stage.fullBleed .presentationMenu>.orientationToggle,.stage.fullBleed .presentationMenu>.deviceMenu{display:none!important}
   .stage.fullBleed .mobileControlMenu{display:block;position:relative;z-index:30}
