@@ -6,7 +6,7 @@
     "Drinks": "Drinks available throughout service",
     "Brunch": "Bottomless brunch is available Monday to Saturday from noon"
   },
-  "orderAheadServicePeriods": [
+  "menuServicePeriods": [
     {
       "id": "breakfast",
       "label": "Breakfast menu",

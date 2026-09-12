@@ -51,7 +51,7 @@ const dietaryTags: Record<string, string[]> = menuData.dietaryTags;
 const dietaryTagNames: Record<string, string> = menuData.dietaryTagNames;
 const outOfStockItems = new Set(menuData.outOfStockItems);
 type MenuSection = { title: string; items: ReadonlyArray<readonly [string, string, string]> };
-type OrderAheadServicePeriod = {id: string; label: string; start: string; end: string; days?: number[]; categories: string[]};
+type MenuServicePeriod = {id: string; label: string; start: string; end: string; days?: number[]; categories: string[]};
 const menuItems = {...menuData.menuItems, 'Main Menu': septemberMainMenu.sections} as unknown as Record<'Breakfast' | 'Main Menu' | 'Sunday Lunch' | 'Drinks' | 'Bottomless Brunch', MenuSection[]>;
 const bottomlessBrunchMeals = menuData.menuItems['Bottomless Brunch'][1].items.map(([name, description]) => ({name, description}));
 const menuCategories = menuData.categories.filter(category => category.label !== 'Brunch').map(category => {
@@ -72,11 +72,11 @@ const timeInMinutes = (value: string) => {
     const [hours, minutes] = value.split(':').map(Number);
     return hours * 60 + minutes;
 };
-const orderAheadServicePeriods = menuData.orderAheadServicePeriods as OrderAheadServicePeriod[];
-const orderAheadServiceFor = (booking: Pick<Booking, 'date' | 'time'>) => {
+const menuServicePeriods = menuData.menuServicePeriods as MenuServicePeriod[];
+const menuServiceFor = (booking: Pick<Booking, 'date' | 'time'>) => {
     const minutes = timeInMinutes(booking.time);
     const day = fromInputDate(booking.date).getDay();
-    return orderAheadServicePeriods.find(period =>
+    return menuServicePeriods.find(period =>
         (!period.days || period.days.includes(day)) && minutes >= timeInMinutes(period.start) && minutes < timeInMinutes(period.end));
 };
 const availableSlots = (value: string, now = new Date()) => {
@@ -184,9 +184,10 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
         return date;
     });
     const todayValue = toInputDate(new Date());
-    const activeOrderAheadService = orderAheadBooking ? orderAheadServiceFor(orderAheadBooking) : null;
-    const availableMenuCategories = activeOrderAheadService
-        ? menuCategories.filter(category => activeOrderAheadService.categories.includes(category.label))
+    const activeMenuService = orderAheadBooking ? menuServiceFor(orderAheadBooking) : null;
+    const selectedBookingService = time ? menuServiceFor({date: bookingDate, time}) : null;
+    const availableMenuCategories = activeMenuService
+        ? menuCategories.filter(category => activeMenuService.categories.includes(category.label))
         : menuCategories;
     const selectedMenuCategory = availableMenuCategories.find(category => category.label === menuCategory) ?? availableMenuCategories[0];
     const filteredMenuSections = selectedMenuCategory.sections.map(section => ({
@@ -383,7 +384,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
         setOrderAheadBooking(booking);
         setPreOrderItems(savedOrder);
         setMenuSearch('');
-        const service = orderAheadServiceFor(booking);
+        const service = menuServiceFor(booking);
         const firstAvailableCategory = service?.categories.find(label => menuCategories.some(category => category.label === label));
         setMenuCategory(firstAvailableCategory ?? menuCategories[0].label);
         navigate('menu', true);
@@ -475,6 +476,8 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                                                bottomlessBrunchMeals={bottomlessBrunchMeals}
                                                                onBottomlessBrunchMealChange={setBottomlessBrunchMeal}
                                                                dietaryNeeds={dietaryNeeds}
+                                                               availableMenuService={selectedBookingService?.label}
+                                                               availableMenuCategories={selectedBookingService?.categories ?? []}
                                                                guestCount={guestCount} date={bookingDate}
                                                                formatDate={value => formatDate(fromInputDate(value))}
                                                                showDatePicker={showDatePicker}
@@ -582,7 +585,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                                             sections={filteredMenuSections} dietaryTags={dietaryTags}
                                                             dietaryTagNames={dietaryTagNames}
                                                             outOfStockItems={outOfStockItems}
-                                                            serviceLabel={activeOrderAheadService?.label}
+                                                            serviceLabel={activeMenuService?.label}
                                                             orderAheadBooking={orderAheadBooking} onAdd={addToOrder}
                                                             onPromptWings={() => {
                                                                 setWingSize(null);
