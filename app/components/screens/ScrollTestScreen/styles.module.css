@@ -1,0 +1,50 @@
+.root {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 24px;
+}
+
+.intro {
+  margin: -4px 0 6px;
+  color: #665b50;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.section {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid #e7d8c8;
+  border-left: 5px solid #cf122d;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.section h2 {
+  margin: 0;
+  color: #342d27;
+  font-size: 17px;
+}
+
+.section p {
+  margin: 0;
+  color: #665b50;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+:global(.dark) .intro,
+:global(.dark) .section p {
+  color: #c5bcb3;
+}
+
+:global(.dark) .section {
+  border-color: #514941;
+  border-left-color: #cf122d;
+  background: #252321;
+}
+
+:global(.dark) .section h2 {
+  color: #f7f3ee;
+}
