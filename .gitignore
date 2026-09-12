@@ -16,3 +16,6 @@
 
 # system files
 .DS_Store
+
+# Microsoft Word's temporary document locks
+~$*.docx
