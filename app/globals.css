@@ -126,6 +126,26 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}h
   .stage.appOnly .appShell .content{position:absolute!important;top:0!important;right:0!important;bottom:calc(64px + env(safe-area-inset-bottom))!important;left:0!important;display:block!important;width:auto!important;height:auto!important;min-height:0!important;padding:max(18px,calc(env(safe-area-inset-top) + 18px)) 26px 18px!important;overflow-x:hidden!important;overflow-y:scroll!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important}
   .stage.appOnly .appShell nav{position:absolute!important;right:0!important;bottom:0!important;left:0!important;z-index:20!important;display:flex!important;width:100%!important;height:calc(64px + env(safe-area-inset-bottom))!important;margin:0!important;padding:5px 4px calc(10px + env(safe-area-inset-bottom))!important}
 }
+
+/* WebKit can retain its own link paint in a standalone web app. Explicitly
+   control both paint properties so phone and email actions stay on-brand. */
+.appShell a,
+.appShell a:link,
+.appShell a:visited,
+.appShell a:hover,
+.appShell a:active{
+  color:#4e453d!important;
+  -webkit-text-fill-color:#4e453d!important;
+}
+
+.stage.dark .appShell a,
+.stage.dark .appShell a:link,
+.stage.dark .appShell a:visited,
+.stage.dark .appShell a:hover,
+.stage.dark .appShell a:active{
+  color:#f7f3ee!important;
+  -webkit-text-fill-color:#f7f3ee!important;
+}
 .bookingActions{display:flex;gap:7px;margin-top:8px}.bookingActions button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:32px;flex:1;border:1px solid #e7d8c8;border-radius:10px;background:#fff;color:#594d41;font:inherit;font-size:10px;font-weight:600}.bookingActions button .fa-solid{color:#cf122d}.bookingActions .cancelBooking{color:#b42330}.bookingActions .cancelBooking .fa-solid{color:inherit}.stage.dark .bookingActions button{border-color:#514941;background:#302b27;color:#f7f3ee}.stage.dark .bookingActions .cancelBooking{color:#ff8090}
 /* Theme-aware device menu surface for the full-bleed presentation shell. */
 .stage.fullBleed:not(.dark) .deviceMenu summary{border-color:#6a4a4230!important;background:#ffffffb8!important;color:#332b27!important}
