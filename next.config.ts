@@ -1,3 +1,3 @@
 import type { NextConfig } from 'next';
-const nextConfig: NextConfig = { reactStrictMode: true, turbopack: { root: __dirname } };
+const nextConfig: NextConfig = { output: 'export', reactStrictMode: true, turbopack: { root: __dirname } };
 export default nextConfig;
