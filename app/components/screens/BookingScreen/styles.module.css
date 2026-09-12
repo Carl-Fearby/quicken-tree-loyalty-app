@@ -1,1 +1,37 @@
 .root { display: contents; }
+
+.largeParty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -8px 0 13px;
+  padding: 8px 11px;
+  border: 1px solid #e7d8c8;
+  border-radius: 13px;
+  background: #fff;
+  color: #534c45;
+  animation: reveal .22s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.largeParty > span {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.largeParty select {
+  min-width: 116px;
+  border: 0;
+  border-radius: 8px;
+  background: #f2e9df;
+  padding: 7px 9px;
+  color: #342d27;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
