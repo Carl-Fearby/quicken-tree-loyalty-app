@@ -32,6 +32,7 @@ type Booking = {
     experience?: string;
     price?: number;
     total?: number;
+    afternoonTeaUpgrade?: boolean;
     name: string;
     email: string;
     notes: string
@@ -45,7 +46,7 @@ const experiencePrices = Object.fromEntries(appointmentsData.experiences.map(exp
 const dietaryTags: Record<string, string[]> = menuData.dietaryTags;
 const dietaryTagNames: Record<string, string> = menuData.dietaryTagNames;
 type MenuSection = { title: string; items: ReadonlyArray<readonly [string, string, string]> };
-const menuItems = {...menuData.menuItems, 'Main Menu': septemberMainMenu.sections} as unknown as Record<'Breakfast' | 'Main Menu' | 'Sunday Lunch' | 'Drinks' | 'Afternoon Tea' | 'Bottomless Brunch', MenuSection[]>;
+const menuItems = {...menuData.menuItems, 'Main Menu': septemberMainMenu.sections} as unknown as Record<'Breakfast' | 'Main Menu' | 'Sunday Lunch' | 'Drinks' | 'Bottomless Brunch', MenuSection[]>;
 const menuCategories = menuData.categories.map(category => {
     const source = menuItems[category.source as keyof typeof menuItems];
     return {
@@ -134,6 +135,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     const [wingSize, setWingSize] = useState<'Small' | 'Large' | null>(null);
     const [guests, setGuests] = useState('5 Guests');
     const [bookingExperience, setBookingExperience] = useState<'Table' | 'Afternoon Tea' | 'Bottomless Brunch'>('Table');
+    const [afternoonTeaUpgrade, setAfternoonTeaUpgrade] = useState(false);
     const [bookingDate, setBookingDate] = useState(() => toInputDate(nextBookableDate()));
     const [time, setTime] = useState('');
     const [showAllTimes, setShowAllTimes] = useState(false);
@@ -149,8 +151,9 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     const times = availableSlots(bookingDate);
     const bookingTimes = bookingExperience === 'Bottomless Brunch' ? (fromInputDate(bookingDate).getDay() === 0 ? [] : times.filter(slot => slot >= '12:00' && slot <= '19:30')) : bookingExperience === 'Afternoon Tea' ? times.filter(slot => slot >= '12:00' && slot <= '17:00') : times;
     const experiencePrice = experiencePrices[bookingExperience];
+    const bookingPricePerGuest = experiencePrice + (bookingExperience === 'Afternoon Tea' && afternoonTeaUpgrade ? 5 : 0);
     const guestCount = parseInt(guests, 10);
-    const bookingTotal = experiencePrice * guestCount;
+    const bookingTotal = bookingPricePerGuest * guestCount;
     const calendarStart = new Date(visibleMonth);
     calendarStart.setDate(1 - ((calendarStart.getDay() + 6) % 7));
     const calendarDays = Array.from({length: 42}, (_, offset) => {
@@ -297,8 +300,9 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
             time,
             guests,
             experience: bookingExperience,
-            price: experiencePrice || undefined,
+            price: bookingPricePerGuest || undefined,
             total: bookingTotal || undefined,
+            afternoonTeaUpgrade: bookingExperience === 'Afternoon Tea' && afternoonTeaUpgrade,
             name: bookingName.trim() || 'Guest',
             email: bookingEmail.trim(),
             notes: bookingNotes.trim()
@@ -423,7 +427,9 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                         <div className="content appScreenTransition" key={`${view}-${profilePanel ?? 'root'}`}>
                             {view === 'home' && <HomeScreen bookings={bookings} onBookEvent={bookEvent} onLogoClick={onShowNotification}/>}
                             {view === 'book' && <BookingScreen experience={bookingExperience} prices={experiencePrices}
-                                                               price={experiencePrice} total={bookingTotal}
+                                                               price={bookingPricePerGuest} total={bookingTotal}
+                                                               afternoonTeaUpgrade={afternoonTeaUpgrade}
+                                                               onAfternoonTeaUpgradeChange={setAfternoonTeaUpgrade}
                                                                guestCount={guestCount} date={bookingDate}
                                                                formatDate={value => formatDate(fromInputDate(value))}
                                                                showDatePicker={showDatePicker}
@@ -444,6 +450,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                                                onToggleTimes={() => setShowAllTimes(value => !value)}
                                                                onExperienceChange={value => {
                                                                    setBookingExperience(value);
+                                                                   if (value !== 'Afternoon Tea') setAfternoonTeaUpgrade(false);
                                                                    setShowAllTimes(false);
                                                                }} onContinue={() => navigate('details')}/>}
                             {view === 'details' && <>
@@ -452,8 +459,8 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                 </button>
                                 <p className="eyebrow">Review your booking</p><h1>You are almost<br/>there.</h1>
                                 <section className="bookingSummary"><p>The Quicken Tree</p>
-                                    <b>{formatDate(fromInputDate(bookingDate))}</b><span>{bookingExperience} · {time} · {guests}</span>{experiencePrice > 0 &&
-                                        <strong className="bookingPrice">£{experiencePrice.toFixed(2)} per guest ·
+                                    <b>{formatDate(fromInputDate(bookingDate))}</b><span>{bookingExperience}{afternoonTeaUpgrade ? ' + Prosecco/Pimms' : ''} · {time} · {guests}</span>{experiencePrice > 0 &&
+                                        <strong className="bookingPrice">£{bookingPricePerGuest.toFixed(2)} per guest ·
                                             £{bookingTotal.toFixed(2)} total</strong>}<small>Heart of England Conference
                                         Centre</small></section>
                                 <label className="detailLabel">Booking name<input value={bookingName}
@@ -481,7 +488,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                     <b>{checkoutMode === 'order' ? 'Order ahead' : bookingExperience}</b><small>{selectedCard ? `${selectedCard.brand} · •••• ${selectedCard.last4}` : 'Apple Pay'}</small></section>
                                 <section className="checkoutSummary">
                                     <p>{checkoutMode === 'order' ? 'Your order' : bookingExperience}</p>
-                                    <span>{checkoutMode === 'order' ? `${preOrderCount} ${preOrderCount === 1 ? 'item' : 'items'}` : `${guestCount} guests × £${experiencePrice.toFixed(2)}`}</span><b>Total
+                                    <span>{checkoutMode === 'order' ? `${preOrderCount} ${preOrderCount === 1 ? 'item' : 'items'}` : `${guestCount} guests × £${bookingPricePerGuest.toFixed(2)}${afternoonTeaUpgrade ? ' incl. Prosecco/Pimms' : ''}`}</span><b>Total
                                     due
                                     today <strong>£{(checkoutMode === 'order' ? preOrderTotal : bookingTotal).toFixed(2)}</strong></b><small>{checkoutMode === 'order' ? 'Your order is sent to the kitchen after payment.' : 'Your reservation is confirmed as soon as payment is complete.'}</small>
                                 </section>

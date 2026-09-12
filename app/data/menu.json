@@ -4,7 +4,6 @@
     "Main": "Main menu served from 12:00 PM",
     "Sunday": "Sunday lunch served from 12:00 PM",
     "Drinks": "Drinks available throughout service",
-    "AfternoonTea": "Afternoon tea is available by advance booking",
     "Brunch": "Bottomless brunch is available Monday to Saturday from noon"
   },
   "dietaryTagNames": {
@@ -793,23 +792,6 @@
         ]
       }
     ],
-    "Afternoon Tea": [
-      {
-        "title": "Summer Afternoon Tea",
-        "items": [
-          [
-            "Summer Afternoon Tea",
-            "Finger sandwiches, chicken and bacon Caesar slider, egg and cress, cucumber and cream cheese, arancini, cakes, a warm scone with clotted cream and strawberry jam, plus tea or coffee",
-            "£26.00 pp"
-          ],
-          [
-            "Pimms or Prosecco upgrade",
-            "Enjoy a glass of Pimms or Prosecco with your afternoon tea. Juice or non-alcoholic Prosecco available on request",
-            "£5.00"
-          ]
-        ]
-      }
-    ],
     "Bottomless Brunch": [
       {
         "title": "Bottomless Brunch",
@@ -959,11 +941,6 @@
       "label": "Drinks",
       "source": "Drinks",
       "service": "Drinks"
-    },
-    {
-      "label": "Afternoon Tea",
-      "source": "Afternoon Tea",
-      "service": "AfternoonTea"
     },
     {
       "label": "Brunch",
