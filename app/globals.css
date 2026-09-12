@@ -139,6 +139,10 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}h
   -webkit-text-fill-color:#4e453d!important;
 }
 
+/* Profile option labels and their chevrons share a true vertical centre. */
+.setting{align-items:center}
+.setting>span{display:grid;place-items:center;line-height:1}
+
 .stage.dark .appShell a,
 .stage.dark .appShell a:link,
 .stage.dark .appShell a:visited,
