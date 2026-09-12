@@ -117,7 +117,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     const [bookingName, setBookingName] = useState(profileData.default.name);
     const [bookingEmail, setBookingEmail] = useState('');
     const [bookingNotes, setBookingNotes] = useState('');
-    const [profilePanel, setProfilePanel] = useState<'details' | 'taste' | 'venues' | 'gifts' | 'help' | 'cards' | null>(null);
+    const [profilePanel, setProfilePanel] = useState<'details' | 'taste' | 'venues' | 'gifts' | 'help' | 'cards' | 'reset' | null>(null);
     const [profileName, setProfileName] = useState(profileData.default.name);
     const [profileEmail, setProfileEmail] = useState(profileData.default.email);
     const [tasteProfile, setTasteProfile] = useState<string[]>(profileData.default.tastes);
@@ -322,6 +322,12 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
         setBookingNotes('');
         setPaymentState('idle');
         navigate('bookings');
+    };
+    const resetAppToDefault = () => {
+        const appKeys = Array.from({length: window.localStorage.length}, (_, index) => window.localStorage.key(index))
+            .filter((key): key is string => Boolean(key?.startsWith('quicken-tree-')));
+        appKeys.forEach(key => window.localStorage.removeItem(key));
+        window.location.reload();
     };
     const continueFromDetails = () => bookingExperience === 'Table' ? requestTable() : (setCheckoutMode('booking'), navigate('checkout'));
     const completeOrder = () => {
@@ -605,6 +611,8 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                     name="fa-chevron-right"/></span></button>
                                 <button className="setting" onClick={() => setProfilePanel('help')}>Help & contact<span><Icon
                                     name="fa-chevron-right"/></span></button>
+                                <button className="setting resetApp" onClick={() => setProfilePanel('reset')}>Reset app to default<span><Icon
+                                    name="fa-arrow-rotate-left"/></span></button>
                             </>}
                             {view === 'profile' && profilePanel && <>
                                 <button className="topBack" onClick={() => setProfilePanel(null)}><Icon
@@ -625,7 +633,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                 table,<br/>your taste.</h1><p className="profileIntro">Choose what you enjoy and we’ll
                                 make your member offers more relevant.</p>
                                 <div
-                                    className="tasteChoices">{['Grill favourites', 'Steak & chops', 'Burgers & loaded fries', 'British classics', 'Sunday roasts', 'Seafood', 'Fresh salads', 'Vegetarian dishes', 'Vegan options', 'Gluten-free choices', 'Brunch', 'Afternoon tea', 'Craft beer', 'Cocktails & bubbles', 'Coffee & dessert'].map(taste =>
+                                    className="tasteChoices">{profileData.tasteOptions.map(taste =>
                                     <button key={taste} className={tasteProfile.includes(taste) ? 'selected' : ''}
                                             onClick={() => setTasteProfile(current => current.includes(taste) ? current.filter(item => item !== taste) : [...current, taste])}>
                                         <Icon name={tasteProfile.includes(taste) ? 'fa-check' : 'fa-plus'}/> {taste}
@@ -653,7 +661,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                 requirements or a quick question, get in touch with the team.</p><a
                                 className="contactAction" href="tel:01676540444"><Icon name="fa-phone"/> Call The
                                 Quicken Tree</a><a className="contactAction" href="mailto:info@quickentree.uk"><Icon
-                                name="fa-envelope"/> Email the team</a></>}</>}
+                                name="fa-envelope"/> Email the team</a></>}{profilePanel === 'reset' && <><p className="eyebrow">Demo controls</p><h1>Reset this<br/>app?</h1><p className="profileIntro">This clears this device’s demo bookings, orders, payment cards, profile choices and theme, then restores the original app state.</p><button className="cta resetAppCta" onClick={resetAppToDefault}><Icon name="fa-arrow-rotate-left"/> Reset app to default</button></>}</>}
                         </div>
                         <nav>{([['home', 'fa-house', 'Home'], ['book', 'fa-calendar-plus', 'Book'], ['menu', 'fa-utensils', 'Menu'], ['rewards', 'fa-star', 'Rewards'], ['profile', 'fa-circle-user', 'Profile']] as const).map(([id, icon, label]) =>
                             <button key={id} onClick={() => navigate(id)}
