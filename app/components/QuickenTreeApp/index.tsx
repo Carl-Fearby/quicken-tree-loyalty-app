@@ -46,6 +46,7 @@ const profileStorageKey = profileData.storageKey;
 const experiencePrices = Object.fromEntries(appointmentsData.experiences.map(experience => [experience.name, experience.price])) as Record<'Table' | 'Afternoon Tea' | 'Bottomless Brunch', number>;
 const dietaryTags: Record<string, string[]> = menuData.dietaryTags;
 const dietaryTagNames: Record<string, string> = menuData.dietaryTagNames;
+const outOfStockItems = new Set(menuData.outOfStockItems);
 type MenuSection = { title: string; items: ReadonlyArray<readonly [string, string, string]> };
 const menuItems = {...menuData.menuItems, 'Main Menu': septemberMainMenu.sections} as unknown as Record<'Breakfast' | 'Main Menu' | 'Sunday Lunch' | 'Drinks' | 'Bottomless Brunch', MenuSection[]>;
 const menuCategories = menuData.categories.map(category => {
@@ -537,6 +538,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                                             onSearchChange={setMenuSearch}
                                                             sections={filteredMenuSections} dietaryTags={dietaryTags}
                                                             dietaryTagNames={dietaryTagNames}
+                                                            outOfStockItems={outOfStockItems}
                                                             orderAheadBooking={orderAheadBooking} onAdd={addToOrder}
                                                             onPromptWings={() => {
                                                                 setWingSize(null);
