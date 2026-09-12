@@ -123,7 +123,12 @@ export function IphoneContainer({apps, dockApps = [], initialAppId = null, notif
             return;
         }
         const presentation = readTilePresentation(icon);
-        if (!presentation) return;
+        // A missing transition measurement must never make an app tile inert.
+        // Launch directly when Safari cannot expose the icon geometry.
+        if (!presentation) {
+            setActiveAppId(appId);
+            return;
+        }
         presentation.icon = resolveIcon(appId);
         pendingOpenRef.current = {appId, presentation};
         setActiveAppId(appId);

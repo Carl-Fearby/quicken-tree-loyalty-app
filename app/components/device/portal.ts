@@ -30,7 +30,9 @@ export const rectKeyframe = (rect: ViewportRect, radius: number) => ({
 });
 
 export const readTilePresentation = (iconButton: HTMLElement): TilePresentation | null => {
-    const iconTile = iconButton.querySelector(':scope > span');
+    // Some mobile Safari versions do not reliably resolve `:scope` from an
+    // element query. The first child is the icon tile in every emulator app.
+    const iconTile = iconButton.querySelector(':scope > span') ?? iconButton.firstElementChild;
     const glyph = iconTile?.firstElementChild;
     if (!(iconTile instanceof HTMLElement) || !(glyph instanceof HTMLElement)) return null;
     const tileStyles = window.getComputedStyle(iconTile);
