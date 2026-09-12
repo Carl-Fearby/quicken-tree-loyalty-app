@@ -117,10 +117,11 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     const [bookingName, setBookingName] = useState(profileData.default.name);
     const [bookingEmail, setBookingEmail] = useState('');
     const [bookingNotes, setBookingNotes] = useState('');
-    const [profilePanel, setProfilePanel] = useState<'details' | 'taste' | 'venues' | 'gifts' | 'help' | 'cards' | 'reset' | null>(null);
+    const [profilePanel, setProfilePanel] = useState<'details' | 'taste' | 'dietary' | 'venues' | 'gifts' | 'help' | 'cards' | 'reset' | null>(null);
     const [profileName, setProfileName] = useState(profileData.default.name);
     const [profileEmail, setProfileEmail] = useState(profileData.default.email);
     const [tasteProfile, setTasteProfile] = useState<string[]>(profileData.default.tastes);
+    const [dietaryNeeds, setDietaryNeeds] = useState<string[]>(profileData.default.dietaryNeeds);
     const [giftCode, setGiftCode] = useState('');
     const [profileSaved, setProfileSaved] = useState(false);
     const [profileLoaded, setProfileLoaded] = useState(false);
@@ -246,6 +247,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                 setProfileName(profile.name || profileData.default.name);
                 setProfileEmail(profile.email || profileData.default.email);
                 setTasteProfile(Array.isArray(profile.tastes) ? profile.tastes : profileData.default.tastes);
+                setDietaryNeeds(Array.isArray(profile.dietaryNeeds) ? profile.dietaryNeeds : profileData.default.dietaryNeeds);
             }
         } finally {
             setProfileLoaded(true);
@@ -255,9 +257,10 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
         if (profileLoaded) window.localStorage.setItem(profileStorageKey, JSON.stringify({
             name: profileName,
             email: profileEmail,
-            tastes: tasteProfile
+            tastes: tasteProfile,
+            dietaryNeeds
         }));
-    }, [profileName, profileEmail, tasteProfile, profileLoaded]);
+    }, [profileName, profileEmail, tasteProfile, dietaryNeeds, profileLoaded]);
     useEffect(() => {
         if (controlledDark !== undefined) {
             setIsDarkMode(controlledDark);
@@ -605,6 +608,8 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                 <button className="setting" onClick={() => setProfilePanel('cards')}>Payment cards<span><Icon name="fa-chevron-right"/></span></button>
                                 <button className="setting" onClick={() => setProfilePanel('taste')}>Taste profile<span><Icon
                                     name="fa-chevron-right"/></span></button>
+                                <button className="setting" onClick={() => setProfilePanel('dietary')}>Dietary needs & allergens<span><Icon
+                                    name="fa-chevron-right"/></span></button>
                                 <button className="setting" onClick={() => setProfilePanel('venues')}>Saved venues<span><Icon
                                     name="fa-chevron-right"/></span></button>
                                 <button className="setting" onClick={() => setProfilePanel('gifts')}>Gift cards & credit<span><Icon
@@ -638,6 +643,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                             onClick={() => setTasteProfile(current => current.includes(taste) ? current.filter(item => item !== taste) : [...current, taste])}>
                                         <Icon name={tasteProfile.includes(taste) ? 'fa-check' : 'fa-plus'}/> {taste}
                                     </button>)}</div>
+                            </>}{profilePanel === 'dietary' && <><p className="eyebrow">Dietary profile</p><h1>Good food,<br/>for you.</h1><p className="profileIntro">Save dietary requirements and allergies so we can make menu information easier to find. Always tell your server about an allergy before ordering.</p><section className="dietaryProfileSection"><b>Dietary requirements</b><div className="tasteChoices">{profileData.dietaryRequirementOptions.map(option => <button key={option} className={dietaryNeeds.includes(option) ? 'selected' : ''} onClick={() => setDietaryNeeds(current => current.includes(option) ? current.filter(item => item !== option) : [...current, option])}><Icon name={dietaryNeeds.includes(option) ? 'fa-check' : 'fa-plus'}/> {option}</button>)}</div></section><section className="dietaryProfileSection"><b>Allergies & intolerances</b><p>Select anything you need us to know about.</p><div className="tasteChoices allergenChoices">{profileData.allergenOptions.map(option => <button key={option} className={dietaryNeeds.includes(option) ? 'selected' : ''} onClick={() => setDietaryNeeds(current => current.includes(option) ? current.filter(item => item !== option) : [...current, option])}><Icon name={dietaryNeeds.includes(option) ? 'fa-check' : 'fa-plus'}/> {option}</button>)}</div></section>
                             </>}{profilePanel === 'venues' && <><p className="eyebrow">Saved venues</p><h1>Your
                                 favourite<br/>place.</h1>
                                 <section className="venueCard"><Icon name="fa-location-dot"/>
