@@ -646,10 +646,10 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                             <button key={id} onClick={() => navigate(id)}
                                     className={view === id || ((view === 'details' || view === 'checkout') && id === 'book') || (view === 'bookings' && id === 'profile') ? 'active' : ''}>
                                 <Icon name={icon}/>{label}</button>)}</nav>
-                        {view === 'menu' && orderAheadBooking && <button className="orderCart" disabled={!preOrderCount}
+                        {view === 'menu' && orderAheadBooking && <button className={`orderCart${preOrderCount ? '' : ' empty'}`} disabled={!preOrderCount}
                                                                          onClick={() => navigate('cart', true)}>
                             <span><Icon
-                                name="fa-cart-shopping"/></span><strong>{preOrderCount} {preOrderCount === 1 ? 'item' : 'items'}</strong><em>£{preOrderTotal.toFixed(2)}</em>
+                                name="fa-cart-shopping"/></span><strong>{preOrderCount} {preOrderCount === 1 ? 'item' : 'items'}</strong>{preOrderCount > 0 && <em>£{preOrderTotal.toFixed(2)}</em>}
                         </button>}
                 {redemption &&
                     <RedemptionPass redemption={redemption} closing={isClosingRedemption} onClose={closeRedemption}/>} 

@@ -73,6 +73,12 @@ body{background:#171717!important}.stage{padding:24px!important;background:radia
 .appShell .orderCart{background:#fff!important;color:#342d27!important;border:2px solid #cf122d;box-shadow:0 8px 18px #0002}.appShell .orderCart>span{color:#cf122d}.appShell .orderCart>span b{background:#cf122d;color:#fff}.appShell .orderCart>em{color:#cf122d}.stage.dark .appShell .orderCart{background:#252321!important;color:#f7f3ee!important;border-color:#e83b52;box-shadow:0 9px 22px #0008}.stage.dark .appShell .orderCart>em{color:#e83b52}
 .appShell .orderCart>strong{display:block!important;color:#342d27!important;font-size:16px!important}.stage.dark .appShell .orderCart>strong{color:#f7f3ee!important}
 body .appShell .orderCart{background:#fff!important;color:#342d27!important;border:2px solid #d8cfc5!important}body .appShell .orderCart>span{display:grid!important;color:#cf122d!important}body .appShell .orderCart>strong{display:block!important;color:#342d27!important}body .appShell .orderCart>em{color:#cf122d!important}.stage.dark body .appShell .orderCart{background:#252321!important;color:#f7f3ee!important;border-color:#514941!important}.stage.dark body .appShell .orderCart>strong{color:#f7f3ee!important}
+/* An order-ahead basket remains discoverable before the first dish is added.
+   Keep that empty state neutral rather than using the active red checkout cue. */
+body .appShell .orderCart.empty:disabled{opacity:1!important;background:#fff!important;color:#71685d!important;border-color:#d8cfc5!important;box-shadow:0 8px 18px #0002!important}
+body .appShell .orderCart.empty:disabled>span{display:grid!important;color:#71685d!important}
+body .appShell .orderCart.empty:disabled>strong{display:block!important;color:#71685d!important}
+.stage.dark body .appShell .orderCart.empty:disabled{background:#252321!important;color:#bfb5aa!important;border-color:#514941!important}.stage.dark body .appShell .orderCart.empty:disabled>span,.stage.dark body .appShell .orderCart.empty:disabled>strong{color:#bfb5aa!important}
 .content{overflow-x:hidden!important}.content > *{max-width:100%;min-width:0}.menuSection,.menuList,.menuItem{max-width:100%;min-width:0}
 .content > * {animation:screenEnter .3s cubic-bezier(.2,.8,.2,1) both}@keyframes screenEnter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .content > .paymentCardsScreen{transform:none!important}
