@@ -60,7 +60,7 @@
     padding: 13px 12px;
     border-radius: 14px;
     background: var(--qt-color-surface-muted);
-    color: var(--qt-color-4c443c);
+    color: var(--qt-color-text-subtle);
     font-size: 13px;
     font-weight: 600;
 }
@@ -82,17 +82,17 @@
 }
 
 :global(.dark) .line {
-    background: var(--qt-color-252321);
+    background: var(--qt-color-surface-dark-elevated);
     color: var(--qt-color-surface-dark-text);
 }
 
 :global(.dark) .line p,
 :global(.dark) .booking {
-    color: var(--qt-color-c5bcb3);
+    color: var(--qt-color-text-dark-subtle);
 }
 
 :global(.dark) .total {
-    background: var(--qt-color-302b27);
+    background: var(--qt-color-text-heading);
     color: var(--qt-color-surface-dark-text);
 }
 

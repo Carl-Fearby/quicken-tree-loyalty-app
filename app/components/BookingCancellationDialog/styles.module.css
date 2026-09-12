@@ -16,7 +16,7 @@
     background: var(--qt-color-surface);
     color: var(--qt-color-text);
     text-align: center;
-    box-shadow: 0 -12px 32px var(--qt-color-0003);
+    box-shadow: 0 -12px 32px var(--qt-color-shadow-subtle);
     animation: rise .3s cubic-bezier(.2, .8, .2, 1) both;
 }
 
@@ -72,17 +72,17 @@
 }
 
 :global(.dark) .panel {
-    background: var(--qt-color-252321);
+    background: var(--qt-color-surface-dark-elevated);
     color: var(--qt-color-surface-dark-text);
 }
 
 :global(.dark) .panel > p:not(:global(.eyebrow)) {
-    color: var(--qt-color-c5bcb3);
+    color: var(--qt-color-text-dark-subtle);
 }
 
 :global(.dark) .actions button {
     border-color: var(--qt-color-border-dark);
-    background: var(--qt-color-302b27);
+    background: var(--qt-color-text-heading);
     color: var(--qt-color-surface-dark-text);
 }
 

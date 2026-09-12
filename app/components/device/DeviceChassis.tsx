@@ -18,7 +18,7 @@ export function DeviceChassis({enabled, device, caseColor, className = '', style
     if (!enabled) return <>{children}</>;
 
     const depth = chassisDepth(device);
-    const shellColor = caseColor ?? (device.platform === 'ios' ? 'var(--qt-color-141417)' : 'var(--qt-color-1c1c1e)');
+    const shellColor = caseColor ?? (device.platform === 'ios' ? 'var(--qt-color-141417)' : 'var(--qt-color-device-graphite)');
     const chassisStyle = {
         ...style,
         '--device-depth': `${depth}px`,
