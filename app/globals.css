@@ -152,3 +152,25 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}h
   .stage.fullBleed .mobileControlOptions select{min-width:0;flex:1;border:0;outline:0;background:transparent;color:#fff;font:inherit;font-size:12px;font-weight:700;text-align:right}
   .stage.fullBleed .mobileControlOptions option{color:#111;background:#fff}
 }
+
+/* iOS standalone reports a shorter percentage-height containing block after
+   launch.  Keep every PWA wrapper on the large viewport, as a native scroll
+   document does, so the scroll surface reaches the physical bottom edge. */
+@media (display-mode: standalone),(display-mode: fullscreen){
+  html:has(.stage.appOnly),
+  body:has(.stage.appOnly),
+  .stage.appOnly,
+  .stage.appOnly > section,
+  .stage.appOnly .appShell{
+    height:100vh!important;
+    height:100lvh!important;
+    min-height:100vh!important;
+    min-height:100lvh!important;
+  }
+
+  .stage.appOnly .appShell{
+    position:fixed!important;
+    inset:0!important;
+    bottom:auto!important;
+  }
+}
