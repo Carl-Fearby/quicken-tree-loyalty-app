@@ -12,7 +12,7 @@ const paragraphs = [
 ];
 
 export function ScrollTestScreen() {
-  return <article className={styles.root}>
+  return <article className={styles.root} data-scroll-test>
     <div className={styles.document}>
       {Array.from({length: 7}, (_, group) => paragraphs.map((paragraph, index) => <p key={`${group}-${index}`}>{paragraph}</p>))}
     </div>

@@ -173,4 +173,8 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}h
     inset:0!important;
     bottom:auto!important;
   }
+
+  .stage.appOnly [data-scroll-test]{
+    padding-top:max(18px,calc(env(safe-area-inset-top) + 18px))!important;
+  }
 }
