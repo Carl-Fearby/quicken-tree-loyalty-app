@@ -17,6 +17,7 @@ import {CartScreen, type CartLine} from '../screens/CartScreen';
 import {OrderSummaryScreen} from '../screens/OrderSummaryScreen';
 import {MenuScreen} from '../screens/MenuScreen';
 import {BookingScreen} from '../screens/BookingScreen';
+import {ScrollTestScreen} from '../screens/ScrollTestScreen';
 import {BookingCancellationDialog} from '../BookingCancellationDialog';
 import {AppNavigationProvider} from '../../contexts/AppNavigation';
 import {LoyaltyApp} from '../LoyaltyApp';
@@ -646,12 +647,13 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                     setBookingPendingCancellation(null);
                 }}/>}
                 {orderToast && <p className={`orderToast${orderToastClosing ? ' closing' : ''}`} role="status"><Icon name="fa-check"/><span><b>{orderToast.includes('Booking') ? 'Canceled' : 'Added!'}</b><small>{orderToast === 'Booking and order cancelled' ? 'Your booking and order has been canceled' : orderToast === 'Booking cancelled' ? 'Your booking has been canceled' : `${orderToast.replace(' added to your order', '')} is ready in your order`}</small></span></p>}
-                {wingSizePrompt && <WingOptionsDialog size={wingSize} onSizeChange={setWingSize}
+                        {wingSizePrompt && <WingOptionsDialog size={wingSize} onSizeChange={setWingSize}
                                                       onClose={() => setWingSizePrompt(false)} onAdd={item => {
                     addToOrder(item);
                     setWingSizePrompt(false);
                     setWingSize(null);
                 }}/>} 
+                <ScrollTestScreen/>
             </LoyaltyApp>
     </AppNavigationProvider>;
 }
