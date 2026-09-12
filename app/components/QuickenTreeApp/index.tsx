@@ -36,6 +36,7 @@ type Booking = {
     afternoonTeaUpgrade?: boolean;
     bottomlessBrunchUpgrade?: boolean;
     bottomlessBrunchMeal?: string;
+    dietaryNeeds?: string[];
     name: string;
     email: string;
     notes: string
@@ -316,6 +317,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
             afternoonTeaUpgrade: bookingExperience === 'Afternoon Tea' && afternoonTeaUpgrade,
             bottomlessBrunchUpgrade: bookingExperience === 'Bottomless Brunch' && bottomlessBrunchUpgrade,
             bottomlessBrunchMeal: bookingExperience === 'Bottomless Brunch' ? bottomlessBrunchMeal : undefined,
+            dietaryNeeds: [...dietaryNeeds],
             name: bookingName.trim() || 'Guest',
             email: bookingEmail.trim(),
             notes: bookingNotes.trim()
@@ -454,6 +456,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                                                bottomlessBrunchMeal={bottomlessBrunchMeal}
                                                                bottomlessBrunchMeals={bottomlessBrunchMeals}
                                                                onBottomlessBrunchMealChange={setBottomlessBrunchMeal}
+                                                               dietaryNeeds={dietaryNeeds}
                                                                guestCount={guestCount} date={bookingDate}
                                                                formatDate={value => formatDate(fromInputDate(value))}
                                                                showDatePicker={showDatePicker}
@@ -487,7 +490,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                     <b>{formatDate(fromInputDate(bookingDate))}</b><span>{bookingExperience}{afternoonTeaUpgrade || bottomlessBrunchUpgrade ? ' + Prosecco/Pimms' : ''}{bookingExperience === 'Bottomless Brunch' && bottomlessBrunchMeal ? ` · ${bottomlessBrunchMeal}` : ''} · {time} · {guests}</span>{experiencePrice > 0 &&
                                         <strong className="bookingPrice">£{bookingPricePerGuest.toFixed(2)} per guest ·
                                             £{bookingTotal.toFixed(2)} total</strong>}<small>Heart of England Conference
-                                        Centre</small></section>
+                                        Centre</small></section><section className="bookingDietary"><b>Dietary needs for this booking</b>{dietaryNeeds.length ? <p>{dietaryNeeds.join(' · ')}</p> : <p>No dietary needs saved in your profile.</p>}<small>Always tell your server about an allergy when you arrive.</small></section>
                                 <label className="detailLabel">Booking name<input value={bookingName}
                                                                                   onChange={event => setBookingName(event.target.value)}
                                                                                   placeholder="Your name"/></label><label
@@ -536,7 +539,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                     const placedOrderItemCount = placedOrder?.lines.reduce((count, line) => count + line.quantity, 0) ?? 0;
                                     return <article className="savedBooking" key={booking.id}><p>The
                                     Quicken Tree</p>
-                                    <b>{formatDate(fromInputDate(booking.date))}</b><span>{booking.experience ?? 'Table'}{booking.bottomlessBrunchMeal ? ` · ${booking.bottomlessBrunchMeal}` : ''}{booking.bottomlessBrunchUpgrade ? ' · Drinks upgrade' : ''} · {booking.time} · {booking.guests}</span>{booking.total ?
+                                    <b>{formatDate(fromInputDate(booking.date))}</b><span>{booking.experience ?? 'Table'}{booking.bottomlessBrunchMeal ? ` · ${booking.bottomlessBrunchMeal}` : ''}{booking.bottomlessBrunchUpgrade ? ' · Drinks upgrade' : ''} · {booking.time} · {booking.guests}</span>{booking.dietaryNeeds?.length ? <small className="bookingDietarySummary">Dietary: {booking.dietaryNeeds.join(' · ')}</small> : null}{booking.total ?
                                         <strong className="paidBooking"><Icon name="fa-circle-check"/> Paid ·
                                             £{booking.total.toFixed(2)}
                                         </strong> : null}<small>{booking.name}</small>{parseInt(booking.guests, 10) >= 4 && !booking.total &&

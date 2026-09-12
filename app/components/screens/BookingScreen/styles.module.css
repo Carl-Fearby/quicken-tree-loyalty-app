@@ -87,6 +87,8 @@
 .mealSheet > div > button > .fa-solid { color:#cf122d; font-size:13px; }
 .mealSheet > div > button.selectedMeal { border-color:#cf122d; background:#fff8f8; }
 .closeMeals { position:absolute; top:18px; right:18px; display:grid; place-items:center; width:36px; height:36px; border:0; border-radius:50%; background:#f2e9df; color:#534c45; }
+.dietaryNotice { display:flex; align-items:flex-start; gap:9px; margin:12px 0; border:1px solid #e7d8c8; border-left:4px solid #cf122d; border-radius:14px; background:#fff8f8; padding:11px; color:#342d27; }
+.dietaryNotice > .fa-solid { margin-top:2px; color:#cf122d; font-size:14px; }.dietaryNotice span { display:grid; gap:3px; }.dietaryNotice b { font-size:13px; }.dietaryNotice small { color:#71685d; font-size:11px; line-height:1.3; }
 
 @keyframes reveal {
   from { opacity: 0; transform: translateY(-5px); }
