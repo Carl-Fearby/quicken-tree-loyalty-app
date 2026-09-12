@@ -1,0 +1,103 @@
+.root {
+    position: absolute;
+    z-index: 220;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    padding: 12px;
+    background: #111a;
+    animation: fadeIn .2s ease both;
+}
+
+.panel {
+    width: 100%;
+    padding: 22px 20px 18px;
+    border-radius: 24px;
+    background: #fff;
+    color: #342d27;
+    text-align: center;
+    box-shadow: 0 -12px 32px #0003;
+    animation: rise .3s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.panel > i {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    margin: 0 auto 10px;
+    border-radius: 50%;
+    background: #fce9ec;
+    color: #cf122d;
+    font-size: 19px;
+    font-style: normal;
+}
+
+.panel h2 {
+    margin: 1px 0 8px;
+    font-size: 24px;
+    line-height: 1.05;
+    font-weight: 600;
+}
+
+.panel > p:not(:global(.eyebrow)) {
+    max-width: 285px;
+    margin: 0 auto 18px;
+    color: #71685d;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.actions button {
+    min-height: 45px;
+    border: 1px solid #e7d8c8;
+    border-radius: 13px;
+    background: #fff;
+    color: #594d41;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.actions button:last-child {
+    border-color: #cf122d;
+    background: #cf122d;
+    color: #fff;
+}
+
+:global(.dark) .panel {
+    background: #252321;
+    color: #f7f3ee;
+}
+
+:global(.dark) .panel > p:not(:global(.eyebrow)) {
+    color: #c5bcb3;
+}
+
+:global(.dark) .actions button {
+    border-color: #514941;
+    background: #302b27;
+    color: #f7f3ee;
+}
+
+:global(.dark) .actions button:last-child {
+    border-color: #cf122d;
+    background: #cf122d;
+    color: #fff;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes rise {
+    from { opacity: 0; transform: translateY(24px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}

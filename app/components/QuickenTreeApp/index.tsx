@@ -13,14 +13,16 @@ import {RedemptionPass, type Redemption} from '../RedemptionPass';
 import {UpcomingBookings} from '../UpcomingBookings';
 import {WingOptionsDialog} from '../WingOptionsDialog';
 import {HomeScreen} from '../screens/HomeScreen';
-import {CartScreen} from '../screens/CartScreen';
+import {CartScreen, type CartLine} from '../screens/CartScreen';
+import {OrderSummaryScreen} from '../screens/OrderSummaryScreen';
 import {MenuScreen} from '../screens/MenuScreen';
 import {BookingScreen} from '../screens/BookingScreen';
+import {BookingCancellationDialog} from '../BookingCancellationDialog';
 import {AppNavigationProvider} from '../../contexts/AppNavigation';
 import {LoyaltyApp} from '../LoyaltyApp';
 import {PaymentCards, PaymentMethodPicker, usePaymentCards} from '../PaymentCards';
 
-type View = 'home' | 'book' | 'details' | 'checkout' | 'bookings' | 'menu' | 'cart' | 'rewards' | 'profile';
+type View = 'home' | 'book' | 'details' | 'checkout' | 'bookings' | 'menu' | 'cart' | 'order-summary' | 'rewards' | 'profile';
 type Booking = {
     id: string;
     date: string;
@@ -33,6 +35,8 @@ type Booking = {
     email: string;
     notes: string
 };
+type OrderSummary = { itemCount: number; total: number };
+type PlacedOrder = { lines: CartLine[]; total: number; paidAt: string };
 
 const bookingStorageKey = bookingsData.storageKey;
 const profileStorageKey = profileData.storageKey;
@@ -77,6 +81,22 @@ const nextBookableDate = (now = new Date()) => {
     return date;
 };
 const priceValue = (price: string) => Number(price.match(/£([\d.]+)/)?.[1] ?? 0);
+const orderDraftStorageKey = (bookingId: string) => `quicken-tree-order-ahead-${bookingId}`;
+const placedOrderStorageKey = (bookingId: string) => `quicken-tree-placed-order-${bookingId}`;
+const iCalendarEscape = (value: string) => value.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+const iCalendarTimestamp = (date: Date) => `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}00`;
+const iCalendarUtcTimestamp = (date: Date) => `${date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`;
+const orderItemPrice = (name: string) => {
+    const item = allMenuSections.flatMap(section => section.items).find(([itemName]) => name.startsWith(itemName));
+    return name.includes('· Small ·') ? 6.99 : name.includes('· Large ·') ? 12.15 : item ? priceValue(item[2]) : 0;
+};
+const summariseOrder = (items: Record<string, number>): OrderSummary => Object.entries(items).reduce(
+    (summary, [name, quantity]) => ({
+        itemCount: summary.itemCount + quantity,
+        total: summary.total + orderItemPrice(name) * quantity
+    }),
+    {itemCount: 0, total: 0}
+);
 
 export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark?: boolean; onShowNotification?: () => void}) {
     const {cards, setCards, ready: cardsReady} = usePaymentCards();
@@ -103,6 +123,10 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     const [orderAheadBooking, setOrderAheadBooking] = useState<Booking | null>(null);
     const [menuSearch, setMenuSearch] = useState('');
     const [preOrderItems, setPreOrderItems] = useState<Record<string, number>>({});
+    const [bookingOrderSummaries, setBookingOrderSummaries] = useState<Record<string, OrderSummary>>({});
+    const [placedOrders, setPlacedOrders] = useState<Record<string, PlacedOrder>>({});
+    const [selectedPlacedOrderBooking, setSelectedPlacedOrderBooking] = useState<Booking | null>(null);
+    const [bookingPendingCancellation, setBookingPendingCancellation] = useState<Booking | null>(null);
     const [orderToast, setOrderToast] = useState('');
     const [orderToastClosing, setOrderToastClosing] = useState(false);
     const [wingSizePrompt, setWingSizePrompt] = useState(false);
@@ -140,14 +164,10 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
         items: section.items.filter(([name, description]) => `${name} ${description}`.toLowerCase().includes(menuSearch.trim().toLowerCase()))
     })).filter(section => section.items.length);
     const preOrderCount = Object.values(preOrderItems).reduce((total, quantity) => total + quantity, 0);
-    const preOrderTotal = Object.entries(preOrderItems).reduce((total, [name, quantity]) => {
-        const item = allMenuSections.flatMap(section => section.items).find(([itemName]) => name.startsWith(itemName));
-        const price = name.includes('· Small ·') ? 6.99 : name.includes('· Large ·') ? 12.15 : item ? priceValue(item[2]) : 0;
-        return total + price * quantity;
-    }, 0);
+    const preOrderTotal = summariseOrder(preOrderItems).total;
     const preOrderLines = Object.entries(preOrderItems).flatMap(([name, quantity]) => {
         const item = allMenuSections.flatMap(section => section.items).find(([itemName]) => name.startsWith(itemName));
-        const price = name.includes('· Small ·') ? 6.99 : name.includes('· Large ·') ? 12.15 : item ? priceValue(item[2]) : 0;
+        const price = orderItemPrice(name);
         return item ? [{name, description: item[1], price, quantity}] : [];
     });
     useEffect(() => {
@@ -167,10 +187,44 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
         if (bookingsLoaded) window.localStorage.setItem(bookingStorageKey, JSON.stringify(bookings));
     }, [bookings, bookingsLoaded]);
     useEffect(() => {
+        if (!bookingsLoaded) return;
+        const summaries: Record<string, OrderSummary> = {};
+        bookings.forEach(booking => {
+            try {
+                const savedOrder = JSON.parse(window.localStorage.getItem(orderDraftStorageKey(booking.id)) ?? '{}') as Record<string, number>;
+                const summary = summariseOrder(savedOrder);
+                if (summary.itemCount) summaries[booking.id] = summary;
+            } catch {
+                // Ignore a malformed local draft rather than hiding the booking.
+            }
+        });
+        setBookingOrderSummaries(summaries);
+    }, [bookings, bookingsLoaded]);
+    useEffect(() => {
+        if (!bookingsLoaded) return;
+        const orders: Record<string, PlacedOrder> = {};
+        bookings.forEach(booking => {
+            try {
+                const order = JSON.parse(window.localStorage.getItem(placedOrderStorageKey(booking.id)) ?? 'null') as PlacedOrder | null;
+                if (order?.lines?.length) orders[booking.id] = order;
+            } catch {
+                // Ignore a malformed local order rather than hiding the booking.
+            }
+        });
+        setPlacedOrders(orders);
+    }, [bookings, bookingsLoaded]);
+    useEffect(() => {
         if (!orderAheadBooking) return;
-        const key = `quicken-tree-order-ahead-${orderAheadBooking.id}`;
+        const key = orderDraftStorageKey(orderAheadBooking.id);
         if (Object.keys(preOrderItems).length) window.localStorage.setItem(key, JSON.stringify(preOrderItems));
         else window.localStorage.removeItem(key);
+        const summary = summariseOrder(preOrderItems);
+        setBookingOrderSummaries(current => {
+            const next = {...current};
+            if (summary.itemCount) next[orderAheadBooking.id] = summary;
+            else delete next[orderAheadBooking.id];
+            return next;
+        });
     }, [orderAheadBooking, preOrderItems]);
     useEffect(() => {
         try {
@@ -256,6 +310,17 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     };
     const continueFromDetails = () => bookingExperience === 'Table' ? requestTable() : (setCheckoutMode('booking'), navigate('checkout'));
     const completeOrder = () => {
+        if (orderAheadBooking && preOrderLines.length) {
+            const placedOrder: PlacedOrder = {lines: preOrderLines, total: preOrderTotal, paidAt: new Date().toISOString()};
+            window.localStorage.setItem(placedOrderStorageKey(orderAheadBooking.id), JSON.stringify(placedOrder));
+            window.localStorage.removeItem(orderDraftStorageKey(orderAheadBooking.id));
+            setPlacedOrders(current => ({...current, [orderAheadBooking.id]: placedOrder}));
+            setBookingOrderSummaries(current => {
+                const next = {...current};
+                delete next[orderAheadBooking.id];
+                return next;
+            });
+        }
         setPaymentState('idle');
         setPreOrderItems({});
         setOrderAheadBooking(null);
@@ -269,7 +334,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     const startOrderAhead = (booking: Booking) => {
         let savedOrder: Record<string, number> = {};
         try {
-            savedOrder = JSON.parse(window.localStorage.getItem(`quicken-tree-order-ahead-${booking.id}`) ?? '{}');
+            savedOrder = JSON.parse(window.localStorage.getItem(orderDraftStorageKey(booking.id)) ?? '{}');
         } catch {
             savedOrder = {};
         }
@@ -278,6 +343,60 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
         setMenuSearch('');
         setMenuCategory('Sharers');
         navigate('menu', true);
+    };
+    const openPlacedOrder = (booking: Booking) => {
+        setSelectedPlacedOrderBooking(booking);
+        navigate('order-summary');
+    };
+    const addBookingToCalendar = (booking: Booking) => {
+        const start = new Date(`${booking.date}T${booking.time}:00`);
+        const end = new Date(start);
+        end.setHours(end.getHours() + 2);
+        const experience = booking.experience ?? 'Table';
+        const calendarFile = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//The Quicken Tree//Loyalty App//EN',
+            'BEGIN:VEVENT',
+            `UID:${booking.id}@quickentree.uk`,
+            `DTSTAMP:${iCalendarUtcTimestamp(new Date())}`,
+            `DTSTART;TZID=Europe/London:${iCalendarTimestamp(start)}`,
+            `DTEND;TZID=Europe/London:${iCalendarTimestamp(end)}`,
+            `SUMMARY:${iCalendarEscape(`The Quicken Tree · ${experience}`)}`,
+            'LOCATION:Heart of England Conference Centre',
+            `DESCRIPTION:${iCalendarEscape(`${booking.guests} · ${booking.time}\nBooking for ${booking.name}`)}`,
+            'END:VEVENT',
+            'END:VCALENDAR'
+        ].join('\r\n');
+        const url = window.URL.createObjectURL(new Blob([calendarFile], {type: 'text/calendar;charset=utf-8'}));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `quicken-tree-${booking.date}.ics`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+    };
+    const cancelBooking = (booking: Booking, hasOrder: boolean) => {
+        window.localStorage.removeItem(orderDraftStorageKey(booking.id));
+        window.localStorage.removeItem(placedOrderStorageKey(booking.id));
+        setBookings(current => current.filter(currentBooking => currentBooking.id !== booking.id));
+        setBookingOrderSummaries(current => {
+            const next = {...current};
+            delete next[booking.id];
+            return next;
+        });
+        setPlacedOrders(current => {
+            const next = {...current};
+            delete next[booking.id];
+            return next;
+        });
+        setOrderAheadBooking(current => current?.id === booking.id ? null : current);
+        setSelectedPlacedOrderBooking(current => current?.id === booking.id ? null : current);
+        setOrderToast(hasOrder ? 'Booking and order cancelled' : 'Booking cancelled');
+        setOrderToastClosing(false);
+        window.setTimeout(() => { setOrderToastClosing(true); window.setTimeout(() => setOrderToast(''), 260); }, 2200);
+    };
+    const requestBookingCancellation = (booking: Booking) => {
+        setBookingPendingCancellation(booking);
     };
     const addToOrder = (name: string) => {
         setPreOrderItems(current => ({...current, [name]: (current[name] ?? 0) + 1}));
@@ -378,19 +497,31 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                 </button>
                                 <p className="eyebrow">Your reservations</p><h1>Upcoming<br/>bookings.
                             </h1>{bookings.length ?
-                                <div className="bookingList">{bookings.map(booking => <article className="savedBooking"
-                                                                                               key={booking.id}><p>The
+                                <div className="bookingList">{bookings.map(booking => {
+                                    const orderSummary = bookingOrderSummaries[booking.id];
+                                    const placedOrder = placedOrders[booking.id];
+                                    const placedOrderItemCount = placedOrder?.lines.reduce((count, line) => count + line.quantity, 0) ?? 0;
+                                    return <article className="savedBooking" key={booking.id}><p>The
                                     Quicken Tree</p>
                                     <b>{formatDate(fromInputDate(booking.date))}</b><span>{booking.experience ?? 'Table'} · {booking.time} · {booking.guests}</span>{booking.total ?
                                         <strong className="paidBooking"><Icon name="fa-circle-check"/> Paid ·
                                             £{booking.total.toFixed(2)}
                                         </strong> : null}<small>{booking.name}</small>{parseInt(booking.guests, 10) >= 4 && !booking.total &&
-                                        <button className="orderAhead" onClick={() => startOrderAhead(booking)}><Icon
-                                            name="fa-utensils"/> Order ahead</button>}</article>)}</div> :
+                                        (placedOrder ? <button className="savedOrder" onClick={() => openPlacedOrder(booking)}>
+                                            <Icon name="fa-receipt"/><span><b>{placedOrderItemCount} {placedOrderItemCount === 1 ? 'item' : 'items'} ordered</b><small>£{placedOrder.total.toFixed(2)} · View order</small></span><Icon name="fa-chevron-right"/>
+                                        </button> : orderSummary ? <button className="savedOrder" onClick={() => startOrderAhead(booking)}>
+                                            <Icon name="fa-cart-shopping"/><span><b>{orderSummary.itemCount} {orderSummary.itemCount === 1 ? 'item' : 'items'} in your order</b><small>£{orderSummary.total.toFixed(2)} · Continue ordering</small></span><Icon name="fa-chevron-right"/>
+                                        </button> : <button className="orderAhead" onClick={() => startOrderAhead(booking)}><Icon
+                                            name="fa-utensils"/> Order ahead</button>)}<div className="bookingActions"><button type="button" onClick={() => addBookingToCalendar(booking)}><Icon name="fa-calendar-plus"/> Add to calendar</button><button type="button" className="cancelBooking" onClick={() => requestBookingCancellation(booking)}><Icon name="fa-calendar-xmark"/> Cancel booking</button></div></article>;
+                                })}</div> :
                                 <section className="emptyBookings"><Icon name="fa-calendar-plus"/><b>No bookings yet</b>
                                     <p>Your confirmed reservations will appear here.</p>
                                     <button className="cta" onClick={() => navigate('book')}>Book a table</button>
                                 </section>}</>}
+                            {view === 'order-summary' && selectedPlacedOrderBooking && placedOrders[selectedPlacedOrderBooking.id] &&
+                                <OrderSummaryScreen booking={selectedPlacedOrderBooking} lines={placedOrders[selectedPlacedOrderBooking.id].lines}
+                                                    total={placedOrders[selectedPlacedOrderBooking.id].total}
+                                                    onBack={() => navigate('bookings')}/>}
                             {view === 'menu' && <MenuScreen categories={menuCategories} selectedCategory={menuCategory}
                                                             onCategoryChange={setMenuCategory} search={menuSearch}
                                                             onSearchChange={setMenuSearch}
@@ -510,7 +641,11 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                         </button>}
                 {redemption &&
                     <RedemptionPass redemption={redemption} closing={isClosingRedemption} onClose={closeRedemption}/>} 
-                {orderToast && <p className={`orderToast${orderToastClosing ? ' closing' : ''}`} role="status"><Icon name="fa-check"/><span><b>Added!</b><small>{orderToast.replace(' added to your order', '')} is ready in your order</small></span></p>}
+                {bookingPendingCancellation && <BookingCancellationDialog hasOrder={Boolean(placedOrders[bookingPendingCancellation.id] || bookingOrderSummaries[bookingPendingCancellation.id])} onCancel={() => setBookingPendingCancellation(null)} onConfirm={() => {
+                    cancelBooking(bookingPendingCancellation, Boolean(placedOrders[bookingPendingCancellation.id] || bookingOrderSummaries[bookingPendingCancellation.id]));
+                    setBookingPendingCancellation(null);
+                }}/>}
+                {orderToast && <p className={`orderToast${orderToastClosing ? ' closing' : ''}`} role="status"><Icon name="fa-check"/><span><b>{orderToast.includes('Booking') ? 'Canceled' : 'Added!'}</b><small>{orderToast === 'Booking and order cancelled' ? 'Your booking and order has been canceled' : orderToast === 'Booking cancelled' ? 'Your booking has been canceled' : `${orderToast.replace(' added to your order', '')} is ready in your order`}</small></span></p>}
                 {wingSizePrompt && <WingOptionsDialog size={wingSize} onSizeChange={setWingSize}
                                                       onClose={() => setWingSizePrompt(false)} onAdd={item => {
                     addToOrder(item);

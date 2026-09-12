@@ -1,0 +1,101 @@
+.root {
+    display: grid;
+    gap: 10px;
+}
+
+.booking {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0 0 3px;
+    color: #665b50;
+    font-size: 11px;
+}
+
+.booking :global(.fa-solid) {
+    color: #cf122d;
+}
+
+.lines {
+    display: grid;
+    gap: 8px;
+}
+
+.line {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 12px;
+    border-left: 4px solid #e9b73e;
+    border-radius: 13px;
+    background: #fff;
+}
+
+.line b {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.line p {
+    margin: 3px 0 0;
+    color: #71685d;
+    font-size: 10px;
+    line-height: 1.35;
+}
+
+.line span {
+    color: #cf122d;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2px;
+    padding: 13px 12px;
+    border-radius: 14px;
+    background: #f2e9df;
+    color: #4c443c;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.total b {
+    color: #cf122d;
+    font-size: 18px;
+}
+
+.paid {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 0;
+    color: #47735e;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+:global(.dark) .line {
+    background: #252321;
+    color: #f7f3ee;
+}
+
+:global(.dark) .line p,
+:global(.dark) .booking {
+    color: #c5bcb3;
+}
+
+:global(.dark) .total {
+    background: #302b27;
+    color: #f7f3ee;
+}
+
+:global(.dark) .paid {
+    color: #8ec7a6;
+}
