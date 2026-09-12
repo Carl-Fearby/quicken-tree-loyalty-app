@@ -1,8 +1,24 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import './globals.css';
 
-export const metadata: Metadata = { title: 'The Quicken Tree | Loyalty', description: 'Book, earn and enjoy more at The Quicken Tree.' };
+export const metadata: Metadata = {
+  title: 'The Quicken Tree | Loyalty',
+  description: 'Book, earn and enjoy more at The Quicken Tree.',
+  applicationName: 'The Quicken Tree',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'The Quicken Tree' },
+  formatDetection: { telephone: false },
+  icons: {
+    icon: [
+      { url: '/pwa/quicken-tree-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/pwa/quicken-tree-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/pwa/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+};
+
+export const viewport: Viewport = { themeColor: '#cf122d', viewportFit: 'cover' };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <html lang="en"><body>{children}</body></html>;
