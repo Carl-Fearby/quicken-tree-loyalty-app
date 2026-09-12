@@ -76,10 +76,10 @@
 .mealPicker b { font-size:14px; }
 .mealPicker > .fa-solid { color:#cf122d; font-size:13px; }
 .mealOverlay { position:absolute; z-index:40; inset:0; display:grid; align-items:end; background:#0008; animation:reveal .2s ease both; }
-.mealSheet { position:relative; display:grid; gap:10px; max-height:88%; overflow:auto; border-radius:26px 26px 0 0; background:#fff; padding:24px 18px 26px; color:#342d27; }
+.mealSheet { position:relative; display:grid; grid-template-rows:auto auto auto minmax(0, 1fr); gap:10px; max-height:88%; overflow:hidden; border-radius:26px 26px 0 0; background:#fff; padding:24px 18px 26px; color:#342d27; }
 .mealSheet h2 { margin:0; font-size:25px; line-height:1.04; }
 .mealSheet > p:not(.eyebrow) { margin:0 0 3px; color:#71685d; font-size:13px; }
-.mealSheet > div { display:grid; gap:8px; }
+.mealSheet > div { display:grid; gap:8px; min-height:0; overflow-y:auto; padding-right:2px; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
 .mealSheet > div > button { display:grid; grid-template-columns:1fr auto; align-items:center; gap:10px; border:1px solid #e7d8c8; border-radius:14px; background:#fff; padding:12px; color:#342d27; text-align:left; }
 .mealSheet > div > button span { display:grid; gap:3px; }
 .mealSheet > div > button b { font-size:14px; }
