@@ -8,12 +8,12 @@
     align-items: center;
     gap: 7px;
     margin: 0 0 3px;
-    color: #665b50;
+    color: var(--qt-color-665b50);
     font-size: 11px;
 }
 
 .booking :global(.fa-solid) {
-    color: #cf122d;
+    color: var(--qt-color-brand);
 }
 
 .lines {
@@ -27,9 +27,9 @@
     gap: 10px;
     align-items: center;
     padding: 12px;
-    border-left: 4px solid #e9b73e;
+    border-left: 4px solid var(--qt-color-e9b73e);
     border-radius: 13px;
-    background: #fff;
+    background: var(--qt-color-surface);
 }
 
 .line b {
@@ -40,13 +40,13 @@
 
 .line p {
     margin: 3px 0 0;
-    color: #71685d;
+    color: var(--qt-color-text-muted);
     font-size: 10px;
     line-height: 1.35;
 }
 
 .line span {
-    color: #cf122d;
+    color: var(--qt-color-brand);
     font-size: 11px;
     font-weight: 700;
     white-space: nowrap;
@@ -59,14 +59,14 @@
     margin-top: 2px;
     padding: 13px 12px;
     border-radius: 14px;
-    background: #f2e9df;
-    color: #4c443c;
+    background: var(--qt-color-surface-muted);
+    color: var(--qt-color-4c443c);
     font-size: 13px;
     font-weight: 600;
 }
 
 .total b {
-    color: #cf122d;
+    color: var(--qt-color-brand);
     font-size: 18px;
 }
 
@@ -76,26 +76,26 @@
     justify-content: center;
     gap: 6px;
     margin: 0;
-    color: #47735e;
+    color: var(--qt-color-47735e);
     font-size: 11px;
     font-weight: 600;
 }
 
 :global(.dark) .line {
-    background: #252321;
-    color: #f7f3ee;
+    background: var(--qt-color-252321);
+    color: var(--qt-color-surface-dark-text);
 }
 
 :global(.dark) .line p,
 :global(.dark) .booking {
-    color: #c5bcb3;
+    color: var(--qt-color-c5bcb3);
 }
 
 :global(.dark) .total {
-    background: #302b27;
-    color: #f7f3ee;
+    background: var(--qt-color-302b27);
+    color: var(--qt-color-surface-dark-text);
 }
 
 :global(.dark) .paid {
-    color: #8ec7a6;
+    color: var(--qt-color-8ec7a6);
 }

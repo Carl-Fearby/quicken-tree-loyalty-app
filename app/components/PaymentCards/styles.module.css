@@ -1,28 +1,28 @@
 .root {padding-bottom:16px; position:relative}
 .root p {font-size:13px;line-height:1.5}
-.card {display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 10px;margin:12px 0;border:1px solid #a58f7540;border-radius:16px;background:#8888880c}
+.card {display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 10px;margin:12px 0;border:1px solid var(--qt-color-a58f7540);border-radius:16px;background:var(--qt-color-8888880c)}
 .brandBadge {display:grid;place-items:center start;flex:0 0 64px;height:36px;background:transparent;overflow:visible}
 .brandBadge.mastercard {background:transparent}
 .brandBadge img {width:54px;max-height:30px;object-fit:contain}
 .card > div {flex:1}
 .numberField {position:relative}
 .numberField input {padding-right:64px !important}
-.numberField.valid input {border-color:#239653 !important;box-shadow:0 0 0 3px #2396531f}
+.numberField.valid input {border-color:var(--qt-color-239653) !important;box-shadow:0 0 0 3px var(--qt-color-2396531f)}
 .luhnValid,.luhnInvalid {margin: -4px 0 8px !important;font-size:11px !important;font-weight:600}
-.luhnValid {color:#23894d}
-.luhnInvalid {color:#c5162b}
-.detectedBrand {position:absolute;right:7px;top:50%;transform:translateY(-50%);color:#1a1f71;font-size:10px;font-weight:900;font-style:italic;pointer-events:none}
+.luhnValid {color:var(--qt-color-23894d)}
+.luhnInvalid {color:var(--qt-color-brand-deep)}
+.detectedBrand {position:absolute;right:7px;top:50%;transform:translateY(-50%);color:var(--qt-color-1a1f71);font-size:10px;font-weight:900;font-style:italic;pointer-events:none}
 .detectedBrand img {display:block;width:46px;max-height:24px;object-fit:contain}
 .card small,.picker small {display:block;margin-top:5px;font-size:12px;opacity:.7}
-.card button {border:0;background:transparent;color:#cf122d;padding:8px;font-size:12px}
+.card button {border:0;background:transparent;color:var(--qt-color-brand);padding:8px;font-size:12px}
 .formActions {display:grid;gap:8px}
-.cancel {border:0;background:transparent;color:#cf122d;padding:10px;font:inherit;font-size:13px;font-weight:700}
+.cancel {border:0;background:transparent;color:var(--qt-color-brand);padding:10px;font:inherit;font-size:13px;font-weight:700}
 .expiryPicker {display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.expiryPicker select {width:100%;border:1px solid #e7d8c8;border-radius:12px;background:#fff;padding:10px 11px;color:#342d27;font:inherit;font-size:13px;appearance:auto}
-.expiryPicker select:focus {border-color:#cf122d;outline:0;box-shadow:0 0 0 3px #cf122d18}
-.sheetBackdrop {position:fixed;inset:0;z-index:20;display:flex;align-items:flex-end;background:#0006}
-.sheet {width:100%;max-height:92%;overflow:auto;padding:22px 18px 24px;border-radius:24px 24px 0 0;background:#fff;box-shadow:0 -12px 30px #0003}
-.sheet::before {content:'';display:block;width:42px;height:4px;margin:-8px auto 18px;border-radius:99px;background:#cfcfcf}
-.picker {margin:18px 0;padding:12px;border:1px solid #a58f7540;border-radius:14px}
+.expiryPicker select {width:100%;border:1px solid var(--qt-color-border);border-radius:12px;background:var(--qt-color-surface);padding:10px 11px;color:var(--qt-color-text);font:inherit;font-size:13px;appearance:auto}
+.expiryPicker select:focus {border-color:var(--qt-color-brand);outline:0;box-shadow:0 0 0 3px var(--qt-color-cf122d18)}
+.sheetBackdrop {position:fixed;inset:0;z-index:20;display:flex;align-items:flex-end;background:var(--qt-color-0006)}
+.sheet {width:100%;max-height:92%;overflow:auto;padding:22px 18px 24px;border-radius:24px 24px 0 0;background:var(--qt-color-surface);box-shadow:0 -12px 30px var(--qt-color-0003)}
+.sheet::before {content:'';display:block;width:42px;height:4px;margin:-8px auto 18px;border-radius:99px;background:var(--qt-color-cfcfcf)}
+.picker {margin:18px 0;padding:12px;border:1px solid var(--qt-color-a58f7540);border-radius:14px}
 .picker label {display:flex;align-items:center;gap:10px;padding:12px 4px;font-size:14px;cursor:pointer}
-.picker input {accent-color:#cf122d}
+.picker input {accent-color:var(--qt-color-brand)}

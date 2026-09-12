@@ -35,7 +35,7 @@
     inset: 0;
     border-radius: var(--device-radius);
     background:
-        radial-gradient(circle at 28% 18%, #ffffff0a 0 8%, transparent 34%),
+        radial-gradient(circle at 28% 18%, var(--qt-color-ffffff0a) 0 8%, transparent 34%),
         linear-gradient(155deg, var(--case-color) 0%, var(--case-shadow) 100%);
     transform: rotateY(180deg) translate3d(0, 0, calc(var(--device-depth) / 2));
 }

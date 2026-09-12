@@ -7,10 +7,10 @@
   gap: 12px;
   margin: -8px 0 13px;
   padding: 8px 11px;
-  border: 1px solid #e7d8c8;
+  border: 1px solid var(--qt-color-border);
   border-radius: 13px;
-  background: #fff;
-  color: #534c45;
+  background: var(--qt-color-surface);
+  color: var(--qt-color-534c45);
   animation: reveal .22s cubic-bezier(.2, .8, .2, 1) both;
 }
 
@@ -23,9 +23,9 @@
   min-width: 116px;
   border: 0;
   border-radius: 8px;
-  background: #f2e9df;
+  background: var(--qt-color-surface-muted);
   padding: 7px 9px;
-  color: #342d27;
+  color: var(--qt-color-text);
   font: inherit;
   font-size: 16px;
   font-weight: 600;
@@ -36,14 +36,14 @@
   gap: 7px;
   margin: 12px 0;
   padding: 10px;
-  border: 1px solid #e7d8c8;
+  border: 1px solid var(--qt-color-border);
   border-radius: 14px;
-  background: #fff;
+  background: var(--qt-color-surface);
 }
 
 .afternoonTeaUpgrade legend {
   padding: 0 4px;
-  color: #cf122d;
+  color: var(--qt-color-brand);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: .5px;
@@ -55,7 +55,7 @@
   align-items: center;
   gap: 9px;
   padding: 7px 5px;
-  color: #342d27;
+  color: var(--qt-color-text);
   cursor: pointer;
 }
 
@@ -63,32 +63,32 @@
   width: 18px;
   height: 18px;
   margin: 0;
-  accent-color: #cf122d;
+  accent-color: var(--qt-color-brand);
 }
 
 .afternoonTeaUpgrade span { display: grid; gap: 2px; }
 .afternoonTeaUpgrade b { font-size: 14px; font-weight: 600; }
-.afternoonTeaUpgrade small { color: #71685d; font-size: 12px; line-height: 1.3; }
+.afternoonTeaUpgrade small { color: var(--qt-color-text-muted); font-size: 12px; line-height: 1.3; }
 
-.mealPicker { display:flex; align-items:center; justify-content:space-between; width:100%; margin:12px 0; border:1px solid #e7d8c8; border-left:4px solid #e4bb3f; border-radius:14px; background:#fff; padding:12px; color:#342d27; text-align:left; }
+.mealPicker { display:flex; align-items:center; justify-content:space-between; width:100%; margin:12px 0; border:1px solid var(--qt-color-border); border-left:4px solid var(--qt-color-accent-gold); border-radius:14px; background:var(--qt-color-surface); padding:12px; color:var(--qt-color-text); text-align:left; }
 .mealPicker span { display:grid; gap:3px; }
-.mealPicker small { color:#71685d; font-size:11px; }
+.mealPicker small { color:var(--qt-color-text-muted); font-size:11px; }
 .mealPicker b { font-size:14px; }
-.mealPicker > .fa-solid { color:#cf122d; font-size:13px; }
-.mealOverlay { position:absolute; z-index:40; inset:0; display:grid; align-items:end; background:#0008; touch-action:none; overscroll-behavior:contain; animation:reveal .2s ease both; }
-.mealSheet { position:relative; display:grid; grid-template-rows:auto auto auto minmax(0, 1fr); gap:10px; max-height:88%; overflow:hidden; border-radius:26px 26px 0 0; background:#fff; padding:24px 18px 26px; color:#342d27; }
+.mealPicker > .fa-solid { color:var(--qt-color-brand); font-size:13px; }
+.mealOverlay { position:absolute; z-index:40; inset:0; display:grid; align-items:end; background:var(--qt-color-0008); touch-action:none; overscroll-behavior:contain; animation:reveal .2s ease both; }
+.mealSheet { position:relative; display:grid; grid-template-rows:auto auto auto minmax(0, 1fr); gap:10px; max-height:88%; overflow:hidden; border-radius:26px 26px 0 0; background:var(--qt-color-surface); padding:24px 18px 26px; color:var(--qt-color-text); }
 .mealSheet h2 { margin:0; font-size:25px; line-height:1.04; }
-.mealSheet > p:not(.eyebrow) { margin:0 0 3px; color:#71685d; font-size:13px; }
+.mealSheet > p:not(.eyebrow) { margin:0 0 3px; color:var(--qt-color-text-muted); font-size:13px; }
 .mealList { display:grid; gap:8px; min-height:0; overflow-y:auto; padding-right:2px; touch-action:pan-y; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
-.mealSheet > div > button { display:grid; grid-template-columns:1fr auto; align-items:center; gap:10px; border:1px solid #e7d8c8; border-radius:14px; background:#fff; padding:12px; color:#342d27; text-align:left; }
+.mealSheet > div > button { display:grid; grid-template-columns:1fr auto; align-items:center; gap:10px; border:1px solid var(--qt-color-border); border-radius:14px; background:var(--qt-color-surface); padding:12px; color:var(--qt-color-text); text-align:left; }
 .mealSheet > div > button span { display:grid; gap:3px; }
 .mealSheet > div > button b { font-size:14px; }
-.mealSheet > div > button small { color:#71685d; font-size:11px; line-height:1.25; }
-.mealSheet > div > button > .fa-solid { color:#cf122d; font-size:13px; }
-.mealSheet > div > button.selectedMeal { border-color:#cf122d; background:#fff8f8; }
-.closeMeals { position:absolute; top:18px; right:18px; display:grid; place-items:center; width:36px; height:36px; border:0; border-radius:50%; background:#f2e9df; color:#534c45; }
-.dietaryNotice { display:flex; align-items:flex-start; gap:9px; margin:12px 0; border:1px solid #e7d8c8; border-left:4px solid #cf122d; border-radius:14px; background:#fff8f8; padding:11px; color:#342d27; }
-.dietaryNotice > .fa-solid { margin-top:2px; color:#cf122d; font-size:14px; }.dietaryNotice span { display:grid; gap:3px; }.dietaryNotice b { font-size:13px; }.dietaryNotice small { color:#71685d; font-size:11px; line-height:1.3; }
+.mealSheet > div > button small { color:var(--qt-color-text-muted); font-size:11px; line-height:1.25; }
+.mealSheet > div > button > .fa-solid { color:var(--qt-color-brand); font-size:13px; }
+.mealSheet > div > button.selectedMeal { border-color:var(--qt-color-brand); background:var(--qt-color-fff8f8); }
+.closeMeals { position:absolute; top:18px; right:18px; display:grid; place-items:center; width:36px; height:36px; border:0; border-radius:50%; background:var(--qt-color-surface-muted); color:var(--qt-color-534c45); }
+.dietaryNotice { display:flex; align-items:flex-start; gap:9px; margin:12px 0; border:1px solid var(--qt-color-border); border-left:4px solid var(--qt-color-brand); border-radius:14px; background:var(--qt-color-fff8f8); padding:11px; color:var(--qt-color-text); }
+.dietaryNotice > .fa-solid { margin-top:2px; color:var(--qt-color-brand); font-size:14px; }.dietaryNotice span { display:grid; gap:3px; }.dietaryNotice b { font-size:13px; }.dietaryNotice small { color:var(--qt-color-text-muted); font-size:11px; line-height:1.3; }
 
 @keyframes reveal {
   from { opacity: 0; transform: translateY(-5px); }
