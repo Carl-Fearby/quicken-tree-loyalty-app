@@ -178,3 +178,12 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}h
     padding-top:max(26px,calc(env(safe-area-inset-top) + 26px))!important;
   }
 }
+
+/* Temporary PWA viewport probe: it must meet every physical app edge. */
+.pwaViewportFrame{
+  position:fixed;
+  z-index:10000;
+  inset:0;
+  border:4px solid #1677ff;
+  pointer-events:none;
+}
