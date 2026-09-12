@@ -4,13 +4,15 @@
   "tier": "Quicken Member",
   "benefits": "Priority tables, birthday treats & early event access.",
   "promotions": {
-    "doublePoints": {
-      "label": "Member happy hours",
-      "start": "11:00",
-      "end": "16:00",
-      "displayHours": "11 AM–4 PM",
-      "displayDays": "Monday–Saturday",
-      "days": [1, 2, 3, 4, 5, 6]
-    }
+    "doublePoints": [
+      {
+        "label": "Member happy hours",
+        "start": "11:00",
+        "end": "16:00",
+        "displayHours": "11 AM–4 PM",
+        "displayDays": "Monday–Saturday",
+        "days": [1, 2, 3, 4, 5, 6]
+      }
+    ]
   }
 }

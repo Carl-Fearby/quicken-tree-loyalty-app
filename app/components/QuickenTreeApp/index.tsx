@@ -188,8 +188,12 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     const todayValue = toInputDate(new Date());
     const activeMenuService = orderAheadBooking ? menuServiceFor(orderAheadBooking) : null;
     const selectedBookingService = time ? menuServiceFor({date: bookingDate, time}) : null;
-    const doublePointsPromotion = pointsData.promotions.doublePoints;
-    const bookingEarnsDoublePoints = Boolean(time) && doublePointsPromotion.days.includes(fromInputDate(bookingDate).getDay()) && isTimeInWindow(time, doublePointsPromotion.start, doublePointsPromotion.end);
+    const bookingDay = fromInputDate(bookingDate).getDay();
+    const doublePointsPromotion = pointsData.promotions.doublePoints.find(promotion => promotion.days.includes(bookingDay));
+    const defaultDoublePointsPromotion = pointsData.promotions.doublePoints[0];
+    const bookingEarnsDoublePoints = Boolean(time) && doublePointsPromotion
+        ? isTimeInWindow(time, doublePointsPromotion.start, doublePointsPromotion.end)
+        : false;
     const availableMenuCategories = activeMenuService
         ? menuCategories.filter(category => activeMenuService.categories.includes(category.label))
         : menuCategories;
@@ -482,7 +486,8 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                                                dietaryNeeds={dietaryNeeds}
                                                                availableMenuService={selectedBookingService?.label}
                                                                availableMenuCategories={selectedBookingService?.categories ?? []}
-                                                               doublePointsPromotion={doublePointsPromotion}
+                                                               doublePointsPromotion={doublePointsPromotion ?? defaultDoublePointsPromotion}
+                                                               doublePointsAvailableOnBookingDay={Boolean(doublePointsPromotion)}
                                                                bookingEarnsDoublePoints={bookingEarnsDoublePoints}
                                                                guestCount={guestCount} date={bookingDate}
                                                                formatDate={value => formatDate(fromInputDate(value))}
