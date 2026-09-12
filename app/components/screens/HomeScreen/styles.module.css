@@ -2,4 +2,5 @@
 .logoButton { position: relative; display: block; width: fit-content; padding: 0; border: 0; background: transparent; border-radius: 5px; cursor: pointer; }
 .logoButton img { display: block; }
 .logoButton:focus-visible { outline: 2px solid #efc14b; outline-offset: 4px; }
-:global(.hero) .heartOfEnglandLogo { position: absolute; right: 14px; bottom: 13px; z-index: 2; display: block; width: 116px; height: auto; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; opacity: .92; }
+.heartOfEnglandLogo { position: absolute; right: 14px; bottom: 13px; z-index: 2; display: grid; place-items: center; width: 124px; min-height: 48px; margin: 0; padding: 7px 9px; border-radius: 10px; background: #090909; box-shadow: 0 5px 14px #0005; }
+.heartOfEnglandLogo img { display: block; width: 100%; height: auto; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
