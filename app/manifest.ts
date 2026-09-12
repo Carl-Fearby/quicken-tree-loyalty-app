@@ -9,9 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Book, earn rewards and order ahead at The Quicken Tree.',
     start_url: '/',
     scope: '/',
-    // Prefer the edge-to-edge app surface; browsers that do not support it
-    // fall back through the standard manifest display-mode chain.
-    display: 'fullscreen',
+    display: 'standalone',
     background_color: '#f7f7f7',
     theme_color: '#cf122d',
     icons: [
