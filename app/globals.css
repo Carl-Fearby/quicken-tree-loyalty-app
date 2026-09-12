@@ -153,25 +153,25 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}h
 
 /* App type scale: supporting copy and navigation need to remain comfortably
    legible on a real phone, not only in the enlarged desktop device preview. */
-.appShell .eyebrow{font-size:12px!important;}
-.appShell nav button{font-size:11px!important;}
+.appShell .eyebrow{font-size:13px!important;}
+.appShell nav button{font-size:12px!important;}
 .appShell nav button i{font-size:22px!important;}
 .appShell .actions button,.appShell .bookingTypes button,.appShell .orderAhead,
-.appShell .addToOrder,.appShell .savedOrder span b,.appShell .bookingActions button{font-size:12px!important;}
+.appShell .addToOrder,.appShell .savedOrder span b,.appShell .bookingActions button{font-size:13px!important;}
 .appShell .actions button small,.appShell .bookingTypes button small,
 .appShell .experiencePrice span small,.appShell .experiencePrice span em{font-size:10px!important;}
 .appShell .event>div>b,.appShell .reward b,.appShell .homeBooking b,
-.appShell .menuItem b,.appShell .cartItem>div>b{font-size:14px!important;}
+.appShell .menuItem b,.appShell .cartItem>div>b{font-size:15px!important;}
 .appShell .event p,.appShell .reward p,.appShell .homeBooking small,
 .appShell .menuItem p,.appShell .cartItem p,.appShell .savedOrder span small,
-.appShell .menuService,.appShell .dietaryLegend{font-size:12px!important;}
+.appShell .menuService,.appShell .dietaryLegend{font-size:13px!important;}
 .appShell .menuItem strong,.appShell .savedBooking span,.appShell .savedBooking small,
 .appShell .bookingSummary p,.appShell .bookingSummary small,.appShell .detailLabel,
 .appShell .checkoutSummary p,.appShell .checkoutSummary small,.appShell .checkoutFine,
-.appShell .preOrderBanner,.appShell .noTimes,.appShell .emptyBookings p{font-size:12px!important;}
-.appShell .setting{font-size:14px!important;}
+.appShell .preOrderBanner,.appShell .noTimes,.appShell .emptyBookings p{font-size:13px!important;}
+.appShell .setting{font-size:15px!important;}
 .appShell .account small,.appShell .venueCard small,.appShell .profileIntro,
-.appShell .contactAction,.appShell .tasteChoices button{font-size:13px!important;}
+.appShell .contactAction,.appShell .tasteChoices button{font-size:14px!important;}
 .appShell .redeemPass>small,.appShell .redeemFine,.appShell .weekdays span{font-size:11px!important;}
 
 /* WebKit can retain its own link paint in a standalone web app. Explicitly
