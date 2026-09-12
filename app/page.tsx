@@ -46,7 +46,7 @@ export default function Page() {
     const previewDevice = {...device, scale: previewScale};
 
     useEffect(() => {
-        const standalone = window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as Navigator & {standalone?: boolean}).standalone);
+        const standalone = window.matchMedia('(display-mode: fullscreen)').matches || window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as Navigator & {standalone?: boolean}).standalone);
         setIsStandalonePwa(standalone);
         if (standalone) setShowDevice(false);
         if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => undefined);
