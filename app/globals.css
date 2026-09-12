@@ -174,11 +174,6 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:#fafafa!important}h
     bottom:auto!important;
   }
 
-  .stage.appOnly .appShell nav{
-    align-items:flex-end!important;
-    padding-bottom:calc(2px + env(safe-area-inset-bottom))!important;
-  }
-
 }
 
 /* Temporary PWA viewport probe: it must meet every physical app edge. */
