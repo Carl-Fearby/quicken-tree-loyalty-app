@@ -23,6 +23,7 @@ import {BookingCancellationDialog} from '../BookingCancellationDialog';
 import {AppNavigationProvider} from '../../contexts/AppNavigation';
 import {LoyaltyApp} from '../LoyaltyApp';
 import {PaymentCards, PaymentMethodPicker, usePaymentCards} from '../PaymentCards';
+import {checkForContentUpdate} from '../../lib/content-sync';
 
 type View = 'home' | 'book' | 'details' | 'checkout' | 'bookings' | 'menu' | 'cart' | 'order-summary' | 'rewards' | 'profile';
 type Booking = {
@@ -174,6 +175,11 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
         const today = new Date();
         return new Date(today.getFullYear(), today.getMonth(), 1, 12);
     });
+    useEffect(() => {
+        // The cache is populated only when the server reports a newer version.
+        // Bundled JSON remains the safe offline fallback during this first rollout.
+        checkForContentUpdate().catch(() => undefined);
+    }, []);
     const times = availableSlots(bookingDate);
     const bookingTimes = bookingExperience === 'Bottomless Brunch' ? (fromInputDate(bookingDate).getDay() === 0 ? [] : times.filter(slot => slot >= '12:00' && slot <= '19:30')) : bookingExperience === 'Afternoon Tea' ? times.filter(slot => slot >= '12:00' && slot <= '17:00') : times;
     const experiencePrice = experiencePrices[bookingExperience];
