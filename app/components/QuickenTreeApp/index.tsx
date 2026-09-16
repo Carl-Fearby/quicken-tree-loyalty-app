@@ -15,7 +15,7 @@ import {UpcomingBookings} from '../UpcomingBookings';
 import {WingOptionsDialog} from '../WingOptionsDialog';
 import {PieChoiceDialog} from '../PieChoiceDialog';
 import {HomeScreen} from '../screens/HomeScreen';
-import {CartScreen, type CartLine} from '../screens/CartScreen';
+import {CartScreen, type CartLine, type OrderGuestDetails} from '../screens/CartScreen';
 import {OrderSummaryScreen} from '../screens/OrderSummaryScreen';
 import {MenuScreen} from '../screens/MenuScreen';
 import {BookingScreen} from '../screens/BookingScreen';
@@ -42,7 +42,7 @@ type Booking = {
     notes: string
 };
 type OrderSummary = { itemCount: number; total: number };
-type PlacedOrder = { lines: CartLine[]; total: number; paidAt: string };
+type PlacedOrder = { lines: CartLine[]; total: number; paidAt: string; guestDetails?: OrderGuestDetails };
 
 const bookingStorageKey = bookingsData.storageKey;
 const profileStorageKey = profileData.storageKey;
@@ -104,6 +104,7 @@ const nextBookableDate = (now = new Date()) => {
 };
 const priceValue = (price: string) => Number(price.match(/£([\d.]+)/)?.[1] ?? 0);
 const orderDraftStorageKey = (bookingId: string) => `quicken-tree-order-ahead-${bookingId}`;
+const orderGuestDetailsStorageKey = (bookingId: string) => `quicken-tree-order-guests-${bookingId}`;
 const placedOrderStorageKey = (bookingId: string) => `quicken-tree-placed-order-${bookingId}`;
 const iCalendarEscape = (value: string) => value.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 const iCalendarTimestamp = (date: Date) => `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}00`;
@@ -146,6 +147,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     const [orderAheadBooking, setOrderAheadBooking] = useState<Booking | null>(null);
     const [menuSearch, setMenuSearch] = useState('');
     const [preOrderItems, setPreOrderItems] = useState<Record<string, number>>({});
+    const [orderGuestDetails, setOrderGuestDetails] = useState<OrderGuestDetails>({names: [], assignments: {}});
     const [bookingOrderSummaries, setBookingOrderSummaries] = useState<Record<string, OrderSummary>>({});
     const [placedOrders, setPlacedOrders] = useState<Record<string, PlacedOrder>>({});
     const [selectedPlacedOrderBooking, setSelectedPlacedOrderBooking] = useState<Booking | null>(null);
@@ -266,6 +268,19 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
         });
     }, [orderAheadBooking, preOrderItems]);
     useEffect(() => {
+        if (!orderAheadBooking) return;
+        setOrderGuestDetails(current => {
+            const assignments = Object.fromEntries(Object.entries(preOrderItems).map(([name, quantity]) => [name, Array.from({length: quantity}, (_, index) => current.assignments[name]?.[index] ?? 'To share')]));
+            return {...current, assignments};
+        });
+    }, [orderAheadBooking, preOrderItems]);
+    useEffect(() => {
+        if (!orderAheadBooking) return;
+        const hasGuestAssignments = Object.values(orderGuestDetails.assignments).some(assignments => assignments.some(guest => guest !== 'To share'));
+        if (orderGuestDetails.names.length > 1 || hasGuestAssignments) window.localStorage.setItem(orderGuestDetailsStorageKey(orderAheadBooking.id), JSON.stringify(orderGuestDetails));
+        else window.localStorage.removeItem(orderGuestDetailsStorageKey(orderAheadBooking.id));
+    }, [orderAheadBooking, orderGuestDetails]);
+    useEffect(() => {
         try {
             const stored = window.localStorage.getItem(profileStorageKey);
             if (stored) {
@@ -307,11 +322,13 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
         if (next === 'home') {
             setOrderAheadBooking(null);
             setPreOrderItems({});
+            setOrderGuestDetails({names: [], assignments: {}});
             setRedemption(null);
         }
         if (next === 'menu' && !preserveOrderAhead) {
             setOrderAheadBooking(null);
             setPreOrderItems({});
+            setOrderGuestDetails({names: [], assignments: {}});
         }
         setView(next);
     };
@@ -362,9 +379,10 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     const continueFromDetails = () => bookingExperience === 'Table' ? requestTable() : (setCheckoutMode('booking'), navigate('checkout'));
     const completeOrder = () => {
         if (orderAheadBooking && preOrderLines.length) {
-            const placedOrder: PlacedOrder = {lines: preOrderLines, total: preOrderTotal, paidAt: new Date().toISOString()};
+            const placedOrder: PlacedOrder = {lines: preOrderLines, total: preOrderTotal, paidAt: new Date().toISOString(), guestDetails: orderGuestDetails};
             window.localStorage.setItem(placedOrderStorageKey(orderAheadBooking.id), JSON.stringify(placedOrder));
             window.localStorage.removeItem(orderDraftStorageKey(orderAheadBooking.id));
+            window.localStorage.removeItem(orderGuestDetailsStorageKey(orderAheadBooking.id));
             setPlacedOrders(current => ({...current, [orderAheadBooking.id]: placedOrder}));
             setBookingOrderSummaries(current => {
                 const next = {...current};
@@ -374,6 +392,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
         }
         setPaymentState('idle');
         setPreOrderItems({});
+        setOrderGuestDetails({names: [], assignments: {}});
         setOrderAheadBooking(null);
         navigate('bookings');
     };
@@ -384,13 +403,21 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     };
     const startOrderAhead = (booking: Booking) => {
         let savedOrder: Record<string, number> = {};
+        let savedGuestDetails: OrderGuestDetails = {names: [booking.name], assignments: {}};
         try {
             savedOrder = JSON.parse(window.localStorage.getItem(orderDraftStorageKey(booking.id)) ?? '{}');
         } catch {
             savedOrder = {};
         }
+        try {
+            const storedDetails = JSON.parse(window.localStorage.getItem(orderGuestDetailsStorageKey(booking.id)) ?? 'null') as OrderGuestDetails | null;
+            if (storedDetails && Array.isArray(storedDetails.names) && storedDetails.assignments) savedGuestDetails = storedDetails;
+        } catch {
+            // Fall back to the booking lead's name for a new or malformed draft.
+        }
         setOrderAheadBooking(booking);
         setPreOrderItems(savedOrder);
+        setOrderGuestDetails(savedGuestDetails);
         setMenuSearch('');
         const service = menuServiceFor(booking);
         const firstAvailableCategory = service?.categories.find(label => menuCategories.some(category => category.label === label));
@@ -430,6 +457,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
     };
     const cancelBooking = (booking: Booking, hasOrder: boolean) => {
         window.localStorage.removeItem(orderDraftStorageKey(booking.id));
+        window.localStorage.removeItem(orderGuestDetailsStorageKey(booking.id));
         window.localStorage.removeItem(placedOrderStorageKey(booking.id));
         setBookings(current => current.filter(currentBooking => currentBooking.id !== booking.id));
         setBookingOrderSummaries(current => {
@@ -588,6 +616,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                 </section>}</>}
                             {view === 'order-summary' && selectedPlacedOrderBooking && placedOrders[selectedPlacedOrderBooking.id] &&
                                 <OrderSummaryScreen booking={selectedPlacedOrderBooking} lines={placedOrders[selectedPlacedOrderBooking.id].lines}
+                                                    guestDetails={placedOrders[selectedPlacedOrderBooking.id].guestDetails}
                                                     total={placedOrders[selectedPlacedOrderBooking.id].total}
                                                     onBack={() => navigate('bookings')}/>}
                             {view === 'menu' && <MenuScreen categories={availableMenuCategories} selectedCategory={selectedMenuCategory.label}
@@ -603,7 +632,7 @@ export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark
                                                                 setWingSizePrompt(true);
                                                             }} onPromptPie={() => setPieChoicePrompt(true)} onBook={() => navigate('book')}/>}
                             {view === 'cart' &&
-                                <CartScreen key={`cart-${preOrderLines.map(line => `${line.name}:${line.quantity}`).join('|')}`} lines={preOrderLines} total={preOrderTotal} booking={orderAheadBooking}
+                                <CartScreen lines={preOrderLines} total={preOrderTotal} booking={orderAheadBooking} guestDetails={orderGuestDetails} onGuestDetailsChange={setOrderGuestDetails}
                                             onBack={() => navigate('menu', true)} onAdd={addToOrder}
                                             onRemove={removeFromOrder} onDelete={name => setPreOrderItems(current => {
                                     const next = {...current};

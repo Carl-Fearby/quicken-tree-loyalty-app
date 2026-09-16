@@ -21,6 +21,20 @@
     gap: 8px;
 }
 
+.group {
+    display: grid;
+    gap: 6px;
+}
+
+.guest {
+    margin: 3px 1px 0;
+    color: var(--qt-color-brand);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
 .line {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
