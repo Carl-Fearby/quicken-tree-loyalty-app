@@ -10,7 +10,7 @@ export function OrderSummaryScreen({booking, lines, total, guestDetails, onBack}
         <p className="eyebrow">Order placed</p>
         <h1>Your<br/>order.</h1>
         <p className={styles.booking}><Icon name="fa-calendar-check"/> Ready for your booking at {booking.time} · {booking.guests}</p>
-        <div className={styles.lines}>{groups.map(group => <section className={styles.group} key={group.guest}>{groups.length > 1 && <p className={styles.guest}>{group.guest}</p>}{group.lines.map((line, index) => <article className={styles.line} key={`${group.guest}-${line.name}-${index}`}>
+        <div className={styles.lines}>{groups.map(group => <section className={styles.group} key={group.guest}><p className={styles.guest}>{group.guest === 'To share' ? 'Sharing dishes' : group.guest}</p>{group.lines.map((line, index) => <article className={styles.line} key={`${group.guest}-${line.name}-${index}`}>
             <div><b>{line.name}</b><p>{line.description}</p></div>
             <span>£{line.price.toFixed(2)}</span>
         </article>)}</section>)}</div>
