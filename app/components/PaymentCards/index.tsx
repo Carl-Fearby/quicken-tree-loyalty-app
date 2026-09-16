@@ -3,6 +3,7 @@
 import {useEffect, useState} from 'react';
 import data from '../../data/payment-cards.json';
 import styles from './styles.module.css';
+import {Icon} from '../Icon';
 
 export type SavedCard = {id: string; brand: string; last4: string; expiry: string; name: string};
 const seeds: SavedCard[] = data.cards.map(({number, ...card}) => card);
@@ -36,6 +37,12 @@ function hasValidLength(value: string, brand: string) {
     if (brand === 'Discover') return [16, 19].includes(length);
     if (brand === 'JCB') return length >= 16 && length <= 19;
     return false;
+}
+
+function Dropdown({value, placeholder, options, onChange}: {value: string; placeholder: string; options: {value: string; label: string}[]; onChange: (value: string) => void}) {
+    const [open, setOpen] = useState(false);
+    const label = options.find(option => option.value === value)?.label ?? placeholder;
+    return <div className={styles.dropdown}><button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(current => !current)}>{label}<Icon name="fa-chevron-down"/></button>{open && <div className={styles.dropdownOptions} role="listbox">{options.map(option => <button type="button" key={option.value} role="option" aria-selected={option.value === value} className={option.value === value ? styles.selectedOption : ''} onClick={() => {onChange(option.value); setOpen(false);}}>{option.label}</button>)}</div>}</div>;
 }
 
 export function usePaymentCards() {
@@ -96,7 +103,7 @@ export function PaymentCards({cards, onChange}: {cards: SavedCard[]; onChange: (
             <label className="detailLabel">Number<div className={`${styles.numberField} ${detectedBrand && hasValidLength(number, detectedBrand) && passesLuhn(number) ? styles.valid : ''}`}><input name="demo-input" value={number} onChange={event => { const digits = event.target.value.replace(/\D/g, '').slice(0, 19); setNumber(digits.replace(/(.{4})/g, '$1 ').trim()); }} onBlur={() => setNumberTouched(true)} inputMode="numeric" autoComplete="off" maxLength={23} placeholder="0000 0000 0000 0000" required/><span className={styles.detectedBrand}>{detectedBrand && <img src={`/card-brands/${detectedBrand.toLowerCase().replace(/\s+/g, '')}.svg`} alt={detectedBrand}/>}</span></div></label>
             {((numberTouched && !number.replace(/\D/g, '').length) || number.replace(/\D/g, '').length > 0) && <p className={hasValidLength(number, detectedBrand) && passesLuhn(number) && detectedBrand ? styles.luhnValid : styles.luhnInvalid} aria-live="polite">{hasValidLength(number, detectedBrand) && passesLuhn(number) && detectedBrand ? '✓ Card number looks valid' : (number.replace(/\D/g, '').length ? 'Card is invalid' : 'Enter a valid card number')}</p>}
             <label className="detailLabel">Name on card<input value={name} onChange={event => setName(event.target.value)} maxLength={80} required/></label>
-            <label className="detailLabel">Expiry (MM/YY)<div className={styles.expiryPicker}><select value={expiryParts[0] ?? ''} onChange={event => setExpiry(`${event.target.value}/${expiryParts[1] ?? ''}`)} required><option value="">Month</option>{Array.from({length: 12}, (_, index) => { const month = String(index + 1).padStart(2, '0'); return <option key={month} value={month}>{month}</option>; })}</select><select value={expiryParts[1] ?? ''} onChange={event => setExpiry(`${expiryParts[0] ?? ''}/${event.target.value}`)} required><option value="">Year</option>{expiryYears.map(year => <option key={year} value={year}>20{year}</option>)}</select></div></label>
+            <label className="detailLabel">Expiry (MM/YY)<div className={styles.expiryPicker}><Dropdown value={expiryParts[0] ?? ''} placeholder="Month" options={Array.from({length: 12}, (_, index) => { const month = String(index + 1).padStart(2, '0'); return {value: month, label: month}; })} onChange={month => setExpiry(`${month}/${expiryParts[1] ?? ''}`)}/><Dropdown value={expiryParts[1] ?? ''} placeholder="Year" options={expiryYears.map(year => ({value: year, label: `20${year}`}))} onChange={year => setExpiry(`${expiryParts[0] ?? ''}/${year}`)}/></div></label>
             {error && <p role="alert">{error}</p>}
             <div className={styles.formActions}><button className="cta" type="submit">Save card</button><button className={styles.cancel} type="button" onClick={() => {setAdding(false); clearForm();}}>Cancel</button></div>
         </form></div>}
