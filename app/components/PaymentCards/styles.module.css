@@ -18,8 +18,8 @@
 .formActions {display:grid;gap:8px}
 .cancel {border:0;background:transparent;color:var(--qt-color-brand);padding:10px;font:inherit;font-size:13px;font-weight:700}
 .expiryPicker {display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.expiryPicker select {width:100%;border:1px solid var(--qt-color-border);border-radius:12px;background:var(--qt-color-surface);padding:10px 11px;color:var(--qt-color-text);font:inherit;font-size:13px;appearance:auto}
-.expiryPicker select:focus {border-color:var(--qt-color-brand);outline:0;box-shadow:0 0 0 3px var(--qt-color-cf122d18)}
+.expiryPicker select {width:100%;border:0;border-radius:14px;background:var(--qt-color-surface-muted);padding:10px 11px;color:var(--qt-color-text);font:inherit;font-size:13px;appearance:auto}
+.expiryPicker select:focus {outline:0;box-shadow:0 0 0 3px var(--qt-color-cf122d18)}
 .sheetBackdrop {position:fixed;inset:0;z-index:20;display:flex;align-items:flex-end;background:var(--qt-color-0006)}
 .sheet {width:100%;max-height:92%;overflow:auto;padding:22px 18px 24px;border-radius:24px 24px 0 0;background:var(--qt-color-surface);box-shadow:0 -12px 30px var(--qt-color-shadow-subtle)}
 .sheet::before {content:'';display:block;width:42px;height:4px;margin:-8px auto 18px;border-radius:99px;background:var(--qt-color-cfcfcf)}

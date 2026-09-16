@@ -1,14 +1,15 @@
 .root { display: contents; }
 
 .largeParty {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   margin: -8px 0 13px;
   padding: 8px 11px;
-  border: 1px solid var(--qt-color-border);
-  border-radius: 13px;
+  border: 0;
+  border-radius: 16px;
   background: var(--qt-color-surface);
   color: var(--qt-color-text-secondary);
   animation: reveal .22s cubic-bezier(.2, .8, .2, 1) both;
@@ -19,10 +20,14 @@
   font-weight: 600;
 }
 
-.largeParty select {
+.partySelect {
+  position: relative;
+}
+
+.partySelect > button {
   min-width: 116px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--qt-color-surface-muted);
   padding: 7px 9px;
   color: var(--qt-color-text);
@@ -30,6 +35,38 @@
   font-size: 16px;
   font-weight: 600;
 }
+
+.partySelect > button .fa-solid { margin-left: 7px; color: var(--qt-color-brand); font-size: 10px; }
+
+.partyOptions {
+  position: absolute;
+  z-index: 12;
+  right: 0;
+  bottom: calc(100% + 7px);
+  display: grid;
+  width: 142px;
+  max-height: 236px;
+  overflow-y: auto;
+  border: 0;
+  border-radius: 15px;
+  background: var(--qt-color-surface-muted);
+  box-shadow: 0 12px 28px var(--qt-color-shadow-subtle);
+  padding: 5px;
+}
+
+.partyOptions button {
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  padding: 10px 11px;
+  color: var(--qt-color-text);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+}
+
+.partyOptions button:hover,
+.selectedPartyOption { background: var(--qt-color-brand-surface) !important; color: var(--qt-color-brand) !important; }
 
 .afternoonTeaUpgrade {
   display: grid;
