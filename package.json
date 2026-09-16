@@ -3,21 +3,29 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "api:dev": "tsx server/src/index.ts",
+    "api:seed": "tsx server/src/seed-content.ts",
+    "api:typecheck": "tsc -p server/tsconfig.json",
     "build": "next build",
     "start": "next start"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.1",
     "@types/jsbarcode": "^3.11.4",
+    "dotenv": "^17.4.2",
+    "fastify": "^5.12.5",
     "jsbarcode": "^3.12.3",
     "next": "16.3.4",
+    "postgres": "^3.4.9",
     "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react-dom": "19.0.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19.3.0",
+    "tsx": "^4.23.13",
     "typescript": "^5"
   }
 }
