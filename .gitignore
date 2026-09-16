@@ -13,6 +13,7 @@
 
 # local environment files
 .env*
+*.tsbuildinfo
 
 # system files
 .DS_Store
