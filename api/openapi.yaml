@@ -1,0 +1,74 @@
+openapi: 3.1.0
+info:
+  title: Quicken Tree Content API
+  version: 1.0.0
+  description: Platform-neutral content delivery and management contract for the loyalty app.
+paths:
+  /content:
+    get:
+      summary: Compare a device content version and receive changed content only when needed.
+      parameters:
+        - in: query
+          name: version
+          schema: {type: string}
+      responses:
+        '200':
+          description: Content is current or an updated dataset is available.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/NoChange'
+                  - $ref: '#/components/schemas/ChangedContent'
+  /content-admin:
+    get:
+      summary: Read the current content for management.
+      security: [{AdminToken: []}]
+      responses: {'200': {description: Current content}}
+    put:
+      summary: Publish a replacement dataset as a new version.
+      security: [{AdminToken: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, data]
+              properties:
+                version: {type: string, description: Optimistic-lock version currently being edited.}
+                data: {$ref: '#/components/schemas/AppContent'}
+      responses:
+        '200': {description: New version published}
+        '401': {description: Missing or invalid admin token}
+        '409': {description: Content changed since it was loaded}
+components:
+  securitySchemes:
+    AdminToken: {type: http, scheme: bearer}
+  schemas:
+    NoChange:
+      type: object
+      required: [version, updatedAt, changed]
+      properties:
+        version: {type: string}
+        updatedAt: {type: string, format: date-time}
+        changed: {const: false}
+    ChangedContent:
+      type: object
+      required: [version, updatedAt, changed, data]
+      properties:
+        version: {type: string}
+        updatedAt: {type: string, format: date-time}
+        changed: {const: true}
+        data: {$ref: '#/components/schemas/AppContent'}
+    AppContent:
+      type: object
+      required: [menu, appointments, points, profile, rewards, appConfig, mainMenu]
+      properties:
+        menu: {type: object, additionalProperties: true}
+        appointments: {type: object, additionalProperties: true}
+        points: {type: object, additionalProperties: true}
+        profile: {type: object, additionalProperties: true}
+        rewards: {type: object, additionalProperties: true}
+        appConfig: {type: object, additionalProperties: true}
+        mainMenu: {type: object, additionalProperties: true}

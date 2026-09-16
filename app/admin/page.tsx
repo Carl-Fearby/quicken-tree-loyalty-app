@@ -2,14 +2,16 @@
 
 import {useState} from 'react';
 
+const contentApiBase = process.env.NEXT_PUBLIC_CONTENT_API_URL ?? '/api';
+
 type ManagedContent = {version: string; updatedAt: string; data: {menu: {outOfStockItems: string[]; menuItems: Record<string, {items: [string, string, string][]}[]>}}};
 
 export default function ContentAdminPage() {
     const [token, setToken] = useState('');
     const [content, setContent] = useState<ManagedContent | null>(null);
-    const [message, setMessage] = useState('Enter the admin token configured in Netlify to load live content.');
+    const [message, setMessage] = useState('Enter the administrator token configured on your chosen content API to load live content.');
     const request = async (method: 'GET' | 'PUT', body?: unknown) => {
-        const response = await fetch('/api/content-admin', {method, headers: {'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined});
+        const response = await fetch(`${contentApiBase.replace(/\/$/, '')}/content-admin`, {method, headers: {'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined});
         if (!response.ok) throw new Error(response.status === 401 ? 'The admin token was not accepted.' : await response.text());
         return response.json() as Promise<ManagedContent>;
     };
