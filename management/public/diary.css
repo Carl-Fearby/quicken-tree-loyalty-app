@@ -1,9 +1,9 @@
 :root{--diary-bg:#fff;--diary-line:#e0e4e9;--diary-muted:#697381;--diary-heading:#f4f6f8}
 [data-theme="dark"]{--diary-bg:#1b222c;--diary-line:#374352;--diary-muted:#aeb9c8;--diary-heading:#232d39}
-#booking-workspace{padding:28px;height:calc(100dvh - 88px);overflow:auto}
+#booking-workspace{display:flex;flex-direction:column;gap:16px;padding:28px;height:calc(100dvh - 88px);overflow:hidden}
 .diary-toolbar,.diary-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .diary-controls label{display:flex;align-items:center;gap:8px}.diary-controls input{width:auto;margin:0}
-.diary-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:20px;height:calc(100% - 125px);min-height:400px}
+.diary-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:20px;flex:1;min-height:0}
 .diary-bookings{width:auto;padding:18px;overflow:auto;border:1px solid var(--diary-line);border-radius:12px;background:var(--diary-bg)}
 .diary-bookings h2{font-size:16px}.diary-bookings p,#diary-summary{font-size:13px;color:var(--diary-muted);line-height:1.5}
 .diary-booking{padding:14px 0;border-top:1px solid var(--diary-line)}.diary-booking h3{font-size:14px;margin:0}.diary-booking p{margin:6px 0}
@@ -11,7 +11,7 @@
 #diary-grid{display:grid;grid-template-columns:150px repeat(24,64px);width:max-content}
 #diary-grid>div{min-height:32px;padding:7px 8px;border-right:1px solid var(--diary-line);border-bottom:1px solid var(--diary-line);font-size:12px}
 .diary-table{position:sticky;left:0;z-index:2;background:var(--diary-heading);font-weight:600}.diary-hour{position:sticky;top:0;z-index:3;background:var(--diary-heading)}.diary-hour.diary-table{z-index:4}
-@media(max-width:850px){.diary-layout{grid-template-columns:1fr;height:auto}.diary-scroll{height:65vh}.diary-bookings{max-height:300px}}
+@media(max-width:850px){#booking-workspace{height:auto;min-height:calc(100dvh - 88px);overflow:visible}.diary-layout{grid-template-columns:1fr;height:auto}.diary-scroll{height:65vh}.diary-bookings{max-height:300px}}
 
 .diary-config{margin:16px 0;padding:12px;border:1px solid var(--diary-line);border-radius:12px;background:var(--diary-bg)}
 .diary-config summary{cursor:pointer;font-weight:600}
