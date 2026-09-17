@@ -1,0 +1,30 @@
+:root{--diary-bg:#fff;--diary-line:#e0e4e9;--diary-muted:#697381;--diary-heading:#f4f6f8}
+[data-theme="dark"]{--diary-bg:#1b222c;--diary-line:#374352;--diary-muted:#aeb9c8;--diary-heading:#232d39}
+#booking-workspace{padding:28px;height:calc(100dvh - 88px);overflow:auto}
+.diary-toolbar,.diary-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.diary-controls label{display:flex;align-items:center;gap:8px}.diary-controls input{width:auto;margin:0}
+.diary-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:20px;height:calc(100% - 125px);min-height:400px}
+.diary-bookings{width:auto;padding:18px;overflow:auto;border:1px solid var(--diary-line);border-radius:12px;background:var(--diary-bg)}
+.diary-bookings h2{font-size:16px}.diary-bookings p,#diary-summary{font-size:13px;color:var(--diary-muted);line-height:1.5}
+.diary-booking{padding:14px 0;border-top:1px solid var(--diary-line)}.diary-booking h3{font-size:14px;margin:0}.diary-booking p{margin:6px 0}
+.diary-scroll{overflow:auto;border:1px solid var(--diary-line);border-radius:12px;background:var(--diary-bg)}
+#diary-grid{display:grid;grid-template-columns:150px repeat(24,64px);width:max-content}
+#diary-grid>div{min-height:32px;padding:7px 8px;border-right:1px solid var(--diary-line);border-bottom:1px solid var(--diary-line);font-size:12px}
+.diary-table{position:sticky;left:0;z-index:2;background:var(--diary-heading);font-weight:600}.diary-hour{position:sticky;top:0;z-index:3;background:var(--diary-heading)}.diary-hour.diary-table{z-index:4}
+@media(max-width:850px){.diary-layout{grid-template-columns:1fr;height:auto}.diary-scroll{height:65vh}.diary-bookings{max-height:300px}}
+
+.diary-config{margin:16px 0;padding:12px;border:1px solid var(--diary-line);border-radius:12px;background:var(--diary-bg)}
+.diary-config summary{cursor:pointer;font-weight:600}
+#diary-table-settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:12px}
+.diary-table-setting{display:flex;align-items:end;gap:8px}.diary-table-setting label{flex:1}.diary-table-setting input{width:100%;margin:6px 0 0}
+
+.diary-table-label{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px}
+.diary-seat-count{display:inline-block;padding:2px 7px;border:1px solid var(--diary-line);border-radius:10px;background:var(--diary-bg);color:var(--diary-muted);font-size:11px;font-weight:600;white-space:nowrap}
+
+#configure-tables{margin-top:16px}
+#table-config-modal{width:min(740px,calc(100vw - 32px));max-height:85dvh;overflow:auto;padding:24px;border:1px solid var(--diary-line);border-radius:16px;background:var(--diary-bg);color:inherit}
+#table-config-modal::backdrop{background:rgb(0 0 0 / .5)}
+#table-config-modal #diary-table-settings{display:flex;flex-direction:column;gap:12px}
+#table-config-modal .diary-table-setting{padding:12px 0;border-bottom:1px solid var(--diary-line)}
+#table-config-modal label{min-width:0}#table-config-modal h2{margin:0}
+@media(max-width:520px){#table-config-modal .diary-table-setting{flex-wrap:wrap}#table-config-modal label{flex:1 1 35%}}

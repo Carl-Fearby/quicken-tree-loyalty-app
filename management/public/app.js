@@ -1,3 +1,4 @@
+import './diary.js';
 const $=id=>document.getElementById(id);
 let tables=[], selected='', page=0, data=null, pending=null, busy=false;
 const text=value=>value===null?'NULL':typeof value==='object'?JSON.stringify(value):String(value);
@@ -19,6 +20,7 @@ setBusy(true);refresh().then(()=>say(tables.length?'Select a table to get starte
 let menuData=null,selectedCategoryId='',selectedSectionId='',expandedCategoryId='',openingCategoryId='';
 function showTab(tab){
  document.querySelectorAll('.global-tab').forEach(button=>button.setAttribute('aria-selected',String(button.dataset.tab===tab)));
+ $('booking-workspace').hidden=tab!=='bookings';
  $('database-workspace').hidden=tab!=='database';
  $('menu-workspace').hidden=tab!=='menu';
  if(tab==='menu'&&!menuData)void loadMenu();
@@ -79,7 +81,7 @@ function renderMenu(){
  for(const section of sections){const card=document.createElement('article');card.className='menu-section';card.id=`menu-section-${section.id}`;const heading=document.createElement('header');const title=document.createElement('h2');title.textContent=section.title;const count=document.createElement('span');const sectionItems=menuData.items.filter(item=>item.sectionId===section.id);count.textContent=`${sectionItems.length} dishes`;heading.append(title,count);card.append(heading);for(const item of sectionItems){const row=document.createElement('div');row.className='menu-item';const itemName=document.createElement('div');const name=document.createElement('b');name.textContent=item.name;itemName.append(name);const tags=(menuData.dietaryTags??[]).filter(tag=>tag.itemName===item.name);if(tags.length){const legend=document.createElement('span');legend.className='item-dietary-legend';for(const tag of tags){const icon=document.createElement('i');icon.textContent=tag.tagCode;icon.title=tag.label||tag.tagCode;icon.setAttribute('aria-label',tag.label||tag.tagCode);legend.append(icon);}itemName.append(legend);}const description=document.createElement('p');description.textContent=item.description;const price=document.createElement('em');price.textContent=item.priceLabel;const outOfStock=(menuData.unavailableItems??[]).some(unavailable=>unavailable.itemName===item.name);const availability=document.createElement('button');availability.type='button';availability.className=`availability-toggle${outOfStock?' is-unavailable':''}`;availability.setAttribute('aria-pressed',String(outOfStock));availability.textContent=outOfStock?'Out of stock':'In stock';availability.onclick=async()=>{availability.disabled=true;try{await api(`/menu/items/${encodeURIComponent(item.id)}/out-of-stock`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({outOfStock:!outOfStock})});menuData=null;await loadMenu();}catch(error){say(error.message,true);availability.disabled=false;}};row.append(itemName,description,price,availability);card.append(row);}$('menu-sections').append(card);}decorateMenuItems(sections);
 }
 async function loadMenu(){try{menuData=await api('/menu');renderMenu();}catch(error){$('menu-summary').textContent=error.message;}}
-document.querySelectorAll('.global-tab').forEach(button=>button.onclick=()=>showTab(button.dataset.tab));
+document.querySelectorAll('.global-tab:not([data-tab="bookings"])').forEach(button=>button.onclick=()=>showTab(button.dataset.tab));
 $('refresh-menu').onclick=()=>{menuData=null;void loadMenu();};
 $('open-menu-table').onclick=()=>{showTab('database');void load('menu_items',0);};
 $('add-menu').onclick=()=>{$('new-menu-name').value='';$('add-menu-error').textContent='';$('add-menu-dialog').showModal();$('new-menu-name').focus();};

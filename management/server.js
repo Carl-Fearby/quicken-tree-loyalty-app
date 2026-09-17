@@ -9,6 +9,8 @@ const dbUrl=new URL(process.env.DATABASE_URL);
 const local=['localhost','127.0.0.1','::1','[::1]'].includes(dbUrl.hostname);
 const sql=postgres(process.env.DATABASE_URL,{max:4,connect_timeout:5,connection:{statement_timeout:15000,lock_timeout:3000},ssl:process.env.DATABASE_SSL==='disable'?false:process.env.DATABASE_SSL==='require'||!local?'require':false});
 const files={'/theme.js':['theme.js','text/javascript'],'/theme.css':['theme.css','text/css'],'/database-gate.js':['database-gate.js','text/javascript'],'/':['index.html','text/html'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css'],'/workspace.css':['workspace.css','text/css'],'/menu-polish.css':['menu-polish.css','text/css']};
+files['/diary.js']=['diary.js','text/javascript'];
+files['/diary.css']=['diary.css','text/css'];
 async function readJson(req,limit=16384){
  let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>limit)throw Object.assign(new Error('Request too large.'),{status:413});}
  try{return JSON.parse(raw);}catch{throw Object.assign(new Error('Invalid JSON.'),{status:400});}
@@ -34,6 +36,38 @@ const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&url.pathname==='/fontawesome.css'){res.writeHead(200,{'Content-Type':'text/css','Cache-Control':'no-store'});return res.end(await readFile(new URL('../app/node_modules/@fortawesome/fontawesome-free/css/all.min.css',import.meta.url)));}
   if(req.method==='GET'&&url.pathname.startsWith('/webfonts/')&&/^[a-z0-9-]+\.woff2$/i.test(url.pathname.slice(10))){res.writeHead(200,{'Content-Type':'font/woff2','Cache-Control':'no-store'});return res.end(await readFile(new URL(`../app/node_modules/@fortawesome/fontawesome-free/webfonts/${url.pathname.slice(10)}`,import.meta.url)));}
   if(req.method==='GET'&&files[url.pathname]){const [file,type]=files[url.pathname];res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-store'});return res.end(await readFile(new URL(`public/${file}`,import.meta.url)));}
+  if(url.pathname==='/api/diary'&&req.method==='GET'){
+   const date=url.searchParams.get('date');
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')||Number.isNaN(Date.parse(date)))return json(400,{message:'Choose a valid diary date.'});
+   const bookings=await sql`select id,booking_time::text as time,contact_name as name,guest_count as guests,experience,status,notes from bookings where booking_date=${date}::date order by booking_time,created_at`;
+   const day=new Date(date+'T12:00:00Z').getUTCDay();
+   const [hours]=await sql`select opens_at,closes_at from opening_hours where map_key=${day===0?'sunday':'weekday'} limit 1`;
+   const tables=await sql`select id,name,table_number as number,seat_count as seats from booking_tables order by table_number`;
+   return json(200,{date,openingHours:hours?{open:Number(hours.opens_at),close:Number(hours.closes_at)}:null,tables,bookings});
+  }
+  const bookingTableMatch=url.pathname.match(/^\/api\/booking-tables\/(\d+)$/);
+  if((url.pathname==='/api/booking-tables'&&req.method==='POST')||(bookingTableMatch&&['PUT','DELETE'].includes(req.method))){
+   const id=bookingTableMatch?Number(bookingTableMatch[1]):null;
+   if(id!==null&&(!Number.isSafeInteger(id)||id<1||id>2147483647))return json(400,{message:'Invalid table ID.'});
+   try{
+    if(req.method==='DELETE'){
+     const [table]=await sql`delete from booking_tables where id=${id} returning id`;
+     return table?json(200,table):json(404,{message:'Booking table not found.'});
+    }
+    const body=await readJson(req);
+    if(!body||!Number.isInteger(body.seats)||body.seats<2||body.seats>10)return json(400,{message:'Seat count must be a whole number from 2 to 10.'});
+    if(!Number.isInteger(body.number)||body.number<1||body.number>2147483647)return json(400,{message:'Enter a positive whole table number.'});
+    const name='Table '+body.number;
+    const [table]=req.method==='POST'
+     ?await sql`insert into booking_tables(name,table_number,seat_count) values(${name},${body.number},${body.seats}) returning id,name,table_number as number,seat_count as seats`
+     :await sql`update booking_tables set name=${name},table_number=${body.number},seat_count=${body.seats} where id=${id} returning id,name,table_number as number,seat_count as seats`;
+    return table?json(req.method==='POST'?201:200,table):json(404,{message:'Booking table not found.'});
+   }catch(error){
+    if(error.code==='23505')return json(409,{message:'That table number is already in use.'});
+    if(error.code==='23503')return json(409,{message:'This table is in use and cannot be removed.'});
+    throw error;
+   }
+  }
   if(url.pathname==='/api/tables'&&req.method==='GET'){
    const tables=await sql`select tablename as name from pg_tables where schemaname='public' order by tablename`;
    for(const table of tables){const [row]=await sql.unsafe(`SELECT count(*)::text AS count FROM public.${quote(table.name)}`);table.count=row.count;}

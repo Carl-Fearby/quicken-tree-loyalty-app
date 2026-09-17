@@ -14,7 +14,7 @@ export type LocalSession = {
     createdAt: string;
 };
 
-export function AuthScreen({onAuthenticated, onPreviewDashboard}: {onAuthenticated: (session: LocalSession) => void; onPreviewDashboard?: () => void}) {
+export function AuthScreen({onAuthenticated}: {onAuthenticated: (session: LocalSession) => void}) {
     const [mode, setMode] = useState<AuthMode>('sign-up');
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -59,9 +59,9 @@ export function AuthScreen({onAuthenticated, onPreviewDashboard}: {onAuthenticat
     };
 
     return <section className={styles.root} aria-labelledby="welcome-title">
-        <button type="button" className={styles.brand} onClick={onPreviewDashboard} aria-label="Open temporary app preview" title="Open temporary app preview">
+        <div className={styles.brand}>
             <img src="/brand/quicken-tree-red.png" alt="The Quicken Tree Bar Grill Restaurant"/>
-        </button>
+        </div>
         <div className={styles.intro}>
             <p className="eyebrow">{mode === 'sign-up' ? 'JOIN THE TABLE' : 'WELCOME BACK'}</p>
             <h1 id="welcome-title">{mode === 'sign-up' ? <>More from every<br/>visit.</> : <>Good to see<br/>you again.</>}</h1>

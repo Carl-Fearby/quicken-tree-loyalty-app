@@ -4,7 +4,7 @@ import {useCallback, useMemo, useEffect, useLayoutEffect, useRef, useState, type
 import {AndroidContainer} from './components/AndroidContainer';
 import {Icon} from './components/Icon';
 import {IphoneContainer, type IphoneSurfaceProps, type IphoneNotification} from './components/IphoneContainer';
-import {useContent} from './lib/use-content';
+import {useContent, ContentProvider} from './lib/use-content';
 import {QuickenTreeApp} from './components/QuickenTreeApp';
 import type {DeviceManufacturer} from './components/device/types';
 import {defaultDeviceId, defaultManufacturerId, getDefaultModelForManufacturer, getModelsForManufacturer, manufacturers} from './components/device/profiles';
@@ -15,6 +15,9 @@ function QuickenTreeIcon() {
 }
 
 export default function Page() {
+    return <ContentProvider><AppPreview/></ContentProvider>;
+}
+function AppPreview() {
     const {events:eventsData,appConfig} = useContent();
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [showDevice, setShowDevice] = useState(true);

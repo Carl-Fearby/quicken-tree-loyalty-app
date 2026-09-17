@@ -24,7 +24,7 @@ try{await sql.begin(async tx=>{
  const rows=await tx`select dataset_key,payload from content_datasets order by dataset_key`;
  const input=Object.fromEntries(rows.map(r=>[r.dataset_key,r.payload]));
  if(input.mainMenu){input.menu.menuItems['Main Menu']=input.mainMenu.sections;delete input.mainMenu;}
- if(!input.events)input.events=JSON.parse(readFileSync(new URL('../../app/app/data/events.json',import.meta.url),'utf8'));
+ if(!input.events)input.events=JSON.parse(readFileSync(new URL('../seed-data/events.json',import.meta.url),'utf8'));
  for(const [key,value]of Object.entries(input))flatten(key,value);
  await createContentSchema(tx);
  for(const [key,value]of Object.entries(input)){await replaceDataset(tx,key,value);assert.deepEqual(await readDataset(tx,key),value,`Round-trip failed: ${key}`);}

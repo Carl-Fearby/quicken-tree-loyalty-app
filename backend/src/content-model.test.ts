@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {flatten} from './relational-content';
-const load=(file:string)=>JSON.parse(readFileSync(new URL(`../../app/app/data/${file}.json`,import.meta.url),'utf8'));
+const load=(file:string)=>JSON.parse(readFileSync(new URL(`../seed-data/${file}.json`,import.meta.url),'utf8'));
 test('source datasets normalize into scalar columns without JSON blobs',()=>{
  const mapping={menu:'menu',appointments:'appointments',appConfig:'app-config',points:'points-and-tier',profile:'profile',rewards:'rewards',events:'events'};
  for(const [key,file]of Object.entries(mapping))for(const rows of Object.values(flatten(key,load(file))))for(const row of rows)for(const value of Object.values(row))assert.ok(value===null||['string','boolean','number'].includes(typeof value));

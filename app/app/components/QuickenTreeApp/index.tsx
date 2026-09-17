@@ -1,7 +1,6 @@
 'use client';
 
 import {useEffect, useState} from 'react';
-import bookingsData from '../../data/bookings.json';
 import {Header} from '../Header';
 import {Icon} from '../Icon';
 import {RedemptionPass, type Redemption} from '../RedemptionPass';
@@ -24,6 +23,7 @@ import {useContent} from '../../lib/use-content';
 import {AuthScreen, type LocalSession} from '../AuthScreen';
 import {refreshSession} from '../../lib/auth';
 import {checkForContentUpdate, readCachedContent} from '../../lib/content-sync';
+import {memberRead, memberRequest, setMemberToken} from '../../lib/member-api';
 
 type View = 'home' | 'book' | 'details' | 'checkout' | 'bookings' | 'menu' | 'cart' | 'order-summary' | 'rewards' | 'profile';
 type Booking = {
@@ -45,11 +45,26 @@ type Booking = {
 type OrderSummary = { itemCount: number; total: number };
 type PlacedOrder = { lines: CartLine[]; total: number; paidAt: string; guestDetails?: OrderGuestDetails };
 type CustomOrderLine = {description: string; price: number};
+type ApiBooking = {id: string; date: string; time: string; guestCount: number; experience: string; status: string; totalPence: number; contactName: string; dietaryNeeds: string[]};
+type ApiProfile = {displayName: string; email: string; tier: string; tastes: string[]; dietaryNeeds: string[]};
+type ApiLoyalty = {points: number};
+type ApiOrder = {status: string; total_pence: number; totalPence?: number; paid_at?: string; paidAt?: string; lines: {id: string; itemName: string; itemDescription?: string; unitPricePence: number; quantity: number}[]; assignments: {orderLineId: string; bookingGuestId: string | null; servingNumber: number; isShared: boolean}[]};
 
-const bookingStorageKey = bookingsData.storageKey;
+const toBooking = (booking: ApiBooking): Booking => ({
+    id: booking.id,
+    date: booking.date,
+    time: booking.time.slice(0, 5),
+    guests: `${booking.guestCount} ${booking.guestCount === 1 ? 'Guest' : 'Guests'}`,
+    experience: booking.experience,
+    total: booking.totalPence ? booking.totalPence / 100 : undefined,
+    dietaryNeeds: booking.dietaryNeeds ?? [],
+    name: booking.contactName,
+    email: '',
+    notes: ''
+});
+
 export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark?: boolean; onShowNotification?: () => void}) {
     const {appointments: appointmentsData, menu: menuData, points: pointsData, profile: profileData, rewards: rewardsData} = useContent();
-const profileStorageKey = profileData.storageKey;
 const experiencePrices = Object.fromEntries(appointmentsData.experiences.map(experience => [experience.name, experience.price])) as Record<'Table' | 'Afternoon Tea' | 'Bottomless Brunch', number>;
 const dietaryTags: Record<string, string[]> = menuData.dietaryTags;
 const dietaryTagNames: Record<string, string> = menuData.dietaryTagNames;
@@ -183,6 +198,21 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
     const [paymentState, setPaymentState] = useState<'idle' | 'processing'>('idle');
     const [checkoutMode, setCheckoutMode] = useState<'booking' | 'order'>('booking');
     const [redemption, setRedemption] = useState<Redemption | null>(null);
+    const [memberPoints, setMemberPoints] = useState(0);
+    const [memberTier, setMemberTier] = useState(profileData.default.tier);
+    useEffect(() => {
+        if (!orderToast) return;
+        setOrderToastClosing(false);
+        const closing = window.setTimeout(() => setOrderToastClosing(true), 2400);
+        const clear = window.setTimeout(() => {
+            setOrderToast('');
+            setOrderToastClosing(false);
+        }, 2660);
+        return () => {
+            window.clearTimeout(closing);
+            window.clearTimeout(clear);
+        };
+    }, [orderToast]);
     const [isClosingRedemption, setIsClosingRedemption] = useState(false);
     const [visibleMonth, setVisibleMonth] = useState(() => {
         const today = new Date();
@@ -216,7 +246,10 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
         };
     }, []);
     useEffect(() => {
-        refreshSession().then(response => setSession({accessToken: response.accessToken, email: response.member.email, name: response.member.name, createdAt: new Date().toISOString()})).catch(() => setSession(null));
+        refreshSession().then(response => {
+            setMemberToken(response.accessToken);
+            setSession({accessToken: response.accessToken, email: response.member.email, name: response.member.name, createdAt: new Date().toISOString()});
+        }).catch(() => setSession(null));
     }, []);
     const times = availableSlots(bookingDate);
     const bookingTimes = bookingExperience === 'Bottomless Brunch' ? (fromInputDate(bookingDate).getDay() === 0 ? [] : times.filter(slot => slot >= '12:00' && slot <= '19:30')) : bookingExperience === 'Afternoon Tea' ? times.filter(slot => slot >= '12:00' && slot <= '17:00') : times;
@@ -224,6 +257,7 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
     const bookingPricePerGuest = experiencePrice + ((bookingExperience === 'Afternoon Tea' && afternoonTeaUpgrade) || (bookingExperience === 'Bottomless Brunch' && bottomlessBrunchUpgrade) ? 5 : 0);
     const guestCount = parseInt(guests, 10);
     const bookingTotal = bookingPricePerGuest * guestCount;
+    const rewardProgress = Math.min(100, Math.max(0, (memberPoints / pointsData.nextRewardAt) * 100));
     const calendarStart = new Date(visibleMonth);
     calendarStart.setDate(1 - ((calendarStart.getDay() + 6) % 7));
     const calendarDays = Array.from({length: 42}, (_, offset) => {
@@ -266,18 +300,62 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
         if (!bookingTimes.includes(time)) setTime(bookingTimes[0] ?? '');
     }, [bookingDate, bookingExperience]);
     useEffect(() => {
-        try {
-            const stored = window.localStorage.getItem(bookingStorageKey);
-            if (stored) setBookings(JSON.parse(stored));
-        } catch {
-            setBookings([]);
-        } finally {
-            setBookingsLoaded(true);
-        }
-    }, []);
-    useEffect(() => {
-        if (bookingsLoaded) window.localStorage.setItem(bookingStorageKey, JSON.stringify(bookings));
-    }, [bookings, bookingsLoaded]);
+        if (!session || session.accessToken === 'temporary-dashboard-preview') return;
+        setMemberToken(session.accessToken);
+        let active = true;
+        const loadLiveMemberData = async () => {
+            try {
+                const [profile, loyalty, liveBookings] = await Promise.all([
+                    memberRead<ApiProfile>(session.email, '/me/profile'),
+                    memberRead<ApiLoyalty>(session.email, '/me/loyalty'),
+                    memberRead<ApiBooking[]>(session.email, '/bookings')
+                ]);
+                if (!active) return;
+                setProfileName(profile.displayName);
+                setProfileEmail(profile.email);
+                setBookingName(profile.displayName);
+                setBookingEmail(profile.email);
+                setTasteProfile(profile.tastes ?? []);
+                setDietaryNeeds(profile.dietaryNeeds ?? []);
+                setMemberTier(profile.tier);
+                setMemberPoints(loyalty.points);
+                const visibleBookings = liveBookings.filter(booking => booking.status !== 'cancelled');
+                setBookings(visibleBookings.map(toBooking));
+                const loadedOrders = await Promise.all(visibleBookings.map(async booking => {
+                    try {
+                        const [order, detail] = await Promise.all([
+                            memberRequest<ApiOrder>(`/bookings/${booking.id}/order`),
+                            memberRequest<{guests: {id: string; displayName: string}[]}>(`/bookings/${booking.id}`)
+                        ]);
+                        if (order.status !== 'paid') return null;
+                        const names = new Map(detail.guests.map(guest => [guest.id, guest.displayName]));
+                        const lines = order.lines.map(line => ({name: line.itemName, description: line.itemDescription ?? '', price: line.unitPricePence / 100, quantity: line.quantity}));
+                        const guestDetails: OrderGuestDetails = {
+                            names: detail.guests.map(guest => guest.displayName),
+                            assignments: Object.fromEntries(order.lines.map(line => [line.itemName, Array.from({length: line.quantity}, (_, index) => {
+                                const assignment = order.assignments.find(value => value.orderLineId === line.id && value.servingNumber === index + 1);
+                                return assignment?.bookingGuestId ? names.get(assignment.bookingGuestId) ?? 'To share' : 'To share';
+                            })]))
+                        };
+                        return [booking.id, {lines, total: (order.totalPence ?? order.total_pence) / 100, paidAt: order.paidAt ?? order.paid_at ?? '', guestDetails}] as const;
+                    } catch { return null; }
+                }));
+                if (active) setPlacedOrders(Object.fromEntries(loadedOrders.filter((order): order is NonNullable<typeof order> => Boolean(order))));
+            } finally {
+                if (active) {
+                    setProfileLoaded(true);
+                    setBookingsLoaded(true);
+                }
+            }
+        };
+        void loadLiveMemberData().catch(() => {
+            if (active) {
+                setProfileLoaded(true);
+                setBookingsLoaded(true);
+            }
+        });
+        return () => { active = false; };
+    }, [session]);
     useEffect(() => {
         if (!bookingsLoaded) return;
         const summaries: Record<string, OrderSummary> = {};
@@ -336,28 +414,6 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
         else window.localStorage.removeItem(orderGuestDetailsStorageKey(orderAheadBooking.id));
     }, [orderAheadBooking, orderGuestDetails]);
     useEffect(() => {
-        try {
-            const stored = window.localStorage.getItem(profileStorageKey);
-            if (stored) {
-                const profile = JSON.parse(stored);
-                setProfileName(profile.name || profileData.default.name);
-                setProfileEmail(profile.email || profileData.default.email);
-                setTasteProfile(Array.isArray(profile.tastes) ? profile.tastes : profileData.default.tastes);
-                setDietaryNeeds(Array.isArray(profile.dietaryNeeds) ? profile.dietaryNeeds : profileData.default.dietaryNeeds);
-            }
-        } finally {
-            setProfileLoaded(true);
-        }
-    }, []);
-    useEffect(() => {
-        if (profileLoaded) window.localStorage.setItem(profileStorageKey, JSON.stringify({
-            name: profileName,
-            email: profileEmail,
-            tastes: tasteProfile,
-            dietaryNeeds
-        }));
-    }, [profileName, profileEmail, tasteProfile, dietaryNeeds, profileLoaded]);
-    useEffect(() => {
         if (controlledDark !== undefined) {
             setIsDarkMode(controlledDark);
             setThemeReady(true);
@@ -369,6 +425,23 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
     useEffect(() => {
         if (controlledDark === undefined && themeReady) window.localStorage.setItem('quicken-tree-dark-mode', String(isDarkMode));
     }, [controlledDark, isDarkMode, themeReady]);
+    const saveProfile = async () => {
+        try {
+            await memberRequest('/me/profile', 'PATCH', {
+                displayName: profileName.trim() || profileData.default.name,
+                email: profileEmail.trim(),
+                tastes: tasteProfile,
+                dietaryNeeds
+            });
+            setBookingName(profileName.trim() || profileData.default.name);
+            setBookingEmail(profileEmail.trim());
+            setProfileSaved(true);
+            window.setTimeout(() => setProfileSaved(false), 1800);
+        } catch {
+            setProfileSaved(false);
+            setOrderToast('Could not save profile');
+        }
+    };
     const navigate = (next: View, preserveOrderAhead = false) => {
         setShowDatePicker(false);
         // Tapping a bottom-nav item always returns that section to its root screen.
@@ -403,29 +476,55 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
             setIsClosingRedemption(false);
         }, 220);
     };
-    const requestTable = () => {
+    const showOrderToast = (message: string) => {
+        setOrderToast(message);
+        setOrderToastClosing(false);
+        window.setTimeout(() => {
+            setOrderToastClosing(true);
+            window.setTimeout(() => setOrderToast(''), 260);
+        }, 2600);
+    };
+    const requestTable = async () => {
         if (!time) return;
-        const booking: Booking = {
-            id: `${Date.now()}`,
+        const bookingPayload = {
             date: bookingDate,
             time,
-            guests,
+            guestCount,
             experience: bookingExperience,
-            price: bookingPricePerGuest || undefined,
-            total: bookingTotal || undefined,
-            afternoonTeaUpgrade: bookingExperience === 'Afternoon Tea' && afternoonTeaUpgrade,
-            bottomlessBrunchUpgrade: bookingExperience === 'Bottomless Brunch' && bottomlessBrunchUpgrade,
-            bottomlessBrunchMeal: bookingExperience === 'Bottomless Brunch' ? bottomlessBrunchMeal : undefined,
+            totalPence: Math.round(bookingTotal * 100),
             dietaryNeeds: [...dietaryNeeds],
-            name: bookingName.trim() || 'Guest',
-            email: bookingEmail.trim(),
-            notes: bookingNotes.trim()
+            contactName: bookingName.trim() || 'Guest',
+            contactEmail: bookingEmail.trim() || undefined,
+            notes: bookingNotes.trim() || undefined,
+            guests: [bookingName.trim() || 'Guest']
         };
-        setBookings(current => [booking, ...current]);
-        setBookingEmail('');
-        setBookingNotes('');
-        setPaymentState('idle');
-        navigate('bookings');
+        try {
+            const created = await memberRequest<{id: string}>('/bookings', 'POST', bookingPayload);
+            const booking: Booking = {
+                id: created.id,
+                date: bookingDate,
+                time,
+                guests,
+                experience: bookingExperience,
+                price: bookingPricePerGuest || undefined,
+                total: bookingTotal || undefined,
+                afternoonTeaUpgrade: bookingExperience === 'Afternoon Tea' && afternoonTeaUpgrade,
+                bottomlessBrunchUpgrade: bookingExperience === 'Bottomless Brunch' && bottomlessBrunchUpgrade,
+                bottomlessBrunchMeal: bookingExperience === 'Bottomless Brunch' ? bottomlessBrunchMeal : undefined,
+                dietaryNeeds: [...dietaryNeeds],
+                name: bookingName.trim() || 'Guest',
+                email: bookingEmail.trim(),
+                notes: bookingNotes.trim()
+            };
+            setBookings(current => [booking, ...current]);
+            setBookingEmail(profileEmail);
+            setBookingNotes('');
+            setPaymentState('idle');
+            navigate('bookings');
+        } catch {
+            setPaymentState('idle');
+            setOrderToast('Could not save booking');
+        }
     };
     const resetAppToDefault = () => {
         const appKeys = Array.from({length: window.localStorage.length}, (_, index) => window.localStorage.key(index))
@@ -434,8 +533,37 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
         window.location.reload();
     };
     const continueFromDetails = () => bookingExperience === 'Table' ? requestTable() : (setCheckoutMode('booking'), navigate('checkout'));
-    const completeOrder = () => {
+    const completeOrder = async () => {
         if (orderAheadBooking && preOrderLines.length) {
+            try {
+                const order = await memberRequest<{id: string}>(`/bookings/${orderAheadBooking.id}/order`, 'POST');
+                const bookingDetail = await memberRequest<{guests: {id: string; displayName: string}[]}>(`/bookings/${orderAheadBooking.id}`);
+                const guestsByName = new Map(bookingDetail.guests.map(guest => [guest.displayName, guest.id]));
+                for (const name of orderGuestDetails.names) {
+                    if (!name || guestsByName.has(name)) continue;
+                    const guest = await memberRequest<{id: string; displayName: string}>(`/bookings/${orderAheadBooking.id}/guests`, 'POST', {displayName: name});
+                    guestsByName.set(guest.displayName, guest.id);
+                }
+                for (const line of preOrderLines) {
+                    const createdLine = await memberRequest<{id: string}>(`/bookings/${orderAheadBooking.id}/order/lines`, 'POST', {
+                        itemName: line.name,
+                        itemDescription: line.description,
+                        unitPricePence: Math.round(line.price * 100),
+                        quantity: line.quantity
+                    });
+                    for (let serving = 1; serving <= line.quantity; serving += 1) {
+                        const guestName = orderGuestDetails.assignments[line.name]?.[serving - 1];
+                        await memberRequest(`/orders/${order.id}/lines/${createdLine.id}/assignments/${serving}`, 'PUT', {
+                            bookingGuestId: guestName && guestName !== 'To share' ? guestsByName.get(guestName) ?? null : null
+                        });
+                    }
+                }
+                await memberRequest(`/orders/${order.id}/checkout`, 'POST', {providerReference: `demo-${Date.now()}`});
+            } catch {
+                setPaymentState('idle');
+                setOrderToast('Could not submit order');
+                return;
+            }
             const placedOrder: PlacedOrder = {lines: preOrderLines, total: preOrderTotal, paidAt: new Date().toISOString(), guestDetails: orderGuestDetails};
             window.localStorage.setItem(placedOrderStorageKey(orderAheadBooking.id), JSON.stringify(placedOrder));
             window.localStorage.removeItem(orderDraftStorageKey(orderAheadBooking.id));
@@ -521,10 +649,13 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
         link.click();
         window.URL.revokeObjectURL(url);
     };
-    const cancelBooking = (booking: Booking, hasOrder: boolean) => {
-        window.localStorage.removeItem(orderDraftStorageKey(booking.id));
-        window.localStorage.removeItem(orderGuestDetailsStorageKey(booking.id));
-        window.localStorage.removeItem(placedOrderStorageKey(booking.id));
+    const cancelBooking = async (booking: Booking, hasOrder: boolean) => {
+        try {
+            await memberRequest(`/bookings/${booking.id}/cancel`, 'POST');
+        } catch {
+            setOrderToast('Could not cancel booking');
+            return;
+        }
         setBookings(current => current.filter(currentBooking => currentBooking.id !== booking.id));
         setBookingOrderSummaries(current => {
             const next = {...current};
@@ -566,18 +697,12 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
     if (session !== undefined && !session) {
         return <LoyaltyApp motion="idle" dark={isDarkMode} embedded={controlledDark !== undefined}>
             <AuthScreen onAuthenticated={nextSession => {
+                setMemberToken(nextSession.accessToken);
                 setSession(nextSession);
                 setProfileName(nextSession.name);
                 setProfileEmail(nextSession.email);
                 setBookingName(nextSession.name);
                 setBookingEmail(nextSession.email);
-            }} onPreviewDashboard={() => {
-                const previewSession: LocalSession = {accessToken: 'temporary-dashboard-preview', email: profileData.default.email, name: profileData.default.name, createdAt: new Date().toISOString()};
-                setSession(previewSession);
-                setProfileName(previewSession.name);
-                setProfileEmail(previewSession.email);
-                setBookingName(previewSession.name);
-                setBookingEmail(previewSession.email);
             }}/>
         </LoyaltyApp>;
     }
@@ -595,7 +720,7 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
             <LoyaltyApp motion="idle" dark={isDarkMode} embedded={controlledDark !== undefined}>
                         <div className="appSafeArea" aria-hidden="true"/>
                         <div className="content appScreenTransition" key={`${view}-${profilePanel ?? 'root'}`}>
-                            {view === 'home' && <HomeScreen bookings={bookings} onBookEvent={bookEvent} onLogoClick={onShowNotification}/>}
+                            {view === 'home' && <HomeScreen bookings={bookings} memberName={profileName} points={memberPoints} nextRewardAt={pointsData.nextRewardAt} onBookEvent={bookEvent} onLogoClick={onShowNotification}/>}
                             {view === 'book' && <BookingScreen experience={bookingExperience} prices={experiencePrices}
                                                                price={bookingPricePerGuest} total={bookingTotal}
                                                                afternoonTeaUpgrade={afternoonTeaUpgrade}
@@ -744,21 +869,29 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
                                 you,<br/>every time you visit.</h1>
                                 <section className="tier"><img src="/brand/quicken-tree-white.png"
                                                                alt="The Quicken Tree"/><small>Current tier</small>
-                                    <h2>{pointsData.tier}</h2><p>{pointsData.benefits}</p>
-                                    <div className="progress"><i/></div>
-                                    <footer>{pointsData.points.toLocaleString()} / {pointsData.nextRewardAt.toLocaleString()} points
+                                    <h2>{memberTier}</h2><p>{pointsData.benefits}</p>
+                                    <div className="progress" aria-label={`${Math.round(rewardProgress)}% of points to Quicken Gold`}><i style={{width: `${rewardProgress}%`}}/></div>
+                                    <footer>{memberPoints.toLocaleString()} / {pointsData.nextRewardAt.toLocaleString()} points
                                         to Quicken Gold
                                     </footer>
                                 </section>
-                                <Header title="Ready for you"/>{rewardsData.rewards.map(({icon, title, meta, code}) =>
-                                    <article className="reward" key={title}><i><Icon name={icon}/></i>
+                                <Header title="Ready for you"/>{rewardsData.rewards.map(({icon, title, meta, code}) => {
+                                    const cost = Number(meta.match(/^([\d,]+) points/)?.[1].replace(/,/g, '') ?? 0);
+                                    const canRedeem = cost > 0 && memberPoints >= cost;
+                                    return <article className="reward" key={title}><i><Icon name={icon}/></i>
                                         <div><b>{title}</b><p>{meta}</p></div>
-                                        <button onClick={() => {
-                                            setIsClosingRedemption(false);
-                                            setRedemption({title, code});
-                                        }}>Redeem
+                                        <button disabled={!canRedeem} title={canRedeem ? undefined : `You need ${(cost - memberPoints).toLocaleString()} more points`} onClick={async () => {
+                                            try {
+                                                const voucher = await memberRequest<{code: string; title: string; pointsSpent: number}>(`/me/rewards/${code}/redeem`, 'POST');
+                                                setMemberPoints(current => Math.max(0, current - voucher.pointsSpent));
+                                                setIsClosingRedemption(false);
+                                                setRedemption({title: voucher.title, code: voucher.code});
+                                            } catch {
+                                                showOrderToast('Could not redeem reward');
+                                            }
+                                        }}>{canRedeem ? 'Redeem' : `${(cost - memberPoints).toLocaleString()} more points`}
                                         </button>
-                                    </article>)}</>}
+                                    </article>})}</>}
                             {view === 'profile' && !profilePanel && <><p className="eyebrow">Your Quicken Tree</p>
                                 <button className="account accountButton" onClick={() => setProfilePanel('details')}>
                                     <i>{profileName.slice(0, 1).toUpperCase()}</i>
@@ -791,10 +924,7 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
                                     className="detailLabel">Email address<input type="email" value={profileEmail}
                                                                                 onChange={event => setProfileEmail(event.target.value)}
                                                                                 placeholder="you@example.com"/></label>
-                                    <button className="cta" onClick={() => {
-                                        setProfileSaved(true);
-                                        window.setTimeout(() => setProfileSaved(false), 1800);
-                                    }}><Icon name="fa-check"/> {profileSaved ? 'Saved' : 'Save changes'}</button>
+                                    <button className="cta" onClick={() => { void saveProfile(); }}><Icon name="fa-check"/> {profileSaved ? 'Saved' : 'Save changes'}</button>
                                 </>}{profilePanel === 'taste' && <><p className="eyebrow">Taste profile</p><h1>Your
                                 table,<br/>your taste.</h1><p className="profileIntro">Choose what you enjoy and we’ll
                                 make your member offers more relevant.</p>
@@ -839,7 +969,7 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
                     cancelBooking(bookingPendingCancellation, Boolean(placedOrders[bookingPendingCancellation.id] || bookingOrderSummaries[bookingPendingCancellation.id]));
                     setBookingPendingCancellation(null);
                 }}/>}
-                {orderToast && <p className={`orderToast${orderToastClosing ? ' closing' : ''}`} role="status"><Icon name="fa-check"/><span><b>{orderToast.includes('Booking') ? 'Canceled' : 'Added!'}</b><small>{orderToast === 'Booking and order cancelled' ? 'Your booking and order has been canceled' : orderToast === 'Booking cancelled' ? 'Your booking has been canceled' : `${orderToast.replace(' added to your order', '')} is ready in your order`}</small></span></p>}
+                {orderToast && <p className={`orderToast${orderToast.startsWith('Could not') ? ' error' : ''}${orderToastClosing ? ' closing' : ''}`} role="status"><Icon name={orderToast.startsWith('Could not') ? 'fa-circle-exclamation' : 'fa-check'}/><span><b>{orderToast.startsWith('Could not') ? 'Please try again' : orderToast.includes('Booking') ? 'Canceled' : 'Added!'}</b><small>{orderToast.startsWith('Could not') ? 'We could not redeem that reward. Your points have not changed.' : orderToast === 'Booking and order cancelled' ? 'Your booking and order has been canceled' : orderToast === 'Booking cancelled' ? 'Your booking has been canceled' : `${orderToast.replace(' added to your order', '')} is ready in your order`}</small></span></p>}
                 {wingSizePrompt && <WingOptionsDialog size={wingSize} onSizeChange={setWingSize}
                                                       onClose={() => setWingSizePrompt(false)} onAdd={item => {
                     addToOrder(item);
