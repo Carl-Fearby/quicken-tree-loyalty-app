@@ -4,12 +4,23 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node --env-file=.env server.js",
-    "dev": "node --watch --env-file=.env server.js",
+    "start": "next start --port 4100",
+    "dev": "next dev --port 4100",
+    "build": "next build",
+    "format": "prettier --write \"app/**/*.{js,jsx,ts,tsx,css}\" \"public/**/*.{js,css,html}\" \"*.{js,mjs,json}\"",
+    "format:check": "prettier --check \"app/**/*.{js,jsx,ts,tsx,css}\" \"public/**/*.{js,css,html}\" \"*.{js,mjs,json}\"",
+    "api:start": "PORT=4101 node --env-file=.env server.js",
+    "api:dev": "PORT=4101 node --watch --env-file=.env server.js",
     "test": "node --test",
     "setup:booking-tables": "node --env-file=.env setup-booking-tables.js"
   },
   "dependencies": {
-    "postgres": "^3.4.9"
+    "next": "^16.3.4",
+    "postgres": "^3.4.9",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.7"
   }
 }

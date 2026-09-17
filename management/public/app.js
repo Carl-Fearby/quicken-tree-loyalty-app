@@ -1,123 +1,908 @@
 import './diary.js';
-const $=id=>document.getElementById(id);
-let tables=[], selected='', page=0, data=null, pending=null, busy=false;
-const text=value=>value===null?'NULL':typeof value==='object'?JSON.stringify(value):String(value);
-const say=(message,error=false)=>{$('message').textContent=message;$('message').classList.toggle('error',error);};
-async function api(path,options){const response=await fetch(`/api${path}`,options);const result=await response.json();if(!response.ok)throw Error(result.message||'Request failed.');return result;}
-function tableList(){const filter=$('search').value.toLowerCase();$('tables').replaceChildren();for(const table of tables.filter(t=>t.name.toLowerCase().includes(filter))){const button=document.createElement('button');button.setAttribute('aria-current',String(selected===table.name));button.disabled=busy;const name=document.createElement('span');name.textContent=table.name;const count=document.createElement('small');count.textContent=Number(table.count).toLocaleString();button.append(name,count);button.onclick=()=>load(table.name,0);$('tables').append(button);}}
-function setBusy(value){busy=value;tableList();$('refresh').disabled=value;$('empty').disabled=value||!data||Number(data.count)===0;$('prev').disabled=value||page===0;$('next').disabled=value||!data||(page+1)*50>=Number(data.count);document.querySelectorAll('.row-action').forEach(el=>el.disabled=value);}
-async function refresh(){const result=await api('/tables');tables=result.tables;$('database').textContent=`${result.database} / ${result.schema} · POSTGRESQL`;tableList();return result;}
-async function load(name,number){if(busy)return;setBusy(true);say('Loading records…');try{const result=await api(`/tables/${encodeURIComponent(name)}?page=${number}`);selected=name;page=number;data=result;render();say('');}catch(error){say(error.message,true);}finally{setBusy(false);}}
-function render(){tableList();$('title').textContent=selected;$('summary').textContent=`${Number(data.count).toLocaleString()} records · ${data.columns.length} columns · ${data.primaryKey.length?'Primary key: '+data.primaryKey.join(', '):'No primary key — individual deletion unavailable'}`;$('empty').hidden=false;$('welcome').hidden=true;$('data').hidden=false;$('columns').replaceChildren();const head=document.createElement('tr');for(const col of data.columns){const th=document.createElement('th');th.scope='col';th.textContent=col.name;const small=document.createElement('small');small.textContent=`${col.type}${data.primaryKey.includes(col.name)?' · PRIMARY KEY':''}`;th.append(small);head.append(th);}const actions=document.createElement('th');actions.textContent='Actions';head.append(actions);$('columns').append(head);$('rows').replaceChildren();for(const row of data.rows){const tr=document.createElement('tr');for(const col of data.columns){const td=document.createElement('td');td.textContent=text(row[col.name]);td.title=td.textContent;if(row[col.name]===null)td.className='null';tr.append(td);}const td=document.createElement('td');const inspect=document.createElement('button');inspect.textContent='Inspect';inspect.className='row-action';inspect.onclick=()=>{$('record').textContent=JSON.stringify(row,null,2);$('inspect').showModal();};td.append(inspect);if(data.primaryKey.length){const del=document.createElement('button');del.textContent='Delete';del.className='delete-row row-action';del.onclick=()=>confirmDelete(Object.fromEntries(data.primaryKey.map(k=>[k,row[k]])));td.append(del);}tr.append(td);$('rows').append(tr);}if(!data.rows.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=data.columns.length+1;td.textContent='No records in this table.';tr.append(td);$('rows').append(tr);}$('range').textContent=data.rows.length?`Rows ${page*50+1}–${page*50+data.rows.length} of ${Number(data.count).toLocaleString()}`:'0 records';$('page').textContent=`Page ${page+1} of ${Math.max(1,Math.ceil(Number(data.count)/50))}`;}
-function confirmDelete(key){pending={table:selected,key,all:key===null};$('confirm-title').textContent=key===null?`Empty ${selected}?`:'Delete this record?';$('confirm-detail').textContent=key===null?`Permanently delete all records currently in ${selected}. The table and its columns will remain. This cannot be undone.`:`Permanently delete the record below from ${selected}. This cannot be undone.`;$('key-detail').textContent=key===null?'Related rows in other tables will block this action.':JSON.stringify(key,null,2);$('confirmation').value='';$('confirmation').placeholder=selected;$('delete-error').textContent='';$('commit').disabled=true;$('confirm').showModal();$('confirmation').focus();}
-$('confirmation').oninput=()=>{$('commit').disabled=$('confirmation').value!==pending?.table;};
-$('cancel').onclick=()=>{$('confirm').close();pending=null;};$('close-inspect').onclick=()=>$('inspect').close();
-$('delete-form').onsubmit=async event=>{event.preventDefault();if(!pending||$('confirmation').value!==pending.table||busy)return;const action={...pending};setBusy(true);$('commit').disabled=true;$('cancel').disabled=true;$('confirm').oncancel=event=>event.preventDefault();try{const result=await api(`/tables/${encodeURIComponent(action.table)}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({...action,confirm:action.table})});$('confirm').close();pending=null;data=null;$('data').hidden=true;await refresh();const count=Number(tables.find(t=>t.name===action.table)?.count||0);setBusy(false);await load(action.table,Math.min(page,Math.max(0,Math.ceil(count/50)-1)));say(`Deleted ${result.deleted} record${result.deleted===1?'':'s'} from ${action.table}.`);}catch(error){if(pending)$('delete-error').textContent=error.message;else say(`Deletion completed, but refresh failed: ${error.message}`,true);}finally{setBusy(false);$('cancel').disabled=false;$('confirm').oncancel=null;$('commit').disabled=$('confirmation').value!==pending?.table;}};
-$('empty').onclick=()=>confirmDelete(null);$('search').oninput=tableList;$('prev').onclick=()=>load(selected,page-1);$('next').onclick=()=>load(selected,page+1);
-$('refresh').onclick=async()=>{setBusy(true);try{await refresh();setBusy(false);if(selected)await load(selected,page);else say('Tables refreshed.');}catch(error){say(error.message,true);}finally{setBusy(false);}};
-setBusy(true);refresh().then(()=>say(tables.length?'Select a table to get started.':'No tables found in the public schema.')).catch(error=>say(error.message,true)).finally(()=>setBusy(false));
+const $ = (id) => document.getElementById(id);
+let tables = [],
+  selected = '',
+  page = 0,
+  data = null,
+  pending = null,
+  busy = false;
+const text = (value) =>
+  value === null ? 'NULL' : typeof value === 'object' ? JSON.stringify(value) : String(value);
+const say = (message, error = false) => {
+  $('message').textContent = message;
+  $('message').classList.toggle('error', error);
+};
+async function api(path, options) {
+  const response = await fetch(`/api${path}`, options);
+  const result = await response.json();
+  if (!response.ok) throw Error(result.message || 'Request failed.');
+  return result;
+}
+function tableList() {
+  const filter = $('search').value.toLowerCase();
+  $('tables').replaceChildren();
+  for (const table of tables.filter((t) => t.name.toLowerCase().includes(filter))) {
+    const button = document.createElement('button');
+    button.setAttribute('aria-current', String(selected === table.name));
+    button.disabled = busy;
+    const name = document.createElement('span');
+    name.textContent = table.name;
+    const count = document.createElement('small');
+    count.textContent = Number(table.count).toLocaleString();
+    button.append(name, count);
+    button.onclick = () => load(table.name, 0);
+    $('tables').append(button);
+  }
+}
+function setBusy(value) {
+  busy = value;
+  tableList();
+  $('refresh').disabled = value;
+  $('empty').disabled = value || !data || Number(data.count) === 0;
+  $('prev').disabled = value || page === 0;
+  $('next').disabled = value || !data || (page + 1) * 50 >= Number(data.count);
+  document.querySelectorAll('.row-action').forEach((el) => (el.disabled = value));
+}
+async function refresh() {
+  const result = await api('/tables');
+  tables = result.tables;
+  $('database').textContent = `${result.database} / ${result.schema} · POSTGRESQL`;
+  tableList();
+  return result;
+}
+async function load(name, number) {
+  if (busy) return;
+  setBusy(true);
+  say('Loading records…');
+  try {
+    const result = await api(`/tables/${encodeURIComponent(name)}?page=${number}`);
+    selected = name;
+    page = number;
+    data = result;
+    render();
+    say('');
+  } catch (error) {
+    say(error.message, true);
+  } finally {
+    setBusy(false);
+  }
+}
+function render() {
+  tableList();
+  $('title').textContent = selected;
+  $('summary').textContent =
+    `${Number(data.count).toLocaleString()} records · ${data.columns.length} columns · ${data.primaryKey.length ? 'Primary key: ' + data.primaryKey.join(', ') : 'No primary key — individual deletion unavailable'}`;
+  $('empty').hidden = false;
+  $('welcome').hidden = true;
+  $('data').hidden = false;
+  $('columns').replaceChildren();
+  const head = document.createElement('tr');
+  for (const col of data.columns) {
+    const th = document.createElement('th');
+    th.scope = 'col';
+    th.textContent = col.name;
+    const small = document.createElement('small');
+    small.textContent = `${col.type}${data.primaryKey.includes(col.name) ? ' · PRIMARY KEY' : ''}`;
+    th.append(small);
+    head.append(th);
+  }
+  const actions = document.createElement('th');
+  actions.textContent = 'Actions';
+  head.append(actions);
+  $('columns').append(head);
+  $('rows').replaceChildren();
+  for (const row of data.rows) {
+    const tr = document.createElement('tr');
+    for (const col of data.columns) {
+      const td = document.createElement('td');
+      td.textContent = text(row[col.name]);
+      td.title = td.textContent;
+      if (row[col.name] === null) td.className = 'null';
+      tr.append(td);
+    }
+    const td = document.createElement('td');
+    const inspect = document.createElement('button');
+    inspect.textContent = 'Inspect';
+    inspect.className = 'row-action';
+    inspect.onclick = () => {
+      $('record').textContent = JSON.stringify(row, null, 2);
+      $('inspect').showModal();
+    };
+    td.append(inspect);
+    if (data.primaryKey.length) {
+      const del = document.createElement('button');
+      del.textContent = 'Delete';
+      del.className = 'delete-row row-action';
+      del.onclick = () =>
+        confirmDelete(Object.fromEntries(data.primaryKey.map((k) => [k, row[k]])));
+      td.append(del);
+    }
+    tr.append(td);
+    $('rows').append(tr);
+  }
+  if (!data.rows.length) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = data.columns.length + 1;
+    td.textContent = 'No records in this table.';
+    tr.append(td);
+    $('rows').append(tr);
+  }
+  $('range').textContent = data.rows.length
+    ? `Rows ${page * 50 + 1}–${page * 50 + data.rows.length} of ${Number(data.count).toLocaleString()}`
+    : '0 records';
+  $('page').textContent = `Page ${page + 1} of ${Math.max(1, Math.ceil(Number(data.count) / 50))}`;
+}
+function confirmDelete(key) {
+  pending = { table: selected, key, all: key === null };
+  $('confirm-title').textContent = key === null ? `Empty ${selected}?` : 'Delete this record?';
+  $('confirm-detail').textContent =
+    key === null
+      ? `Permanently delete all records currently in ${selected}. The table and its columns will remain. This cannot be undone.`
+      : `Permanently delete the record below from ${selected}. This cannot be undone.`;
+  $('key-detail').textContent =
+    key === null
+      ? 'Related rows in other tables will block this action.'
+      : JSON.stringify(key, null, 2);
+  $('confirmation').value = '';
+  $('confirmation').placeholder = selected;
+  $('delete-error').textContent = '';
+  $('commit').disabled = true;
+  $('confirm').showModal();
+  $('confirmation').focus();
+}
+$('confirmation').oninput = () => {
+  $('commit').disabled = $('confirmation').value !== pending?.table;
+};
+$('cancel').onclick = () => {
+  $('confirm').close();
+  pending = null;
+};
+$('close-inspect').onclick = () => $('inspect').close();
+$('delete-form').onsubmit = async (event) => {
+  event.preventDefault();
+  if (!pending || $('confirmation').value !== pending.table || busy) return;
+  const action = { ...pending };
+  setBusy(true);
+  $('commit').disabled = true;
+  $('cancel').disabled = true;
+  $('confirm').oncancel = (event) => event.preventDefault();
+  try {
+    const result = await api(`/tables/${encodeURIComponent(action.table)}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...action, confirm: action.table }),
+    });
+    $('confirm').close();
+    pending = null;
+    data = null;
+    $('data').hidden = true;
+    await refresh();
+    const count = Number(tables.find((t) => t.name === action.table)?.count || 0);
+    setBusy(false);
+    await load(action.table, Math.min(page, Math.max(0, Math.ceil(count / 50) - 1)));
+    say(`Deleted ${result.deleted} record${result.deleted === 1 ? '' : 's'} from ${action.table}.`);
+  } catch (error) {
+    if (pending) $('delete-error').textContent = error.message;
+    else say(`Deletion completed, but refresh failed: ${error.message}`, true);
+  } finally {
+    setBusy(false);
+    $('cancel').disabled = false;
+    $('confirm').oncancel = null;
+    $('commit').disabled = $('confirmation').value !== pending?.table;
+  }
+};
+$('empty').onclick = () => confirmDelete(null);
+$('search').oninput = tableList;
+$('prev').onclick = () => load(selected, page - 1);
+$('next').onclick = () => load(selected, page + 1);
+$('refresh').onclick = async () => {
+  setBusy(true);
+  try {
+    await refresh();
+    setBusy(false);
+    if (selected) await load(selected, page);
+    else say('Tables refreshed.');
+  } catch (error) {
+    say(error.message, true);
+  } finally {
+    setBusy(false);
+  }
+};
+setBusy(true);
+refresh()
+  .then(() =>
+    say(tables.length ? 'Select a table to get started.' : 'No tables found in the public schema.'),
+  )
+  .catch((error) => say(error.message, true))
+  .finally(() => setBusy(false));
 
-let menuData=null,selectedCategoryId='',selectedSectionId='',expandedCategoryId='',openingCategoryId='';
-function showTab(tab){
- const primaryTab=tab==='bookings'?'bookings':'settings';
- document.querySelectorAll('.global-tab').forEach(button=>button.setAttribute('aria-selected',String(button.dataset.tab===primaryTab)));
- $('booking-workspace').hidden=tab!=='bookings';
- $('settings-workspace').hidden=tab!=='settings';
- $('database-workspace').hidden=tab!=='database';
- $('menu-workspace').hidden=tab!=='menu';
- if(tab==='bookings')window.dispatchEvent(new Event('quicken-tree-bookings-open'));
- if(tab==='settings'){
- $('table-settings-panel').hidden=true;
- $('booking-settings-panel').hidden=true;
-  $('opening-hours-panel').hidden=true;
-  $('settings-home').hidden=false;
-  window.dispatchEvent(new Event('quicken-tree-settings-open'));
- }
- if(tab==='menu'&&!menuData)void loadMenu();
+let menuData = null,
+  selectedCategoryId = '',
+  selectedSectionId = '',
+  expandedCategoryId = '',
+  openingCategoryId = '';
+function showTab(tab) {
+  const primaryTab = tab === 'bookings' ? 'bookings' : 'settings';
+  document
+    .querySelectorAll('.global-tab')
+    .forEach((button) =>
+      button.setAttribute('aria-selected', String(button.dataset.tab === primaryTab)),
+    );
+  $('booking-workspace').hidden = tab !== 'bookings';
+  $('settings-workspace').hidden = tab !== 'settings';
+  $('database-workspace').hidden = tab !== 'database';
+  $('menu-workspace').hidden = tab !== 'menu';
+  if (tab === 'bookings') window.dispatchEvent(new Event('quicken-tree-bookings-open'));
+  if (tab === 'settings') {
+    $('table-settings-panel').hidden = true;
+    $('booking-settings-panel').hidden = true;
+    $('opening-hours-panel').hidden = true;
+    $('settings-home').hidden = false;
+    window.dispatchEvent(new Event('quicken-tree-settings-open'));
+  }
+  if (tab === 'menu' && !menuData) void loadMenu();
 }
 showTab('bookings');
-window.addEventListener('quicken-tree-open-menu-maintenance',()=>showTab('menu'));
-window.addEventListener('quicken-tree-open-database-management',()=>showTab('database'));
-function stat(value,label){const card=document.createElement('div');const number=document.createElement('b');number.textContent=String(value);const text=document.createElement('span');text.textContent=label;card.append(number,text);return card;}
-function sectionsForCategory(category){const source=menuData.menus.find(menu=>menu.name===category.menuName);const sourceSections=source?menuData.sections.filter(section=>section.menuId===source.id):[];const requestedPositions=menuData.categorySections.filter(mapping=>mapping.categoryId===category.id).map(mapping=>mapping.sectionPosition);return requestedPositions.length?requestedPositions.map(position=>sourceSections[position]).filter(Boolean):sourceSections;}
-async function reorderCategories(categoryIds){const remaining=menuData.categories.filter(category=>!categoryIds.includes(category.id)).map(category=>category.id);try{await api('/menu/categories/order',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({categoryIds:[...categoryIds,...remaining]})});menuData=null;await loadMenu();}catch(error){say(error.message,true);}}
-async function reorderSections(sectionIds){try{await api('/menu/sections/order',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({sectionIds})});menuData=null;await loadMenu();}catch(error){say(error.message,true);}}
-let itemDialogSectionId='',editingItemId='',deletingItemId='';
-function openItemDialog(sectionId,item){itemDialogSectionId=sectionId;editingItemId=item?.id??'';$('item-dialog-eyebrow').textContent=item?'EDIT DISH':'NEW DISH';$('item-dialog-title').textContent=item?'Edit dish':'Add a dish';$('item-dialog-copy').textContent=item?'Changes publish to the customer menu automatically.':'This item will appear in the selected section when the menu updates.';$('item-name').value=item?.name??'';$('item-description').value=item?.description??'';$('item-price').value=item?.priceLabel??'';$('item-error').textContent='';$('save-item').textContent=item?'Save changes':'Add dish';$('item-dialog').showModal();$('item-name').focus();}
-function confirmRemoveItem(item){deletingItemId=item.id;$('delete-item-title').textContent=`Remove ${item.name}?`;$('delete-item-error').textContent='';$('delete-item-dialog').showModal();}
-function decorateMenuItems(sections){for(const section of sections){const card=$(`menu-section-${section.id}`);if(!card)continue;const heading=card.querySelector('header');const add=document.createElement('button');add.type='button';add.textContent='+ Add dish';add.onclick=()=>openItemDialog(section.id);heading.append(add);const sectionItems=menuData.items.filter(item=>item.sectionId===section.id);const rows=[...card.querySelectorAll(':scope > .menu-item')];for(const [index,row] of rows.entries()){const item=sectionItems[index];if(!item)continue;row.dataset.itemId=item.id;const grip=document.createElement('i');grip.className='fa-solid fa-grip-vertical item-drag-handle';grip.setAttribute('aria-label',`Drag ${item.name} to reorder`);grip.title='Drag to reorder';row.firstElementChild.prepend(grip);const actions=document.createElement('div');actions.className='menu-item-actions';const edit=document.createElement('button');edit.type='button';edit.textContent='Edit';edit.onclick=()=>openItemDialog(section.id,item);const remove=document.createElement('button');remove.type='button';remove.className='remove-item';remove.textContent='Remove';remove.onclick=()=>confirmRemoveItem(item);actions.append(edit,remove);row.append(actions);row.draggable=true;row.title='Drag to reorder';}
- let dragged=null,dropped=false;const itemRows=()=>[...card.querySelectorAll(':scope > .menu-item')];for(const row of itemRows()){row.ondragstart=event=>{if(event.target.closest('button')){event.preventDefault();return;}dragged=row;dropped=false;event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('application/x-menu-item',row.dataset.itemId);row.classList.add('item-dragging');};row.ondragend=()=>{for(const entry of itemRows())entry.classList.remove('item-dragging','item-drop-target');if(!dropped)renderMenu();dragged=null;};row.ondragover=event=>{if(!dragged||!event.dataTransfer.types.includes('application/x-menu-item'))return;event.preventDefault();if(dragged===row)return;const after=event.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;row.classList.add('item-drop-target');card.insertBefore(dragged,after?row.nextSibling:row);};row.ondragleave=()=>row.classList.remove('item-drop-target');row.ondrop=event=>{if(!dragged)return;event.preventDefault();dropped=true;void api('/menu/items/order',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({itemIds:itemRows().map(entry=>entry.dataset.itemId)})}).then(()=>{menuData=null;loadMenu();}).catch(error=>{say(error.message,true);void loadMenu();});};}}
+window.addEventListener('quicken-tree-open-menu-maintenance', () => showTab('menu'));
+window.addEventListener('quicken-tree-open-database-management', () => showTab('database'));
+function stat(value, label) {
+  const card = document.createElement('div');
+  const number = document.createElement('b');
+  number.textContent = String(value);
+  const text = document.createElement('span');
+  text.textContent = label;
+  card.append(number, text);
+  return card;
+}
+function sectionsForCategory(category) {
+  const source = menuData.menus.find((menu) => menu.name === category.menuName);
+  const sourceSections = source
+    ? menuData.sections.filter((section) => section.menuId === source.id)
+    : [];
+  const requestedPositions = menuData.categorySections
+    .filter((mapping) => mapping.categoryId === category.id)
+    .map((mapping) => mapping.sectionPosition);
+  return requestedPositions.length
+    ? requestedPositions.map((position) => sourceSections[position]).filter(Boolean)
+    : sourceSections;
+}
+async function reorderCategories(categoryIds) {
+  const remaining = menuData.categories
+    .filter((category) => !categoryIds.includes(category.id))
+    .map((category) => category.id);
+  try {
+    await api('/menu/categories/order', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categoryIds: [...categoryIds, ...remaining] }),
+    });
+    menuData = null;
+    await loadMenu();
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+async function reorderSections(sectionIds) {
+  try {
+    await api('/menu/sections/order', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sectionIds }),
+    });
+    menuData = null;
+    await loadMenu();
+  } catch (error) {
+    say(error.message, true);
+  }
+}
+let itemDialogSectionId = '',
+  editingItemId = '',
+  deletingItemId = '';
+function openItemDialog(sectionId, item) {
+  itemDialogSectionId = sectionId;
+  editingItemId = item?.id ?? '';
+  $('item-dialog-eyebrow').textContent = item ? 'EDIT DISH' : 'NEW DISH';
+  $('item-dialog-title').textContent = item ? 'Edit dish' : 'Add a dish';
+  $('item-dialog-copy').textContent = item
+    ? 'Changes publish to the customer menu automatically.'
+    : 'This item will appear in the selected section when the menu updates.';
+  $('item-name').value = item?.name ?? '';
+  $('item-description').value = item?.description ?? '';
+  $('item-price').value = item?.priceLabel ?? '';
+  $('item-error').textContent = '';
+  $('save-item').textContent = item ? 'Save changes' : 'Add dish';
+  $('item-dialog').showModal();
+  $('item-name').focus();
+}
+function confirmRemoveItem(item) {
+  deletingItemId = item.id;
+  $('delete-item-title').textContent = `Remove ${item.name}?`;
+  $('delete-item-error').textContent = '';
+  $('delete-item-dialog').showModal();
+}
+function decorateMenuItems(sections) {
+  for (const section of sections) {
+    const card = $(`menu-section-${section.id}`);
+    if (!card) continue;
+    const heading = card.querySelector('header');
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.textContent = '+ Add dish';
+    add.onclick = () => openItemDialog(section.id);
+    heading.append(add);
+    const sectionItems = menuData.items.filter((item) => item.sectionId === section.id);
+    const rows = [...card.querySelectorAll(':scope > .menu-item')];
+    for (const [index, row] of rows.entries()) {
+      const item = sectionItems[index];
+      if (!item) continue;
+      row.dataset.itemId = item.id;
+      const grip = document.createElement('i');
+      grip.className = 'fa-solid fa-grip-vertical item-drag-handle';
+      grip.setAttribute('aria-label', `Drag ${item.name} to reorder`);
+      grip.title = 'Drag to reorder';
+      row.firstElementChild.prepend(grip);
+      const actions = document.createElement('div');
+      actions.className = 'menu-item-actions';
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.textContent = 'Edit';
+      edit.onclick = () => openItemDialog(section.id, item);
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'remove-item';
+      remove.textContent = 'Remove';
+      remove.onclick = () => confirmRemoveItem(item);
+      actions.append(edit, remove);
+      row.append(actions);
+      row.draggable = true;
+      row.title = 'Drag to reorder';
+    }
+    let dragged = null,
+      dropped = false;
+    const itemRows = () => [...card.querySelectorAll(':scope > .menu-item')];
+    for (const row of itemRows()) {
+      row.ondragstart = (event) => {
+        if (event.target.closest('button')) {
+          event.preventDefault();
+          return;
+        }
+        dragged = row;
+        dropped = false;
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('application/x-menu-item', row.dataset.itemId);
+        row.classList.add('item-dragging');
+      };
+      row.ondragend = () => {
+        for (const entry of itemRows()) entry.classList.remove('item-dragging', 'item-drop-target');
+        if (!dropped) renderMenu();
+        dragged = null;
+      };
+      row.ondragover = (event) => {
+        if (!dragged || !event.dataTransfer.types.includes('application/x-menu-item')) return;
+        event.preventDefault();
+        if (dragged === row) return;
+        const after =
+          event.clientY > row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2;
+        row.classList.add('item-drop-target');
+        card.insertBefore(dragged, after ? row.nextSibling : row);
+      };
+      row.ondragleave = () => row.classList.remove('item-drop-target');
+      row.ondrop = (event) => {
+        if (!dragged) return;
+        event.preventDefault();
+        dropped = true;
+        void api('/menu/items/order', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemIds: itemRows().map((entry) => entry.dataset.itemId) }),
+        })
+          .then(() => {
+            menuData = null;
+            loadMenu();
+          })
+          .catch((error) => {
+            say(error.message, true);
+            void loadMenu();
+          });
+      };
+    }
+  }
 }
 // Accept drops in row gaps as well as on rows, using the rendered order.
-document.addEventListener('dragover',event=>{
- const card=event.target.closest?.('.menu-section');
- if(card?.querySelector('.item-dragging')&&Array.from(event.dataTransfer.types).includes('application/x-menu-item'))event.preventDefault();
+document.addEventListener('dragover', (event) => {
+  const card = event.target.closest?.('.menu-section');
+  if (
+    card?.querySelector('.item-dragging') &&
+    Array.from(event.dataTransfer.types).includes('application/x-menu-item')
+  )
+    event.preventDefault();
 });
-document.addEventListener('drop',event=>{
- const card=event.target.closest?.('.menu-section');
- if(!card?.querySelector('.item-dragging')||!Array.from(event.dataTransfer.types).includes('application/x-menu-item'))return;
- if(event.target.closest('.menu-item'))return;
- event.preventDefault();
- const row=card.querySelector('.item-dragging');
- row.ondrop(event);
+document.addEventListener('drop', (event) => {
+  const card = event.target.closest?.('.menu-section');
+  if (
+    !card?.querySelector('.item-dragging') ||
+    !Array.from(event.dataTransfer.types).includes('application/x-menu-item')
+  )
+    return;
+  if (event.target.closest('.menu-item')) return;
+  event.preventDefault();
+  const row = card.querySelector('.item-dragging');
+  row.ondrop(event);
 });
-function renderMenu(){
- const visibleCategories=menuData.categories.filter(category=>category.label!=='Brunch');
- const active=visibleCategories.find(category=>category.id===selectedCategoryId)??visibleCategories[0];
- if(!active){$('menu-list').replaceChildren();$('menu-stats').replaceChildren();return;}
- selectedCategoryId=active.id;$('menu-list').replaceChildren();
- for(const category of visibleCategories){const group=document.createElement('div');group.className='menu-nav-group';const childSections=sectionsForCategory(category).filter(section=>section.title!==category.label);const expanded=expandedCategoryId===category.id;const button=document.createElement('button');button.className='menu-nav-parent';button.setAttribute('aria-current',String(category.id===active.id));if(childSections.length)button.setAttribute('aria-expanded',String(expanded));const name=document.createElement('span');name.textContent=category.label;button.append(name);if(childSections.length){const chevron=document.createElement('i');chevron.className='fa-solid fa-chevron-down menu-chevron';chevron.setAttribute('aria-hidden','true');button.append(chevron);}button.onclick=()=>{if(category.id===selectedCategoryId){const isExpanded=expandedCategoryId===category.id;selectedSectionId='';expandedCategoryId=isExpanded?'':category.id;button.setAttribute('aria-expanded',String(!isExpanded));const children=group.querySelector('.menu-nav-children');children?.classList.toggle('is-open',!isExpanded);return;}selectedCategoryId=category.id;selectedSectionId='';expandedCategoryId=category.id;openingCategoryId=category.id;renderMenu();};group.append(button);if(childSections.length){const children=document.createElement('div');children.className=`menu-nav-children${expanded&&openingCategoryId!==category.id?' is-open':''}`;const childList=document.createElement('div');childList.className='menu-nav-child-list';for(const section of childSections){const sub=document.createElement('button');sub.className='menu-nav-section';sub.setAttribute('aria-current',String(section.id===selectedSectionId));sub.textContent=section.title;sub.onclick=()=>{selectedCategoryId=category.id;selectedSectionId=section.id;expandedCategoryId=category.id;renderMenu();requestAnimationFrame(()=>document.getElementById(`menu-section-${section.id}`)?.scrollIntoView({behavior:'smooth',block:'start'}));};childList.append(sub);}children.append(childList);group.append(children);if(openingCategoryId===category.id)requestAnimationFrame(()=>{children.classList.add('is-open');openingCategoryId='';});}$('menu-list').append(group);}
- const groups=[...$('menu-list').querySelectorAll('.menu-nav-group')];for(const [index,group] of groups.entries()){const category=visibleCategories[index];group.draggable=true;group.dataset.categoryId=category.id;group.title=`Drag ${category.label} to reorder`;group.ondragstart=event=>{event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('application/x-menu-category',category.id);group.classList.add('is-dragging');};group.ondragend=()=>group.classList.remove('is-dragging');group.ondragover=event=>{if(event.dataTransfer.types.includes('application/x-menu-category')){event.preventDefault();event.dataTransfer.dropEffect='move';group.dataset.dropAfter=String(event.clientY>group.getBoundingClientRect().top+group.getBoundingClientRect().height/2);group.classList.add('is-drop-target');}};group.ondragleave=()=>{group.classList.remove('is-drop-target');delete group.dataset.dropAfter;};group.ondrop=event=>{const dragged=event.dataTransfer.getData('application/x-menu-category');if(!dragged||dragged===category.id)return;event.preventDefault();const ids=visibleCategories.map(item=>item.id);const from=ids.indexOf(dragged),target=ids.indexOf(category.id),after=group.dataset.dropAfter==='true';ids.splice(from,1);ids.splice(target-(from<target?1:0)+(after?1:0),0,dragged);void reorderCategories(ids);};}
- for(const category of visibleCategories){const childList=$('menu-list').querySelector(`[data-category-id="${category.id}"] .menu-nav-child-list`);const source=menuData.menus.find(menu=>menu.name===category.menuName);const allSourceSections=source?menuData.sections.filter(section=>section.menuId===source.id):[];if(!childList)continue;const children=[...childList.querySelectorAll('.menu-nav-section')];const childSections=sectionsForCategory(category).filter(section=>section.title!==category.label);if(childSections.length!==allSourceSections.length)continue;for(const [index,child] of children.entries()){const section=childSections[index];child.draggable=true;child.dataset.sectionId=section.id;child.title=`Drag ${section.title} to reorder`;child.ondragstart=event=>{event.stopPropagation();event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('application/x-menu-section',section.id);child.classList.add('is-dragging');};child.ondragend=()=>child.classList.remove('is-dragging');child.ondragover=event=>{if(event.dataTransfer.types.includes('application/x-menu-section')){event.preventDefault();event.stopPropagation();child.dataset.dropAfter=String(event.clientY>child.getBoundingClientRect().top+child.getBoundingClientRect().height/2);child.classList.add('is-drop-target');}};child.ondragleave=()=>{child.classList.remove('is-drop-target');delete child.dataset.dropAfter;};child.ondrop=event=>{const dragged=event.dataTransfer.getData('application/x-menu-section');if(!dragged||dragged===section.id)return;event.preventDefault();event.stopPropagation();const ids=childSections.map(item=>item.id);const from=ids.indexOf(dragged),target=ids.indexOf(section.id),after=child.dataset.dropAfter==='true';ids.splice(from,1);ids.splice(target-(from<target?1:0)+(after?1:0),0,dragged);void reorderSections(ids);};}}
- const wireSortable=(container,selector,mime,commit)=>{
-  let dragged=null,dropped=false;
-  const items=()=>[...container.querySelectorAll(selector)];
-  const accepts=event=>dragged&&Array.from(event.dataTransfer.types).includes(mime);
-  container.ondragover=event=>{if(!accepts(event))return;event.preventDefault();event.stopPropagation();event.dataTransfer.dropEffect='move';};
-  container.ondrop=event=>{if(!accepts(event))return;event.preventDefault();event.stopPropagation();dropped=true;void commit(items().map(entry=>entry.dataset.categoryId??entry.dataset.sectionId));};
-  for(const item of items()){
-   item.ondragstart=event=>{event.stopPropagation();dragged=item;dropped=false;event.dataTransfer.effectAllowed='move';event.dataTransfer.setData(mime,item.dataset.categoryId??item.dataset.sectionId);item.classList.add('is-dragging');};
-   item.ondragover=event=>{if(!accepts(event))return;event.preventDefault();event.stopPropagation();event.dataTransfer.dropEffect='move';if(dragged===item)return;const after=event.clientY>item.getBoundingClientRect().top+item.getBoundingClientRect().height/2;item.dataset.dropAfter=String(after);item.classList.add('is-drop-target');container.insertBefore(dragged,after?item.nextSibling:item);};
-   item.ondragleave=()=>{item.classList.remove('is-drop-target');delete item.dataset.dropAfter;};
-   item.ondrop=null;
-   item.ondragend=event=>{event.stopPropagation();for(const entry of items()){entry.classList.remove('is-dragging','is-drop-target');delete entry.dataset.dropAfter;}if(!dropped)renderMenu();dragged=null;};
+function renderMenu() {
+  const visibleCategories = menuData.categories.filter((category) => category.label !== 'Brunch');
+  const active =
+    visibleCategories.find((category) => category.id === selectedCategoryId) ??
+    visibleCategories[0];
+  if (!active) {
+    $('menu-list').replaceChildren();
+    $('menu-stats').replaceChildren();
+    return;
   }
- };
- wireSortable($('menu-list'),':scope > .menu-nav-group','application/x-menu-category',reorderCategories);
- for(const childList of $('menu-list').querySelectorAll('.menu-nav-child-list'))wireSortable(childList,':scope > .menu-nav-section','application/x-menu-section',reorderSections);
- $('add-section').hidden=Boolean(selectedSectionId);
- const sections=sectionsForCategory(active);
- const items=sections.flatMap(section=>menuData.items.filter(item=>item.sectionId===section.id));
- $('menu-title').textContent=active.label;$('menu-summary').textContent=`${active.menuName} · ${sections.length} sections · ${items.length} dishes`;$('menu-stats').replaceChildren(stat(sections.length,'sections'),stat(items.length,'dishes'),stat(items.filter(item=>item.priceLabel).length,'priced items'));
- $('menu-sections').replaceChildren();
- for(const section of sections){const card=document.createElement('article');card.className='menu-section';card.id=`menu-section-${section.id}`;const heading=document.createElement('header');const title=document.createElement('h2');title.textContent=section.title;const count=document.createElement('span');const sectionItems=menuData.items.filter(item=>item.sectionId===section.id);count.textContent=`${sectionItems.length} dishes`;heading.append(title,count);card.append(heading);for(const item of sectionItems){const row=document.createElement('div');row.className='menu-item';const itemName=document.createElement('div');const name=document.createElement('b');name.textContent=item.name;itemName.append(name);const tags=(menuData.dietaryTags??[]).filter(tag=>tag.itemName===item.name);if(tags.length){const legend=document.createElement('span');legend.className='item-dietary-legend';for(const tag of tags){const icon=document.createElement('i');icon.textContent=tag.tagCode;icon.title=tag.label||tag.tagCode;icon.setAttribute('aria-label',tag.label||tag.tagCode);legend.append(icon);}itemName.append(legend);}const description=document.createElement('p');description.textContent=item.description;const price=document.createElement('em');price.textContent=item.priceLabel;const outOfStock=(menuData.unavailableItems??[]).some(unavailable=>unavailable.itemName===item.name);const availability=document.createElement('button');availability.type='button';availability.className=`availability-toggle${outOfStock?' is-unavailable':''}`;availability.setAttribute('aria-pressed',String(outOfStock));availability.textContent=outOfStock?'Out of stock':'In stock';availability.onclick=async()=>{availability.disabled=true;try{await api(`/menu/items/${encodeURIComponent(item.id)}/out-of-stock`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({outOfStock:!outOfStock})});menuData=null;await loadMenu();}catch(error){say(error.message,true);availability.disabled=false;}};row.append(itemName,description,price,availability);card.append(row);}$('menu-sections').append(card);}decorateMenuItems(sections);
+  selectedCategoryId = active.id;
+  $('menu-list').replaceChildren();
+  for (const category of visibleCategories) {
+    const group = document.createElement('div');
+    group.className = 'menu-nav-group';
+    const childSections = sectionsForCategory(category).filter(
+      (section) => section.title !== category.label,
+    );
+    const expanded = expandedCategoryId === category.id;
+    const button = document.createElement('button');
+    button.className = 'menu-nav-parent';
+    button.setAttribute('aria-current', String(category.id === active.id));
+    if (childSections.length) button.setAttribute('aria-expanded', String(expanded));
+    const name = document.createElement('span');
+    name.textContent = category.label;
+    button.append(name);
+    if (childSections.length) {
+      const chevron = document.createElement('i');
+      chevron.className = 'fa-solid fa-chevron-down menu-chevron';
+      chevron.setAttribute('aria-hidden', 'true');
+      button.append(chevron);
+    }
+    button.onclick = () => {
+      if (category.id === selectedCategoryId) {
+        const isExpanded = expandedCategoryId === category.id;
+        selectedSectionId = '';
+        expandedCategoryId = isExpanded ? '' : category.id;
+        button.setAttribute('aria-expanded', String(!isExpanded));
+        const children = group.querySelector('.menu-nav-children');
+        children?.classList.toggle('is-open', !isExpanded);
+        return;
+      }
+      selectedCategoryId = category.id;
+      selectedSectionId = '';
+      expandedCategoryId = category.id;
+      openingCategoryId = category.id;
+      renderMenu();
+    };
+    group.append(button);
+    if (childSections.length) {
+      const children = document.createElement('div');
+      children.className = `menu-nav-children${expanded && openingCategoryId !== category.id ? ' is-open' : ''}`;
+      const childList = document.createElement('div');
+      childList.className = 'menu-nav-child-list';
+      for (const section of childSections) {
+        const sub = document.createElement('button');
+        sub.className = 'menu-nav-section';
+        sub.setAttribute('aria-current', String(section.id === selectedSectionId));
+        sub.textContent = section.title;
+        sub.onclick = () => {
+          selectedCategoryId = category.id;
+          selectedSectionId = section.id;
+          expandedCategoryId = category.id;
+          renderMenu();
+          requestAnimationFrame(() =>
+            document
+              .getElementById(`menu-section-${section.id}`)
+              ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+          );
+        };
+        childList.append(sub);
+      }
+      children.append(childList);
+      group.append(children);
+      if (openingCategoryId === category.id)
+        requestAnimationFrame(() => {
+          children.classList.add('is-open');
+          openingCategoryId = '';
+        });
+    }
+    $('menu-list').append(group);
+  }
+  const groups = [...$('menu-list').querySelectorAll('.menu-nav-group')];
+  for (const [index, group] of groups.entries()) {
+    const category = visibleCategories[index];
+    group.draggable = true;
+    group.dataset.categoryId = category.id;
+    group.title = `Drag ${category.label} to reorder`;
+    group.ondragstart = (event) => {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('application/x-menu-category', category.id);
+      group.classList.add('is-dragging');
+    };
+    group.ondragend = () => group.classList.remove('is-dragging');
+    group.ondragover = (event) => {
+      if (event.dataTransfer.types.includes('application/x-menu-category')) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        group.dataset.dropAfter = String(
+          event.clientY >
+            group.getBoundingClientRect().top + group.getBoundingClientRect().height / 2,
+        );
+        group.classList.add('is-drop-target');
+      }
+    };
+    group.ondragleave = () => {
+      group.classList.remove('is-drop-target');
+      delete group.dataset.dropAfter;
+    };
+    group.ondrop = (event) => {
+      const dragged = event.dataTransfer.getData('application/x-menu-category');
+      if (!dragged || dragged === category.id) return;
+      event.preventDefault();
+      const ids = visibleCategories.map((item) => item.id);
+      const from = ids.indexOf(dragged),
+        target = ids.indexOf(category.id),
+        after = group.dataset.dropAfter === 'true';
+      ids.splice(from, 1);
+      ids.splice(target - (from < target ? 1 : 0) + (after ? 1 : 0), 0, dragged);
+      void reorderCategories(ids);
+    };
+  }
+  for (const category of visibleCategories) {
+    const childList = $('menu-list').querySelector(
+      `[data-category-id="${category.id}"] .menu-nav-child-list`,
+    );
+    const source = menuData.menus.find((menu) => menu.name === category.menuName);
+    const allSourceSections = source
+      ? menuData.sections.filter((section) => section.menuId === source.id)
+      : [];
+    if (!childList) continue;
+    const children = [...childList.querySelectorAll('.menu-nav-section')];
+    const childSections = sectionsForCategory(category).filter(
+      (section) => section.title !== category.label,
+    );
+    if (childSections.length !== allSourceSections.length) continue;
+    for (const [index, child] of children.entries()) {
+      const section = childSections[index];
+      child.draggable = true;
+      child.dataset.sectionId = section.id;
+      child.title = `Drag ${section.title} to reorder`;
+      child.ondragstart = (event) => {
+        event.stopPropagation();
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('application/x-menu-section', section.id);
+        child.classList.add('is-dragging');
+      };
+      child.ondragend = () => child.classList.remove('is-dragging');
+      child.ondragover = (event) => {
+        if (event.dataTransfer.types.includes('application/x-menu-section')) {
+          event.preventDefault();
+          event.stopPropagation();
+          child.dataset.dropAfter = String(
+            event.clientY >
+              child.getBoundingClientRect().top + child.getBoundingClientRect().height / 2,
+          );
+          child.classList.add('is-drop-target');
+        }
+      };
+      child.ondragleave = () => {
+        child.classList.remove('is-drop-target');
+        delete child.dataset.dropAfter;
+      };
+      child.ondrop = (event) => {
+        const dragged = event.dataTransfer.getData('application/x-menu-section');
+        if (!dragged || dragged === section.id) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const ids = childSections.map((item) => item.id);
+        const from = ids.indexOf(dragged),
+          target = ids.indexOf(section.id),
+          after = child.dataset.dropAfter === 'true';
+        ids.splice(from, 1);
+        ids.splice(target - (from < target ? 1 : 0) + (after ? 1 : 0), 0, dragged);
+        void reorderSections(ids);
+      };
+    }
+  }
+  const wireSortable = (container, selector, mime, commit) => {
+    let dragged = null,
+      dropped = false;
+    const items = () => [...container.querySelectorAll(selector)];
+    const accepts = (event) => dragged && Array.from(event.dataTransfer.types).includes(mime);
+    container.ondragover = (event) => {
+      if (!accepts(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = 'move';
+    };
+    container.ondrop = (event) => {
+      if (!accepts(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      dropped = true;
+      void commit(items().map((entry) => entry.dataset.categoryId ?? entry.dataset.sectionId));
+    };
+    for (const item of items()) {
+      item.ondragstart = (event) => {
+        event.stopPropagation();
+        dragged = item;
+        dropped = false;
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData(mime, item.dataset.categoryId ?? item.dataset.sectionId);
+        item.classList.add('is-dragging');
+      };
+      item.ondragover = (event) => {
+        if (!accepts(event)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = 'move';
+        if (dragged === item) return;
+        const after =
+          event.clientY >
+          item.getBoundingClientRect().top + item.getBoundingClientRect().height / 2;
+        item.dataset.dropAfter = String(after);
+        item.classList.add('is-drop-target');
+        container.insertBefore(dragged, after ? item.nextSibling : item);
+      };
+      item.ondragleave = () => {
+        item.classList.remove('is-drop-target');
+        delete item.dataset.dropAfter;
+      };
+      item.ondrop = null;
+      item.ondragend = (event) => {
+        event.stopPropagation();
+        for (const entry of items()) {
+          entry.classList.remove('is-dragging', 'is-drop-target');
+          delete entry.dataset.dropAfter;
+        }
+        if (!dropped) renderMenu();
+        dragged = null;
+      };
+    }
+  };
+  wireSortable(
+    $('menu-list'),
+    ':scope > .menu-nav-group',
+    'application/x-menu-category',
+    reorderCategories,
+  );
+  for (const childList of $('menu-list').querySelectorAll('.menu-nav-child-list'))
+    wireSortable(
+      childList,
+      ':scope > .menu-nav-section',
+      'application/x-menu-section',
+      reorderSections,
+    );
+  $('add-section').hidden = Boolean(selectedSectionId);
+  const sections = sectionsForCategory(active);
+  const items = sections.flatMap((section) =>
+    menuData.items.filter((item) => item.sectionId === section.id),
+  );
+  $('menu-title').textContent = active.label;
+  $('menu-summary').textContent =
+    `${active.menuName} · ${sections.length} sections · ${items.length} dishes`;
+  $('menu-stats').replaceChildren(
+    stat(sections.length, 'sections'),
+    stat(items.length, 'dishes'),
+    stat(items.filter((item) => item.priceLabel).length, 'priced items'),
+  );
+  $('menu-sections').replaceChildren();
+  for (const section of sections) {
+    const card = document.createElement('article');
+    card.className = 'menu-section';
+    card.id = `menu-section-${section.id}`;
+    const heading = document.createElement('header');
+    const title = document.createElement('h2');
+    title.textContent = section.title;
+    const count = document.createElement('span');
+    const sectionItems = menuData.items.filter((item) => item.sectionId === section.id);
+    count.textContent = `${sectionItems.length} dishes`;
+    heading.append(title, count);
+    card.append(heading);
+    for (const item of sectionItems) {
+      const row = document.createElement('div');
+      row.className = 'menu-item';
+      const itemName = document.createElement('div');
+      const name = document.createElement('b');
+      name.textContent = item.name;
+      itemName.append(name);
+      const tags = (menuData.dietaryTags ?? []).filter((tag) => tag.itemName === item.name);
+      if (tags.length) {
+        const legend = document.createElement('span');
+        legend.className = 'item-dietary-legend';
+        for (const tag of tags) {
+          const icon = document.createElement('i');
+          icon.textContent = tag.tagCode;
+          icon.title = tag.label || tag.tagCode;
+          icon.setAttribute('aria-label', tag.label || tag.tagCode);
+          legend.append(icon);
+        }
+        itemName.append(legend);
+      }
+      const description = document.createElement('p');
+      description.textContent = item.description;
+      const price = document.createElement('em');
+      price.textContent = item.priceLabel;
+      const outOfStock = (menuData.unavailableItems ?? []).some(
+        (unavailable) => unavailable.itemName === item.name,
+      );
+      const availability = document.createElement('button');
+      availability.type = 'button';
+      availability.className = `availability-toggle${outOfStock ? ' is-unavailable' : ''}`;
+      availability.setAttribute('aria-pressed', String(outOfStock));
+      availability.textContent = outOfStock ? 'Out of stock' : 'In stock';
+      availability.onclick = async () => {
+        availability.disabled = true;
+        try {
+          await api(`/menu/items/${encodeURIComponent(item.id)}/out-of-stock`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ outOfStock: !outOfStock }),
+          });
+          menuData = null;
+          await loadMenu();
+        } catch (error) {
+          say(error.message, true);
+          availability.disabled = false;
+        }
+      };
+      row.append(itemName, description, price, availability);
+      card.append(row);
+    }
+    $('menu-sections').append(card);
+  }
+  decorateMenuItems(sections);
 }
-async function loadMenu(){try{menuData=await api('/menu');renderMenu();}catch(error){$('menu-summary').textContent=error.message;}}
-document.querySelectorAll('.global-tab:not([data-tab="bookings"])').forEach(button=>button.onclick=()=>showTab(button.dataset.tab));
-$('refresh-menu').onclick=()=>{menuData=null;void loadMenu();};
-$('open-menu-table').onclick=()=>{showTab('database');void load('menu_items',0);};
-$('add-menu').onclick=()=>{$('new-menu-name').value='';$('add-menu-error').textContent='';$('add-menu-dialog').showModal();$('new-menu-name').focus();};
-$('cancel-add-menu').onclick=()=>$('add-menu-dialog').close();
-$('add-menu-form').onsubmit=async event=>{
- event.preventDefault();const button=$('save-menu');button.disabled=true;$('add-menu-error').textContent='';
- try{await api('/menu',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('new-menu-name').value})});menuData=null;selectedCategoryId='';selectedSectionId='';expandedCategoryId='';await loadMenu();$('add-menu-dialog').close();}
- catch(error){$('add-menu-error').textContent=error.message;}
- finally{button.disabled=false;}
+async function loadMenu() {
+  try {
+    menuData = await api('/menu');
+    renderMenu();
+  } catch (error) {
+    $('menu-summary').textContent = error.message;
+  }
+}
+document
+  .querySelectorAll('.global-tab:not([data-tab="bookings"])')
+  .forEach((button) => (button.onclick = () => showTab(button.dataset.tab)));
+$('refresh-menu').onclick = () => {
+  menuData = null;
+  void loadMenu();
 };
-$('add-section').onclick=()=>{if(!menuData||selectedSectionId)return;const category=menuData.categories.find(item=>item.id===selectedCategoryId);if(!category)return;$('new-submenu-name').value='';$('add-submenu-error').textContent='';$('add-submenu-copy').textContent=`Add a section beneath ${category.label}.`;$('add-submenu-dialog').showModal();$('new-submenu-name').focus();};
-$('cancel-add-submenu').onclick=()=>$('add-submenu-dialog').close();
-$('add-submenu-form').onsubmit=async event=>{event.preventDefault();const button=$('save-submenu');button.disabled=true;$('add-submenu-error').textContent='';try{await api('/menu/sections',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({categoryId:selectedCategoryId,name:$('new-submenu-name').value})});menuData=null;await loadMenu();$('add-submenu-dialog').close();}catch(error){$('add-submenu-error').textContent=error.message;}finally{button.disabled=false;}};
-$('cancel-item').onclick=()=>$('item-dialog').close();
-$('item-form').onsubmit=async event=>{event.preventDefault();const button=$('save-item');button.disabled=true;$('item-error').textContent='';const body={name:$('item-name').value,description:$('item-description').value,priceLabel:$('item-price').value};try{if(editingItemId)await api(`/menu/items/${encodeURIComponent(editingItemId)}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});else await api('/menu/items',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,sectionId:itemDialogSectionId})});menuData=null;await loadMenu();$('item-dialog').close();}catch(error){$('item-error').textContent=error.message;}finally{button.disabled=false;}};
-$('cancel-delete-item').onclick=()=>{$('delete-item-dialog').close();deletingItemId='';};
-$('delete-item-form').onsubmit=async event=>{event.preventDefault();if(!deletingItemId)return;const button=$('confirm-delete-item');button.disabled=true;$('delete-item-error').textContent='';try{await api(`/menu/items/${encodeURIComponent(deletingItemId)}`,{method:'DELETE'});menuData=null;await loadMenu();$('delete-item-dialog').close();deletingItemId='';}catch(error){$('delete-item-error').textContent=error.message;}finally{button.disabled=false;}};
-let suppressItemClickUntil=0;
-const itemRowsContainer=$('menu-sections');
-itemRowsContainer.addEventListener('dragstart',()=>{suppressItemClickUntil=Infinity;});
-itemRowsContainer.addEventListener('dragend',()=>{suppressItemClickUntil=Date.now()+100;});
-itemRowsContainer.addEventListener('click',event=>{
- const row=event.target.closest('.menu-item');
- if(!row||event.target.closest('button,input')||Date.now()<suppressItemClickUntil)return;
- const item=menuData?.items.find(entry=>String(entry.id)===row.dataset.itemId);
- if(item)openItemDialog(item.sectionId,item);
+$('open-menu-table').onclick = () => {
+  showTab('database');
+  void load('menu_items', 0);
+};
+$('add-menu').onclick = () => {
+  $('new-menu-name').value = '';
+  $('add-menu-error').textContent = '';
+  $('add-menu-dialog').showModal();
+  $('new-menu-name').focus();
+};
+$('cancel-add-menu').onclick = () => $('add-menu-dialog').close();
+$('add-menu-form').onsubmit = async (event) => {
+  event.preventDefault();
+  const button = $('save-menu');
+  button.disabled = true;
+  $('add-menu-error').textContent = '';
+  try {
+    await api('/menu', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: $('new-menu-name').value }),
+    });
+    menuData = null;
+    selectedCategoryId = '';
+    selectedSectionId = '';
+    expandedCategoryId = '';
+    await loadMenu();
+    $('add-menu-dialog').close();
+  } catch (error) {
+    $('add-menu-error').textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+};
+$('add-section').onclick = () => {
+  if (!menuData || selectedSectionId) return;
+  const category = menuData.categories.find((item) => item.id === selectedCategoryId);
+  if (!category) return;
+  $('new-submenu-name').value = '';
+  $('add-submenu-error').textContent = '';
+  $('add-submenu-copy').textContent = `Add a section beneath ${category.label}.`;
+  $('add-submenu-dialog').showModal();
+  $('new-submenu-name').focus();
+};
+$('cancel-add-submenu').onclick = () => $('add-submenu-dialog').close();
+$('add-submenu-form').onsubmit = async (event) => {
+  event.preventDefault();
+  const button = $('save-submenu');
+  button.disabled = true;
+  $('add-submenu-error').textContent = '';
+  try {
+    await api('/menu/sections', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categoryId: selectedCategoryId, name: $('new-submenu-name').value }),
+    });
+    menuData = null;
+    await loadMenu();
+    $('add-submenu-dialog').close();
+  } catch (error) {
+    $('add-submenu-error').textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+};
+$('cancel-item').onclick = () => $('item-dialog').close();
+$('item-form').onsubmit = async (event) => {
+  event.preventDefault();
+  const button = $('save-item');
+  button.disabled = true;
+  $('item-error').textContent = '';
+  const body = {
+    name: $('item-name').value,
+    description: $('item-description').value,
+    priceLabel: $('item-price').value,
+  };
+  try {
+    if (editingItemId)
+      await api(`/menu/items/${encodeURIComponent(editingItemId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    else
+      await api('/menu/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...body, sectionId: itemDialogSectionId }),
+      });
+    menuData = null;
+    await loadMenu();
+    $('item-dialog').close();
+  } catch (error) {
+    $('item-error').textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+};
+$('cancel-delete-item').onclick = () => {
+  $('delete-item-dialog').close();
+  deletingItemId = '';
+};
+$('delete-item-form').onsubmit = async (event) => {
+  event.preventDefault();
+  if (!deletingItemId) return;
+  const button = $('confirm-delete-item');
+  button.disabled = true;
+  $('delete-item-error').textContent = '';
+  try {
+    await api(`/menu/items/${encodeURIComponent(deletingItemId)}`, { method: 'DELETE' });
+    menuData = null;
+    await loadMenu();
+    $('delete-item-dialog').close();
+    deletingItemId = '';
+  } catch (error) {
+    $('delete-item-error').textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+};
+let suppressItemClickUntil = 0;
+const itemRowsContainer = $('menu-sections');
+itemRowsContainer.addEventListener('dragstart', () => {
+  suppressItemClickUntil = Infinity;
+});
+itemRowsContainer.addEventListener('dragend', () => {
+  suppressItemClickUntil = Date.now() + 100;
+});
+itemRowsContainer.addEventListener('click', (event) => {
+  const row = event.target.closest('.menu-item');
+  if (!row || event.target.closest('button,input') || Date.now() < suppressItemClickUntil) return;
+  const item = menuData?.items.find((entry) => String(entry.id) === row.dataset.itemId);
+  if (item) openItemDialog(item.sectionId, item);
 });

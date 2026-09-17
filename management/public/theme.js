@@ -2,8 +2,10 @@
   const key = 'qt-back-office-theme';
   const system = window.matchMedia('(prefers-color-scheme: dark)');
   let preference;
-  try { preference = localStorage.getItem(key); } catch {}
-  const valid = value => value === 'light' || value === 'dark';
+  try {
+    preference = localStorage.getItem(key);
+  } catch {}
+  const valid = (value) => value === 'light' || value === 'dark';
   function apply() {
     const theme = valid(preference) ? preference : system.matches ? 'dark' : 'light';
     document.documentElement.dataset.theme = theme;
@@ -19,7 +21,7 @@
   }
   apply();
   system.addEventListener('change', apply);
-  window.addEventListener('storage', event => {
+  window.addEventListener('storage', (event) => {
     if (event.key === key || event.key === null) {
       preference = event.newValue;
       apply();
@@ -33,7 +35,9 @@
     button.dataset.bound = 'true';
     button.addEventListener('change', () => {
       preference = button.checked ? 'dark' : 'light';
-      try { localStorage.setItem(key, preference); } catch {}
+      try {
+        localStorage.setItem(key, preference);
+      } catch {}
       apply();
     });
   }

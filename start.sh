@@ -22,17 +22,45 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-require_port() {
-  local port="$1"
-  # Only a listening socket blocks a dev server. Browser connections in
-  # CLOSE_WAIT must not be treated as a service already using the port.
-  if lsof -tiTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1; then
-    echo "Port ${port} is already in use. Stop that service before running ./start.sh." >&2
-    exit 1
+MANAGED_PORTS=(3000 4000 4100 4101)
+
+stop_listeners() {
+  local port pid
+  local stale_pids=()
+
+  for port in "${MANAGED_PORTS[@]}"; do
+    while IFS= read -r pid; do
+      [[ -n "$pid" ]] && stale_pids+=("$pid")
+    done < <(lsof -tiTCP:"${port}" -sTCP:LISTEN 2>/dev/null || true)
+  done
+
+  if ((${#stale_pids[@]} == 0)); then
+    return
   fi
+
+  echo "Stopping previous Quicken Tree services…"
+  kill "${stale_pids[@]}" 2>/dev/null || true
+
+  for _ in {1..20}; do
+    local remaining=0
+    for port in "${MANAGED_PORTS[@]}"; do
+      lsof -tiTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1 && remaining=1
+    done
+    if ((remaining == 0)); then
+      return
+    fi
+    sleep 0.25
+  done
+
+  echo "Force-stopping unresponsive Quicken Tree services…"
+  for port in "${MANAGED_PORTS[@]}"; do
+    while IFS= read -r pid; do
+      [[ -n "$pid" ]] && kill -9 "$pid" 2>/dev/null || true
+    done < <(lsof -tiTCP:"${port}" -sTCP:LISTEN 2>/dev/null || true)
+  done
 }
 
-for port in 3000 4000 4100; do require_port "$port"; done
+stop_listeners
 
 start_service() {
   local name="$1"
@@ -47,6 +75,7 @@ start_service() {
 }
 
 start_service "API and Swagger" "$ROOT_DIR/backend" npm run dev
+start_service "back-office API" "$ROOT_DIR/management" npm run api:dev
 start_service "back office" "$ROOT_DIR/management" npm run dev
 start_service "app" "$ROOT_DIR/app" npm run dev -- --port 3000
 
