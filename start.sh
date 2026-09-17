@@ -24,7 +24,9 @@ trap cleanup EXIT INT TERM
 
 require_port() {
   local port="$1"
-  if lsof -ti "tcp:${port}" >/dev/null 2>&1; then
+  # Only a listening socket blocks a dev server. Browser connections in
+  # CLOSE_WAIT must not be treated as a service already using the port.
+  if lsof -tiTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1; then
     echo "Port ${port} is already in use. Stop that service before running ./start.sh." >&2
     exit 1
   fi

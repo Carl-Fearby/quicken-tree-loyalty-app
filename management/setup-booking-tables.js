@@ -9,6 +9,9 @@ try {
   const [existing]=await tx`select to_regclass('public.booking_tables') as name`;
   if(!existing.name)await tx.unsafe(await readFile(new URL('../backend/migrations/007_booking_tables.sql',import.meta.url),'utf8'));
   await tx.unsafe(await readFile(new URL('../backend/migrations/008_booking_table_numbers.sql',import.meta.url),'utf8'));
+  await tx.unsafe(await readFile(new URL('../backend/migrations/009_booking_assignment_settings.sql',import.meta.url),'utf8'));
+ await tx.unsafe(await readFile(new URL('../backend/migrations/010_daily_opening_hours.sql',import.meta.url),'utf8'));
+ await tx.unsafe(await readFile(new URL('../backend/migrations/011_booking_table_assignments.sql',import.meta.url),'utf8'));
  });
  console.log('Booking tables configured. Existing seat counts preserved.');
 } finally {await sql.end();}

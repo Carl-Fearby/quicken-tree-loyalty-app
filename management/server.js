@@ -24,6 +24,7 @@ const itemFields=body=>{
  if(priceLabel.length>40)throw Object.assign(new Error('Price label must be 40 characters or fewer.'),{status:400});
  return {name,description,priceLabel};
 };
+const londonDateTime=()=>{const values=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).filter(part=>part.type!=='literal').map(part=>[part.type,part.value]));return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}`;};
 const server=http.createServer(async(req,res)=>{
  const json=(status,data)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
  try {
@@ -39,13 +40,104 @@ const server=http.createServer(async(req,res)=>{
   if(url.pathname==='/api/diary'&&req.method==='GET'){
    const date=url.searchParams.get('date');
    if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')||Number.isNaN(Date.parse(date)))return json(400,{message:'Choose a valid diary date.'});
-   const bookings=await sql`select id,booking_time::text as time,contact_name as name,guest_count as guests,experience,status,notes from bookings where booking_date=${date}::date order by booking_time,created_at`;
+   const bookings=await sql`select b.id,b.booking_time::text as time,b.contact_name as name,b.guest_count as guests,b.experience,b.status,b.notes,coalesce((select json_agg(name order by position) from booking_dietary_needs where booking_id=b.id),'[]') as "dietaryNeeds",b.assigned_table_id as "assignedTableId",bt.name as "assignedTableName",b.booking_duration_minutes as "durationMinutes" from bookings b left join booking_tables bt on bt.id=b.assigned_table_id where b.booking_date=${date}::date order by b.booking_time,b.created_at`;
+   const tableAssignments=await sql`select bta.booking_id as "bookingId",bt.id as "tableId",bt.name as "tableName" from booking_table_assignments bta join booking_tables bt on bt.id=bta.table_id join bookings b on b.id=bta.booking_id where b.booking_date=${date}::date order by bt.table_number`;
+   const orders=await sql`select o.id,o.booking_id as "bookingId",o.status,o.total_pence as "totalPence",o.paid_at as "paidAt" from orders o join bookings b on b.id=o.booking_id where b.booking_date=${date}::date`;
+   const lines=await sql`select l.id,l.order_id as "orderId",l.item_name as name,l.item_description as description,l.unit_price_pence as "unitPricePence",l.quantity from order_lines l join orders o on o.id=l.order_id join bookings b on b.id=o.booking_id where b.booking_date=${date}::date order by l.created_at`;
+   const assignments=await sql`select a.order_line_id as "orderLineId",a.serving_number as "servingNumber",a.is_shared as "isShared",g.display_name as "guestName" from order_line_assignments a join order_lines l on l.id=a.order_line_id join orders o on o.id=l.order_id join bookings b on b.id=o.booking_id left join booking_guests g on g.id=a.booking_guest_id where b.booking_date=${date}::date order by a.serving_number`;
+   const ordersByBooking=new Map(orders.map(order=>[order.bookingId,{status:order.status,totalPence:order.totalPence,paidAt:order.paidAt,lines:lines.filter(line=>line.orderId===order.id).map(line=>({...line,assignments:assignments.filter(assignment=>assignment.orderLineId===line.id)}))}]));
+   for(const booking of bookings){const assigned=tableAssignments.filter(assignment=>assignment.bookingId===booking.id);booking.assignedTableIds=assigned.map(assignment=>assignment.tableId);booking.assignedTableNames=assigned.map(assignment=>assignment.tableName);if(assigned.length){booking.assignedTableId=assigned[0].tableId;booking.assignedTableName=assigned.map(assignment=>assignment.tableName).join(' + ');}booking.orderAhead=ordersByBooking.get(booking.id)??null;}
    const day=new Date(date+'T12:00:00Z').getUTCDay();
-   const [hours]=await sql`select opens_at,closes_at from opening_hours where map_key=${day===0?'sunday':'weekday'} limit 1`;
+   const hourKey=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][day];
+   const [hours]=await sql`select opens_at,closes_at from opening_hours where map_key=${hourKey} limit 1`;
    const tables=await sql`select id,name,table_number as number,seat_count as seats from booking_tables order by table_number`;
-   return json(200,{date,openingHours:hours?{open:Number(hours.opens_at),close:Number(hours.closes_at)}:null,tables,bookings});
+   const [setting]=await sql`select integer_value as "defaultDurationMinutes" from booking_system_settings where setting_key='default_booking_duration_minutes'`;
+   return json(200,{date,openingHours:hours?{open:Number(hours.opens_at),close:Number(hours.closes_at)}:null,tables,bookings,bookingSettings:{defaultDurationMinutes:Number(setting?.defaultDurationMinutes??90)}});
+  }
+  if(url.pathname==='/api/diary/bookings'&&req.method==='POST'){
+   const body=await readJson(req);const date=typeof body?.date==='string'?body.date:'';const time=typeof body?.time==='string'?body.time:'';const name=typeof body?.name==='string'?body.name.trim():'';const experience=typeof body?.experience==='string'&&body.experience.trim()?body.experience.trim():'Table';const notes=typeof body?.notes==='string'?body.notes.trim():'';const dietaryNeeds=Array.isArray(body?.dietaryNeeds)?body.dietaryNeeds.map(need=>typeof need==='string'?need.trim():'').filter(Boolean):[];const tableIds=Array.isArray(body?.tableIds)?body.tableIds.map(Number):body?.tableId===null||body?.tableId===undefined||body?.tableId===''?[]:[Number(body.tableId)];const guests=Number(body?.guests);const durationMinutes=Number(body?.durationMinutes);
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date))||!/^\d{2}:\d{2}$/.test(time)||!name||name.length>120||dietaryNeeds.some(need=>need.length>100)||!Number.isInteger(guests)||guests<1||guests>20||!Number.isInteger(durationMinutes)||durationMinutes<30||durationMinutes>360||durationMinutes%15||tableIds.length>4||new Set(tableIds).size!==tableIds.length||tableIds.some(tableId=>!Number.isSafeInteger(tableId)||tableId<1))return json(400,{message:'Provide valid booking details.'});
+   if(`${date}T${time}`<=londonDateTime())return json(409,{message:'Bookings can only be created for a future time.'});
+   const day=new Date(date+'T12:00:00Z').getUTCDay();const hourKey=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][day];const [hours]=await sql`select opens_at,closes_at from opening_hours where parent_id='appointments' and map_key=${hourKey}`;
+   const startMinutes=Number(time.slice(0,2))*60+Number(time.slice(3));if(!hours||startMinutes<Number(hours.opens_at)*60||startMinutes+durationMinutes>Number(hours.closes_at)*60)return json(409,{message:'This booking falls outside the opening hours for the selected day.'});
+   const booking=await sql.begin(async transaction=>{const selected=(await transaction`select id,name,seat_count as seats from booking_tables order by table_number`).filter(table=>tableIds.includes(table.id));if(selected.length!==tableIds.length)throw Object.assign(new Error('A suggested table is no longer available.'),{status:409});if(selected.reduce((total,table)=>total+table.seats,0)<guests)throw Object.assign(new Error('The selected tables do not have enough combined seats.'),{status:409});for(const table of selected){const [conflict]=await transaction`select b.id from bookings b join booking_table_assignments bta on bta.booking_id=b.id where bta.table_id=${table.id} and b.booking_date=${date}::date and b.status<>'cancelled' and b.booking_time < (${time}::time+make_interval(mins=>${durationMinutes})) and (b.booking_time+make_interval(mins=>b.booking_duration_minutes)) > ${time}::time limit 1`;if(conflict)throw Object.assign(new Error(`${table.name} is no longer available for this time.`),{status:409});}const [created]=await transaction`insert into bookings(booking_date,booking_time,guest_count,experience,contact_name,notes,booking_duration_minutes,assigned_table_id) values(${date}::date,${time}::time,${guests},${experience},${name},${notes||null},${durationMinutes},${selected[0]?.id??null}) returning id,booking_date::text as date,booking_time::text as time,guest_count as guests,contact_name as name,experience,status,booking_duration_minutes as "durationMinutes"`;for(const table of selected)await transaction`insert into booking_table_assignments(booking_id,table_id) values(${created.id},${table.id})`;await transaction`insert into booking_guests(booking_id,display_name,position) values(${created.id},${name},1)`;for(const [position,need] of dietaryNeeds.entries())await transaction`insert into booking_dietary_needs(booking_id,position,name) values(${created.id},${position},${need})`;return created;});
+   return json(201,booking);
+  }
+  const bookingMatch=url.pathname.match(/^\/api\/diary\/bookings\/([0-9a-f-]{36})$/i);
+  if(bookingMatch&&req.method==='PUT'){
+   const body=await readJson(req);const date=typeof body?.date==='string'?body.date:'';const time=typeof body?.time==='string'?body.time:'';const name=typeof body?.name==='string'?body.name.trim():'';const experience=typeof body?.experience==='string'&&body.experience.trim()?body.experience.trim():'Table';const notes=typeof body?.notes==='string'?body.notes.trim():'';const dietaryNeeds=Array.isArray(body?.dietaryNeeds)?body.dietaryNeeds.map(need=>typeof need==='string'?need.trim():'').filter(Boolean):[];const guests=Number(body?.guests);const durationMinutes=Number(body?.durationMinutes);
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date))||!/^\d{2}:\d{2}$/.test(time)||!name||name.length>120||dietaryNeeds.some(need=>need.length>100)||!Number.isInteger(guests)||guests<1||guests>20||!Number.isInteger(durationMinutes)||durationMinutes<30||durationMinutes>360||durationMinutes%15)return json(400,{message:'Provide valid booking details.'});
+   if(`${date}T${time}`<=londonDateTime())return json(409,{message:'Bookings can only be moved to a future time.'});
+   const day=new Date(date+'T12:00:00Z').getUTCDay();const hourKey=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][day];const [hours]=await sql`select opens_at,closes_at from opening_hours where parent_id='appointments' and map_key=${hourKey}`;const startMinutes=Number(time.slice(0,2))*60+Number(time.slice(3));if(!hours||startMinutes<Number(hours.opens_at)*60||startMinutes+durationMinutes>Number(hours.closes_at)*60)return json(409,{message:'This booking falls outside the opening hours for the selected day.'});
+   try{const updated=await sql.begin(async transaction=>{const [booking]=await transaction`select id from bookings where id=${bookingMatch[1]}::uuid for update`;if(!booking)throw Object.assign(new Error('Booking not found.'),{status:404});const assigned=await transaction`select bt.id,bt.name,bt.seat_count as seats from booking_table_assignments bta join booking_tables bt on bt.id=bta.table_id where bta.booking_id=${booking.id}`;if(assigned.length&&assigned.reduce((total,table)=>total+table.seats,0)<guests)throw Object.assign(new Error('The currently assigned table(s) do not have enough seats for this guest count. Change the table assignment first.'),{status:409});for(const table of assigned){const [conflict]=await transaction`select b.id from bookings b join booking_table_assignments bta on bta.booking_id=b.id where bta.table_id=${table.id} and b.booking_date=${date}::date and b.status<>'cancelled' and b.id<>${booking.id} and b.booking_time < (${time}::time+make_interval(mins=>${durationMinutes})) and (b.booking_time+make_interval(mins=>b.booking_duration_minutes)) > ${time}::time limit 1`;if(conflict)throw Object.assign(new Error(`${table.name} is already occupied for this time.`),{status:409});}const [saved]=await transaction`update bookings set booking_date=${date}::date,booking_time=${time}::time,guest_count=${guests},experience=${experience},contact_name=${name},notes=${notes||null},booking_duration_minutes=${durationMinutes},updated_at=now() where id=${booking.id} returning id,booking_date::text as date,booking_time::text as time,guest_count as guests,contact_name as name,experience,status,notes,booking_duration_minutes as "durationMinutes"`;await transaction`delete from booking_dietary_needs where booking_id=${booking.id}`;for(const [position,need] of dietaryNeeds.entries())await transaction`insert into booking_dietary_needs(booking_id,position,name) values(${booking.id},${position},${need})`;await transaction`update booking_guests set display_name=${name} where id=(select id from booking_guests where booking_id=${booking.id} order by position,id limit 1)`;return saved;});return json(200,updated);}catch(error){return json(error.status??500,{message:error.message??'Unable to save this booking.'});}
+  }
+  const cancelBookingMatch=url.pathname.match(/^\/api\/diary\/bookings\/([0-9a-f-]{36})\/cancel$/i);
+  if(cancelBookingMatch&&req.method==='POST'){
+   const [booking]=await sql`update bookings set status='cancelled',updated_at=now() where id=${cancelBookingMatch[1]}::uuid and status<>'cancelled' returning id,status`;
+   return booking?json(200,booking):json(404,{message:'Active booking not found.'});
+  }
+  if(url.pathname==='/api/opening-hours'&&req.method==='GET'){
+   const hours=await sql`select map_key as "day",opens_at as open,closes_at as close from opening_hours where parent_id='appointments' order by position`;
+   return json(200,{hours:hours.map(hour=>({...hour,open:Number(hour.open),close:Number(hour.close)}))});
+  }
+  if(url.pathname==='/api/opening-hours'&&req.method==='PUT'){
+   const body=await readJson(req,16384);const hours=body?.hours;const days=['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+   if(!Array.isArray(hours)||hours.length!==7||hours.some(hour=>!days.includes(hour?.day)||!Number.isFinite(hour?.open)||!Number.isFinite(hour?.close)||hour.open<0||hour.open>24||hour.close<=hour.open||hour.close>24))return json(400,{message:'Provide valid opening hours for every day.'});
+   if(new Set(hours.map(hour=>hour.day)).size!==7)return json(400,{message:'Each day needs one opening-hours record.'});
+   await sql.begin(async transaction=>{for(const [position,day] of days.entries()){const hour=hours.find(value=>value.day===day);await transaction`update opening_hours set position=${position},opens_at=${hour.open},closes_at=${hour.close} where parent_id='appointments' and map_key=${day}`;}});
+   return json(200,{hours:days.map(day=>hours.find(hour=>hour.day===day))});
+  }
+  if(url.pathname==='/api/booking-settings'&&req.method==='PUT'){
+   const body=await readJson(req);const minutes=Number(body?.defaultDurationMinutes);
+   if(!Number.isInteger(minutes)||minutes<30||minutes>360||minutes%15)return json(400,{message:'Choose a booking duration from 30 minutes to 6 hours, in 15-minute steps.'});
+   await sql`insert into booking_system_settings(setting_key,integer_value) values('default_booking_duration_minutes',${minutes}) on conflict(setting_key) do update set integer_value=excluded.integer_value`;
+   return json(200,{defaultDurationMinutes:minutes});
+  }
+  const bookingAssignmentMatch=url.pathname.match(/^\/api\/diary\/bookings\/([0-9a-f-]{36})\/assignment$/i);
+  if(bookingAssignmentMatch&&req.method==='PUT'){
+   const body=await readJson(req);const tableId=body?.tableId===null?null:Number(body?.tableId);
+   if(tableId!==null&&(!Number.isSafeInteger(tableId)||tableId<1))return json(400,{message:'Choose a valid table.'});
+   try{
+    const assignment=await sql.begin(async transaction=>{
+     const [booking]=await transaction`select id,booking_date,booking_time,guest_count,booking_duration_minutes from bookings where id=${bookingAssignmentMatch[1]}::uuid for update`;
+     if(!booking)throw Object.assign(new Error('Booking not found.'),{status:404});
+     const durationMinutes=body?.durationMinutes===undefined?booking.booking_duration_minutes:Number(body.durationMinutes);
+     if(!Number.isInteger(durationMinutes)||durationMinutes<30||durationMinutes>360||durationMinutes%15)throw Object.assign(new Error('Choose a booking length from 30 minutes to 6 hours, in 15-minute steps.'),{status:400});
+     if(tableId===null){await transaction`delete from booking_table_assignments where booking_id=${booking.id}`;await transaction`update bookings set assigned_table_id=null,booking_duration_minutes=${durationMinutes},updated_at=now() where id=${booking.id}`;return {tableId:null,tableName:null,durationMinutes};}
+     const [table]=await transaction`select id,name,seat_count as seats from booking_tables where id=${tableId}`;
+     if(!table)throw Object.assign(new Error('Table not found.'),{status:404});
+     if(table.seats<booking.guest_count)throw Object.assign(new Error(`${table.name} has ${table.seats} seats, but this booking needs ${booking.guest_count}.`),{status:409});
+     const [conflict]=await transaction`select b.id from bookings b join booking_table_assignments bta on bta.booking_id=b.id where bta.table_id=${tableId} and b.booking_date=${booking.booking_date} and b.status<>'cancelled' and b.id<>${booking.id} and b.booking_time < (${booking.booking_time}+make_interval(mins=>${durationMinutes})) and (b.booking_time+make_interval(mins=>b.booking_duration_minutes)) > ${booking.booking_time} limit 1`;
+     if(conflict)throw Object.assign(new Error(`${table.name} is already occupied for this booking time.`),{status:409});
+     await transaction`delete from booking_table_assignments where booking_id=${booking.id}`;
+     await transaction`insert into booking_table_assignments(booking_id,table_id) values(${booking.id},${tableId})`;
+     await transaction`update bookings set assigned_table_id=${tableId},booking_duration_minutes=${durationMinutes},updated_at=now() where id=${booking.id}`;
+     return {tableId:table.id,tableName:table.name,durationMinutes};
+    });
+    return json(200,assignment);
+   }catch(error){return json(error.status??500,{message:error.message??'Unable to assign this table.'});}
   }
   const bookingTableMatch=url.pathname.match(/^\/api\/booking-tables\/(\d+)$/);
+  if(url.pathname==='/api/booking-tables'&&req.method==='PUT'){
+   const body=await readJson(req,65536);const tables=body?.tables;
+   if(!Array.isArray(tables)||tables.length>100)return json(400,{message:'Provide up to 100 tables.'});
+   const normalised=tables.map(table=>({id:table?.id===null||table?.id===undefined?null:Number(table.id),number:Number(table?.number),seats:Number(table?.seats)}));
+   if(normalised.some(table=>(table.id!==null&&(!Number.isSafeInteger(table.id)||table.id<1))||!Number.isInteger(table.number)||table.number<1||table.number>2147483647||!Number.isInteger(table.seats)||table.seats<2||table.seats>10))return json(400,{message:'Every table needs a unique positive number and 2–10 seats.'});
+   if(new Set(normalised.map(table=>table.number)).size!==normalised.length)return json(400,{message:'Table numbers must be unique.'});
+   try{
+    const saved=await sql.begin(async transaction=>{
+     const current=await transaction`select id from booking_tables order by id`;const currentIds=new Set(current.map(table=>table.id));const suppliedIds=normalised.filter(table=>table.id!==null).map(table=>table.id);
+     if(new Set(suppliedIds).size!==suppliedIds.length||suppliedIds.some(id=>!currentIds.has(id)))throw Object.assign(new Error('The table list is out of date. Refresh and try again.'),{status:409});
+     const removed=current.filter(table=>!suppliedIds.includes(table.id));
+     // Move existing rows out of the way first, so swapping two table numbers is valid.
+     for(const [index,table] of normalised.entries())if(table.id!==null)await transaction`update booking_tables set table_number=${2000000000+index} where id=${table.id}`;
+     for(const table of removed)await transaction`delete from booking_tables where id=${table.id}`;
+     for(const table of normalised){const name='Table '+table.number;if(table.id===null)await transaction`insert into booking_tables(name,table_number,seat_count) values(${name},${table.number},${table.seats})`;else await transaction`update booking_tables set name=${name},table_number=${table.number},seat_count=${table.seats} where id=${table.id}`;}
+     return transaction`select id,name,table_number as number,seat_count as seats from booking_tables order by table_number`;
+    });
+    return json(200,{tables:saved});
+   }catch(error){if(error.code==='23505')return json(409,{message:'That table number is already in use.'});if(error.code==='23503')return json(409,{message:'A table with bookings cannot be removed.'});throw error;}
+  }
   if((url.pathname==='/api/booking-tables'&&req.method==='POST')||(bookingTableMatch&&['PUT','DELETE'].includes(req.method))){
    const id=bookingTableMatch?Number(bookingTableMatch[1]):null;
    if(id!==null&&(!Number.isSafeInteger(id)||id<1||id>2147483647))return json(400,{message:'Invalid table ID.'});

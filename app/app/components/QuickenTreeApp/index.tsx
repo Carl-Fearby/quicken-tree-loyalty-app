@@ -21,7 +21,7 @@ import {LoyaltyApp} from '../LoyaltyApp';
 import {PaymentCards, PaymentMethodPicker, usePaymentCards} from '../PaymentCards';
 import {useContent} from '../../lib/use-content';
 import {AuthScreen, type LocalSession} from '../AuthScreen';
-import {refreshSession} from '../../lib/auth';
+import {logout, refreshSession} from '../../lib/auth';
 import {checkForContentUpdate, readCachedContent} from '../../lib/content-sync';
 import {memberRead, memberRequest, setMemberToken} from '../../lib/member-api';
 
@@ -52,7 +52,9 @@ type ApiOrder = {status: string; total_pence: number; totalPence?: number; paid_
 
 const toBooking = (booking: ApiBooking): Booking => ({
     id: booking.id,
-    date: booking.date,
+    // The API contract is YYYY-MM-DD. Trim timestamp-shaped legacy responses too,
+    // so date display stays correct while an older server is being restarted.
+    date: booking.date.slice(0, 10),
     time: booking.time.slice(0, 5),
     guests: `${booking.guestCount} ${booking.guestCount === 1 ? 'Guest' : 'Guests'}`,
     experience: booking.experience,
@@ -86,7 +88,10 @@ const menuCategories = menuData.categories.filter(category => category.label !==
 });
 const allMenuSections = Object.values(menuItems).flat() as MenuSection[];
 
-const openingHours = (date: Date) => (date.getDay() === 0 ? appointmentsData.openingHours.sunday : appointmentsData.openingHours.weekday) ?? {open: 24, close: 0};
+const openingHours = (date: Date) => {
+    const day = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][date.getDay()];
+    return appointmentsData.openingHours[day] ?? (date.getDay() === 0 ? appointmentsData.openingHours.sunday : appointmentsData.openingHours.weekday) ?? {open: 24, close: 0};
+};
 const toInputDate = (date: Date) => date.toISOString().slice(0, 10);
 const formatDate = (date: Date) => date.toLocaleDateString('en-GB', {weekday: 'long', day: 'numeric', month: 'long'});
 const fromInputDate = (value: string) => new Date(`${value}T12:00:00`);
@@ -200,6 +205,13 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
     const [redemption, setRedemption] = useState<Redemption | null>(null);
     const [memberPoints, setMemberPoints] = useState(0);
     const [memberTier, setMemberTier] = useState(profileData.default.tier);
+    const signOut = async () => {
+        await logout();
+        setMemberToken('');
+        setProfilePanel(null);
+        setView('home');
+        setSession(null);
+    };
     useEffect(() => {
         if (!orderToast) return;
         setOrderToastClosing(false);
@@ -910,6 +922,8 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
                                     name="fa-chevron-right"/></span></button>
                                 <button className="setting" onClick={() => setProfilePanel('help')}>Help & contact<span><Icon
                                     name="fa-chevron-right"/></span></button>
+                                <button className="setting logout" onClick={() => { void signOut(); }}>Log out<span><Icon
+                                    name="fa-right-from-bracket"/></span></button>
                                 <button className="setting resetApp" onClick={() => setProfilePanel('reset')}>Reset app to default<span><Icon
                                     name="fa-arrow-rotate-left"/></span></button>
                             </>}

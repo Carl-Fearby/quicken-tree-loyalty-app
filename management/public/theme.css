@@ -34,7 +34,7 @@ input { color: inherit; }
 .database-gate-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
 :root[data-theme="dark"] { color-scheme: dark; color: #e5e9ef; background: #12171e; }
 :root[data-theme="dark"] body, body.dark-mode { background: #12171e; color: #e5e9ef; }
-[data-theme="dark"] :is(body > header, aside, .welcome, .toolbar, .table-wrap, .menu-stats div, .menu-section, dialog) { background: #1b222c; border-color: #374352; color: #e5e9ef; }
+[data-theme="dark"] :is(body > header, aside, .welcome, .toolbar, .table-wrap, .menu-stats div, .menu-section, .settings-card, dialog) { background: #1b222c; border-color: #374352; color: #e5e9ef; }
 [data-theme="dark"] :is(button, input) { background: #232d39; border-color: #465467; color: #e5e9ef; }
 [data-theme="dark"] button:hover:enabled { background: #303e4f; }
 [data-theme="dark"] :is(.brand span, .toolbar > span:first-child) { color: #e5e9ef; }

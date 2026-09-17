@@ -19,13 +19,25 @@ setBusy(true);refresh().then(()=>say(tables.length?'Select a table to get starte
 
 let menuData=null,selectedCategoryId='',selectedSectionId='',expandedCategoryId='',openingCategoryId='';
 function showTab(tab){
- document.querySelectorAll('.global-tab').forEach(button=>button.setAttribute('aria-selected',String(button.dataset.tab===tab)));
+ const primaryTab=tab==='bookings'?'bookings':'settings';
+ document.querySelectorAll('.global-tab').forEach(button=>button.setAttribute('aria-selected',String(button.dataset.tab===primaryTab)));
  $('booking-workspace').hidden=tab!=='bookings';
+ $('settings-workspace').hidden=tab!=='settings';
  $('database-workspace').hidden=tab!=='database';
  $('menu-workspace').hidden=tab!=='menu';
+ if(tab==='bookings')window.dispatchEvent(new Event('quicken-tree-bookings-open'));
+ if(tab==='settings'){
+ $('table-settings-panel').hidden=true;
+ $('booking-settings-panel').hidden=true;
+  $('opening-hours-panel').hidden=true;
+  $('settings-home').hidden=false;
+  window.dispatchEvent(new Event('quicken-tree-settings-open'));
+ }
  if(tab==='menu'&&!menuData)void loadMenu();
 }
-showTab('menu');
+showTab('bookings');
+window.addEventListener('quicken-tree-open-menu-maintenance',()=>showTab('menu'));
+window.addEventListener('quicken-tree-open-database-management',()=>showTab('database'));
 function stat(value,label){const card=document.createElement('div');const number=document.createElement('b');number.textContent=String(value);const text=document.createElement('span');text.textContent=label;card.append(number,text);return card;}
 function sectionsForCategory(category){const source=menuData.menus.find(menu=>menu.name===category.menuName);const sourceSections=source?menuData.sections.filter(section=>section.menuId===source.id):[];const requestedPositions=menuData.categorySections.filter(mapping=>mapping.categoryId===category.id).map(mapping=>mapping.sectionPosition);return requestedPositions.length?requestedPositions.map(position=>sourceSections[position]).filter(Boolean):sourceSections;}
 async function reorderCategories(categoryIds){const remaining=menuData.categories.filter(category=>!categoryIds.includes(category.id)).map(category=>category.id);try{await api('/menu/categories/order',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({categoryIds:[...categoryIds,...remaining]})});menuData=null;await loadMenu();}catch(error){say(error.message,true);}}

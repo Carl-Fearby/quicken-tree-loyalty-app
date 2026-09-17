@@ -1,5 +1,5 @@
 {
-  "openingHours": { "weekday": { "open": 7.5, "close": 20.5 }, "sunday": { "open": 7.5, "close": 17.5 } },
+  "openingHours": { "monday": { "open": 7.5, "close": 21 }, "tuesday": { "open": 7.5, "close": 21 }, "wednesday": { "open": 7.5, "close": 21 }, "thursday": { "open": 7.5, "close": 21 }, "friday": { "open": 7.5, "close": 24 }, "saturday": { "open": 8.5, "close": 24 }, "sunday": { "open": 9, "close": 18 } },
   "guestOptions": ["2 Guests", "3 Guests", "4 Guests", "5 Guests", "6+ Guests"],
   "experiences": [
     { "name": "Table", "price": 0, "start": 7.5, "end": 20.5, "days": [0,1,2,3,4,5,6] },
