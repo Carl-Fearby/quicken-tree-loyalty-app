@@ -1,22 +1,18 @@
-# dependencies
-/node_modules
-
-# Next.js build output
-/.next
-/out
-
-# local editor files
-.idea
-
-# generated document preview files
-/feature-brief-render
-
-# local environment files
-.env*
-*.tsbuildinfo
-
-# system files
+# Only the application stack belongs to this repository.
+/*
+!/.gitignore
+!/README.md
+!/netlify.toml
+!/start.sh
+!/app/
+!/backend/
+!/management/
+node_modules/
+.env
+.env.*
+!.env.example
 .DS_Store
-
-# Microsoft Word's temporary document locks
-~$*.docx
+*.tsbuildinfo
+backups/
+.next/
+out/

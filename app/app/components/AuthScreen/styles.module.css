@@ -1,0 +1,31 @@
+.root{display:flex;min-height:100%;box-sizing:border-box;flex-direction:column;padding:max(66px,calc(env(safe-area-inset-top) + 20px)) 26px 28px;background:var(--qt-color-app-surface);color:var(--qt-color-app-ink);overflow-y:auto}.brand{display:flex;align-items:center;justify-content:center;height:86px;border:0;background:transparent;padding:0;cursor:pointer}.brand img{display:block;width:min(290px,100%);height:auto;max-height:86px;object-fit:contain}.brand:focus-visible{outline:3px solid var(--qt-color-brand);outline-offset:5px;border-radius:8px}.intro{margin:36px 0 25px}.intro h1{margin:8px 0 11px;font-size:36px;line-height:.96;letter-spacing:-.045em}.intro>p:last-child{margin:0;max-width:340px;color:var(--qt-color-text-muted);font-size:15px;line-height:1.38}.tabs{display:flex;gap:6px;border-bottom:1px solid var(--qt-color-border)}.tabs button{flex:1;border:0;border-bottom:3px solid transparent;background:transparent;padding:11px 4px 10px;color:var(--qt-color-text-muted);font:inherit;font-size:14px;font-weight:700}.tabs .active{border-bottom-color:var(--qt-color-brand);color:var(--qt-color-app-ink)}.form{display:grid;gap:14px;margin-top:23px}.form label{display:grid;gap:6px;color:var(--qt-color-text-secondary);font-size:13px;font-weight:700}.form input{box-sizing:border-box;width:100%;border:1px solid var(--qt-color-border);border-radius:13px;background:var(--qt-color-surface);padding:13px 14px;color:var(--qt-color-app-ink);font:inherit;font-size:16px;outline:none}.passwordField{position:relative;display:block}.passwordField input{padding-right:58px}.passwordField button{position:absolute;top:50%;right:6px;border:0;background:transparent;padding:7px;color:var(--qt-color-brand);font:inherit;font-size:12px;font-weight:800;transform:translateY(-50%)}.form input:focus{border-color:var(--qt-color-brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--qt-color-brand) 13%,transparent)}.forgotten{justify-self:start;border:0;background:transparent;padding:0;color:var(--qt-color-brand);font:inherit;font-size:13px;font-weight:700}.message{margin:0;border-radius:10px;background:var(--qt-color-surface-muted);padding:10px 12px;color:var(--qt-color-text-secondary);font-size:13px}.submit{display:flex;align-items:center;justify-content:center;gap:9px;border:0;border-radius:14px;background:var(--qt-color-brand);padding:15px;color:var(--qt-color-surface);font:inherit;font-size:16px;font-weight:800;box-shadow:0 9px 20px color-mix(in srgb,var(--qt-color-brand) 25%,transparent)}.submit:disabled{opacity:.65}.terms{margin:20px 4px 0;color:var(--qt-color-text-muted);font-size:11px;line-height:1.4;text-align:center}@media (max-height:680px){.root{padding-top:max(58px,calc(env(safe-area-inset-top) + 16px))}.brand{height:68px}.brand img{width:218px;max-height:68px}.intro{margin:22px 0 17px}.intro h1{font-size:31px}}
+
+/* Compact phones (including iPhone SE) need a deliberately denser, but still
+   touch-friendly account flow. Inputs stay 16px to prevent Safari zooming. */
+.root{position:absolute;inset:0;width:100%;height:100%;min-height:0;scroll-padding-bottom:calc(28px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+@container app-surface (max-height:900px){
+  .root{padding:max(52px,calc(env(safe-area-inset-top) + 14px)) 20px calc(24px + env(safe-area-inset-bottom))}
+  .brand{height:58px}
+  .brand img{width:min(230px,100%);max-height:58px}
+  .intro{margin:20px 0 16px}
+  .intro h1{margin:6px 0 8px;font-size:30px;line-height:1}
+  .intro>p:last-child{font-size:14px;line-height:1.32}
+  .tabs button{padding:8px 3px 7px;font-size:13px}
+  .form{gap:10px;margin-top:16px;padding-bottom:8px}
+  .form label{gap:4px;font-size:12px}
+  .form input{min-height:46px;padding:11px 12px;font-size:16px}
+  .passwordField input{padding-right:54px}
+  .passwordField button{right:4px;padding:6px;font-size:11px}
+  .forgotten{font-size:12px}
+  .submit{min-height:48px;padding:12px;font-size:15px}
+  .terms{margin:14px 2px 0;font-size:10px}
+}
+
+:global(.dark) .root{background:var(--qt-color-surface-dark);color:var(--qt-color-surface-dark-text)}
+:global(.dark) .intro>p:last-child,:global(.dark) .form label,:global(.dark) .terms{color:var(--qt-color-text-dark-subtle)}
+:global(.dark) .tabs{border-color:var(--qt-color-border-dark)}
+:global(.dark) .tabs button{color:var(--qt-color-text-dark-muted)}
+:global(.dark) .tabs .active{color:var(--qt-color-surface-dark-text)}
+:global(.dark) .form input{border-color:var(--qt-color-border-dark);background:var(--qt-color-surface-dark-elevated);color:var(--qt-color-surface-dark-text)}
+:global(.dark) .form input::placeholder{color:var(--qt-color-text-dark-muted)}
+:global(.dark) .message{background:var(--qt-color-surface-dark-elevated);color:var(--qt-color-text-dark-subtle)}
