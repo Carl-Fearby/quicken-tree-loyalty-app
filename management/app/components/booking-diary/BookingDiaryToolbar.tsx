@@ -1,4 +1,5 @@
 import { today } from './lib/bookingTimes';
+import { DatePicker } from '../ui/DatePicker';
 
 type Props = {
   date: string;
@@ -16,15 +17,13 @@ export function BookingDiaryToolbar({ date, onAdd, onChange, onRefresh, onShift 
       </div>
       <div className="diary-controls">
         <button onClick={() => onShift(-1)}>←</button>
-        <label>
-          Date{' '}
-          <input
-            type="date"
-            value={date}
-            min={today()}
-            onChange={(event) => onChange(event.target.value)}
-          />
-        </label>
+        <DatePicker
+          allowPast
+          ariaLabel="Diary date"
+          date={date}
+          onChange={onChange}
+          prefix="Date"
+        />
         <button onClick={() => onShift(1)}>→</button>
         <button onClick={() => onChange(today())}>Today</button>
         <button onClick={onRefresh}>Refresh</button>

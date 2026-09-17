@@ -14,6 +14,7 @@ type Props = {
   onDateChange: (date: string) => void;
   onClose: () => void;
   onRequestCancel: () => void;
+  onViewOrder: () => void;
   onSubmit: (event: FormEvent) => void;
 };
 export function EditBookingModal(props: Props) {
@@ -21,11 +22,16 @@ export function EditBookingModal(props: Props) {
     <ModalShell title="Edit booking" onClose={props.onClose}>
       <BookingForm {...props} />
       <div className="dialog-actions">
+        {props.booking.orderAhead && (
+          <button type="button" onClick={props.onViewOrder}>
+            View order
+          </button>
+        )}
         <button className="booking-cancel-trigger" type="button" onClick={props.onRequestCancel}>
           Cancel this booking…
         </button>
         <button
-          className="danger"
+          className="primary"
           disabled={props.saving}
           onClick={() =>
             document.querySelector<HTMLFormElement>('.booking-dialog form')?.requestSubmit()

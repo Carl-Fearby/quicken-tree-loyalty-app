@@ -9,6 +9,7 @@ type Props = {
   tables: Table[];
   value: BookingDraft;
   saving: boolean;
+  error?: string;
   onChange: (value: BookingDraft) => void;
   onDateChange: (date: string) => void;
   onClose: () => void;
@@ -18,15 +19,19 @@ export function AddBookingModal(props: Props) {
   return (
     <ModalShell title="Add booking" onClose={props.onClose}>
       <BookingForm {...props} />
+      {!props.slots.length && (
+        <p className="dialog-warning">Choose a future date with available booking times.</p>
+      )}
+      {props.error && <p className="dialog-warning">{props.error}</p>}
       <div className="dialog-actions">
         <button
-          className="danger"
-          disabled={props.saving}
+          className="primary"
+          disabled={props.saving || !props.slots.length}
           onClick={() =>
             document.querySelector<HTMLFormElement>('.booking-dialog form')?.requestSubmit()
           }
         >
-          {props.saving ? 'Saving…' : 'Create booking'}
+          {props.saving ? 'Saving…' : props.slots.length ? 'Create booking' : 'Choose another date'}
         </button>
       </div>
     </ModalShell>

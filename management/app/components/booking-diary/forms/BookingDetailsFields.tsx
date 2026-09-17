@@ -1,4 +1,5 @@
 import type { BookingDraft } from '../lib/bookingTypes';
+import { RoundedSelect } from '../../ui/RoundedSelect';
 
 type Props = { value: BookingDraft; onChange: (value: BookingDraft) => void };
 
@@ -15,20 +16,19 @@ export function BookingDetailsFields({ value, onChange }: Props) {
       </label>
       <label>
         Guests
-        <select
+        <RoundedSelect
+          ariaLabel="Guests"
           value={value.guests}
-          onChange={(event) => onChange({ ...value, guests: Number(event.target.value) })}
-        >
-          {Array.from({ length: 20 }, (_, index) => (
-            <option key={index} value={index + 1}>
-              {index + 1} {index ? 'guests' : 'guest'}
-            </option>
-          ))}
-        </select>
+          options={Array.from({ length: 20 }, (_, index) => ({
+            value: index + 1,
+            label: `${index + 1} ${index ? 'guests' : 'guest'}`,
+          }))}
+          onChange={(guests) => onChange({ ...value, guests: Number(guests) })}
+        />
       </label>
-      <label>
+      <label className="dietary">
         Dietary requirements
-        <input
+        <textarea
           value={value.dietary}
           placeholder="e.g. No nuts, vegetarian"
           onChange={(event) => onChange({ ...value, dietary: event.target.value })}

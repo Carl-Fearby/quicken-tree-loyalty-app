@@ -1,13 +1,14 @@
 'use client';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { BookingList } from './BookingList';
 import { DiaryGrid } from './DiaryGrid';
 import { AddBookingModal } from './modals/AddBookingModal';
 import { AssignTableModal } from './modals/AssignTableModal';
 import { EditBookingModal } from './modals/EditBookingModal';
 import { OrderDetailsModal } from './modals/OrderDetailsModal';
-import { CalendarModal } from './modals/CalendarModal';
 import { CancelBookingDialog } from './modals/CancelBookingDialog';
+import { SettingsPage, type SettingsView } from '../settings/SettingsPage';
+import { DatePicker } from '../ui/DatePicker';
 import { useBookingAvailability } from './hooks/useBookingAvailability';
 import { useBookingDiary } from './hooks/useBookingDiary';
 type Table = { id: number; name: string; seats: number };
@@ -23,6 +24,19 @@ type Booking = {
   assignedTableName?: string;
   assignedTableIds?: number[];
   durationMinutes?: number;
+  orderAhead?: {
+    status: string;
+    totalPence: number;
+    paidAt?: string | null;
+    lines: {
+      id: string;
+      name: string;
+      description?: string | null;
+      unitPricePence: number;
+      quantity: number;
+      assignments?: { servingNumber: number; isShared: boolean; guestName?: string | null }[];
+    }[];
+  } | null;
 };
 type Diary = {
   date: string;
@@ -41,6 +55,7 @@ type Draft = {
   notes: string;
   tableIds: number[];
 };
+type Area = 'diary' | 'settings';
 const today = () =>
   new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/London',
@@ -54,15 +69,61 @@ export default function BookingDiaryPage() {
     [editing, setEditing] = useState<Booking | null>(null),
     [assigning, setAssigning] = useState<Booking | null>(null),
     [orderDetails, setOrderDetails] = useState<Booking | null>(null),
-    [calendarOpen, setCalendarOpen] = useState(false),
     [cancelling, setCancelling] = useState<Booking | null>(null),
+    [darkMode, setDarkMode] = useState(false),
+    [area, setArea] = useState<Area>('diary'),
+    [settingsView, setSettingsView] = useState<SettingsView>('home'),
     [saving, setSaving] = useState(false);
+  useEffect(() => {
+    const key = 'qt-back-office-theme';
+    const saved = window.localStorage.getItem(key);
+    const enabled = saved
+      ? saved === 'dark'
+      : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setDarkMode(enabled);
+    document.documentElement.dataset.theme = enabled ? 'dark' : 'light';
+  }, []);
+  const changeTheme = (enabled: boolean) => {
+    setDarkMode(enabled);
+    document.documentElement.dataset.theme = enabled ? 'dark' : 'light';
+    window.localStorage.setItem('qt-back-office-theme', enabled ? 'dark' : 'light');
+  };
+  const readNavigation = (): { area: Area; settingsView: SettingsView } => {
+    const parameters = new URLSearchParams(window.location.search);
+    const requestedArea = parameters.get('area');
+    const requestedView = parameters.get('settings');
+    const views: SettingsView[] = ['home', 'tables', 'duration', 'hours', 'database', 'menu'];
+    return {
+      area: requestedArea === 'settings' ? 'settings' : 'diary',
+      settingsView: views.includes(requestedView as SettingsView)
+        ? (requestedView as SettingsView)
+        : 'home',
+    };
+  };
+  const navigate = (nextArea: Area, nextSettingsView: SettingsView = 'home') => {
+    setArea(nextArea);
+    setSettingsView(nextSettingsView);
+    const query =
+      nextArea === 'settings'
+        ? `?area=settings${nextSettingsView === 'home' ? '' : `&settings=${nextSettingsView}`}`
+        : '';
+    window.history.pushState({ area: nextArea, settingsView: nextSettingsView }, '', `/${query}`);
+  };
+  useEffect(() => {
+    const syncNavigation = () => {
+      const next = readNavigation();
+      setArea(next.area);
+      setSettingsView(next.settingsView);
+    };
+    syncNavigation();
+    window.history.replaceState({ ...readNavigation() }, '', window.location.href);
+    window.addEventListener('popstate', syncNavigation);
+    return () => window.removeEventListener('popstate', syncNavigation);
+  }, []);
   const { bookings: active, diary, error, load, setError, slots } = useBookingDiary(date);
   const candidates = useBookingAvailability({
-    bookings: active,
+    date,
     draft,
-    slots,
-    tables: diary?.tables ?? [],
   });
   const begin = () =>
     setDraft({
@@ -201,62 +262,91 @@ export default function BookingDiaryPage() {
           </span>
         </a>
         <nav className="global-tabs">
-          <button className="global-tab" aria-selected>
+          <button
+            className="global-tab"
+            aria-selected={area === 'diary'}
+            onClick={() => navigate('diary')}
+          >
             Booking diary
           </button>
-          <button className="global-tab">Settings</button>
+          <button
+            className="global-tab"
+            aria-selected={area === 'settings'}
+            onClick={() => {
+              navigate('settings');
+            }}
+          >
+            Settings
+          </button>
         </nav>
-        <label className="theme-switch">
-          Dark mode
-          <input type="checkbox" />
+        <label className="theme-switch" title={darkMode ? 'Light mode' : 'Dark mode'}>
+          <span>{darkMode ? 'Light mode' : 'Dark mode'}</span>
+          <input
+            type="checkbox"
+            checked={darkMode}
+            onChange={(event) => changeTheme(event.target.checked)}
+            aria-label={`Switch to ${darkMode ? 'light' : 'dark'} mode`}
+          />
+          <span className="theme-switch-track" aria-hidden="true">
+            <span className="theme-switch-thumb" />
+          </span>
         </label>
       </header>
-      <main id="booking-workspace">
-        <div className="diary-toolbar">
-          <div>
-            <p className="eyebrow">BOOKING MANAGEMENT</p>
-            <h1>Booking diary</h1>
-          </div>
-        </div>
-        <div className="diary-summary-row">
-          <p id="diary-summary">
-            {diary
-              ? `${diary.tables.length} tables · ${active.length} active bookings · ${active.reduce((total, booking) => total + booking.guests, 0)} guests`
-              : 'Loading diary…'}
-          </p>
-          <div className="diary-controls">
-            <button onClick={() => shift(-1)}>←</button>
-            <button
-              className="date-picker-trigger"
-              type="button"
-              onClick={() => setCalendarOpen(true)}
-            >
-              Date {new Date(`${date}T12:00:00Z`).toLocaleDateString('en-GB')}
-            </button>
-            <button onClick={() => shift(1)}>→</button>
-            <button onClick={() => setDate(today())}>Today</button>
-            <button onClick={() => void load()}>Refresh</button>
-            <button className="danger" onClick={begin}>
-              + Add booking
-            </button>
-          </div>
-        </div>
-        {error && <p className="error-message">{error}</p>}
-        <div className="diary-layout">
-          <BookingList
-            bookings={active}
-            onSelect={setEditing}
-            onAssign={setAssigning}
-            onViewOrder={setOrderDetails}
+      {area === 'settings' ? (
+        <main id="booking-workspace">
+          <SettingsPage
+            view={settingsView}
+            onViewChange={(nextSettingsView) => navigate('settings', nextSettingsView)}
           />
-          <DiaryGrid
-            bookings={active}
-            slots={slots}
-            tables={diary?.tables ?? []}
-            onSelect={setEditing}
-          />
-        </div>
-      </main>
+        </main>
+      ) : (
+        <main id="booking-workspace">
+          <div className="diary-toolbar">
+            <div>
+              <p className="eyebrow">BOOKING MANAGEMENT</p>
+              <h1>Booking diary</h1>
+            </div>
+          </div>
+          <div className="diary-summary-row">
+            <p id="diary-summary">
+              {diary
+                ? `${diary.tables.length} tables · ${active.length} active bookings · ${active.reduce((total, booking) => total + booking.guests, 0)} guests`
+                : 'Loading diary…'}
+            </p>
+            <div className="diary-controls">
+              <button onClick={() => shift(-1)}>←</button>
+              <DatePicker
+                allowPast
+                ariaLabel="Diary date"
+                date={date}
+                onChange={setDate}
+                prefix="Date"
+              />
+              <button onClick={() => shift(1)}>→</button>
+              <button onClick={() => setDate(today())}>Today</button>
+              <button onClick={() => void load()}>Refresh</button>
+              <button className="danger" onClick={begin}>
+                + Add booking
+              </button>
+            </div>
+          </div>
+          {error && <p className="error-message">{error}</p>}
+          <div className="diary-layout">
+            <BookingList
+              bookings={active}
+              onSelect={setEditing}
+              onAssign={setAssigning}
+              onViewOrder={setOrderDetails}
+            />
+            <DiaryGrid
+              bookings={active}
+              slots={slots}
+              tables={diary?.tables ?? []}
+              onSelect={setEditing}
+            />
+          </div>
+        </main>
+      )}
       {draft && (
         <AddBookingModal
           date={date}
@@ -264,6 +354,7 @@ export default function BookingDiaryPage() {
           tables={candidates}
           value={draft}
           saving={saving}
+          error={error}
           onChange={setDraft}
           onDateChange={setDate}
           onClose={() => setDraft(null)}
@@ -320,6 +411,10 @@ export default function BookingDiaryPage() {
             setCancelling(editing);
             setEditing(null);
           }}
+          onViewOrder={() => {
+            setOrderDetails(editing);
+            setEditing(null);
+          }}
           onSubmit={(event) => void save(event, editing)}
         />
       )}
@@ -333,9 +428,6 @@ export default function BookingDiaryPage() {
       )}
       {orderDetails && (
         <OrderDetailsModal booking={orderDetails} onClose={() => setOrderDetails(null)} />
-      )}
-      {calendarOpen && (
-        <CalendarModal date={date} onChange={setDate} onClose={() => setCalendarOpen(false)} />
       )}
       {cancelling && (
         <CancelBookingDialog

@@ -1,5 +1,8 @@
+import { useEffect, useMemo } from 'react';
 import type { BookingDraft } from '../lib/bookingTypes';
 import { durationLabel, durations, today } from '../lib/bookingTimes';
+import { DatePicker } from '../../ui/DatePicker';
+import { RoundedSelect } from '../../ui/RoundedSelect';
 
 type Props = {
   date: string;
@@ -10,51 +13,65 @@ type Props = {
 };
 
 export function BookingScheduleFields({ date, slots, value, onChange, onDateChange }: Props) {
+  const availableSlots = useMemo(() => {
+    if (!slots.length) return [];
+    const now = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).format(new Date());
+    const closingMinutes =
+      Number(slots.at(-1)!.slice(0, 2)) * 60 + Number(slots.at(-1)!.slice(3)) + 30;
+    return slots.filter((slot) => {
+      const minutes = Number(slot.slice(0, 2)) * 60 + Number(slot.slice(3));
+      return (date !== today() || slot > now) && minutes + value.duration <= closingMinutes;
+    });
+  }, [date, slots, value.duration]);
+
+  useEffect(() => {
+    if (availableSlots.length && !availableSlots.includes(value.time))
+      onChange({ ...value, time: availableSlots[0] });
+  }, [availableSlots, onChange, value]);
+
   return (
     <>
       <label>
         Date
-        <input
-          type="date"
-          value={date}
-          min={today()}
-          onChange={(event) => onDateChange(event.target.value)}
-        />
+        <DatePicker ariaLabel="Booking date" date={date} onChange={onDateChange} />
       </label>
       <label>
         Time
-        <select
+        <RoundedSelect
+          ariaLabel="Time"
           value={value.time}
-          onChange={(event) => onChange({ ...value, time: event.target.value })}
-        >
-          {slots.map((slot) => (
-            <option key={slot}>{slot}</option>
-          ))}
-        </select>
+          options={availableSlots.map((slot) => ({ value: slot, label: slot }))}
+          onChange={(time) => onChange({ ...value, time: String(time) })}
+        />
       </label>
       <label>
         Booking length
-        <select
+        <RoundedSelect
+          ariaLabel="Booking length"
           value={value.duration}
-          onChange={(event) => onChange({ ...value, duration: Number(event.target.value) })}
-        >
-          {durations.map((duration) => (
-            <option key={duration} value={duration}>
-              {durationLabel(duration)}
-            </option>
-          ))}
-        </select>
+          options={durations.map((duration) => ({
+            value: duration,
+            label: durationLabel(duration),
+          }))}
+          onChange={(duration) => onChange({ ...value, duration: Number(duration) })}
+        />
       </label>
       <label>
         Experience
-        <select
+        <RoundedSelect
+          ariaLabel="Experience"
           value={value.experience}
-          onChange={(event) => onChange({ ...value, experience: event.target.value })}
-        >
-          {['Table', 'Afternoon Tea', 'Bottomless Brunch'].map((item) => (
-            <option key={item}>{item}</option>
-          ))}
-        </select>
+          options={['Table', 'Afternoon Tea', 'Bottomless Brunch'].map((item) => ({
+            value: item,
+            label: item,
+          }))}
+          onChange={(experience) => onChange({ ...value, experience: String(experience) })}
+        />
       </label>
     </>
   );

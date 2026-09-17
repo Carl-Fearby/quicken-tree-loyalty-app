@@ -1,32 +1,36 @@
-import { useMemo } from 'react';
-import type { Booking, BookingDraft, Table } from '../lib/bookingTypes';
+import { useEffect, useState } from 'react';
+import type { BookingDraft, Table } from '../lib/bookingTypes';
 
 export function useBookingAvailability({
-  bookings,
+  date,
   draft,
-  slots,
-  tables,
 }: {
-  bookings: Booking[];
+  date: string;
   draft: BookingDraft | null;
-  slots: string[];
-  tables: Table[];
 }) {
-  return useMemo(() => {
-    if (!draft) return [];
-    const start = slots.indexOf(draft.time);
-    const length = Math.ceil(draft.duration / 30);
-    return tables.filter(
-      (table) =>
-        table.seats >= draft.guests &&
-        !bookings.some(
-          (booking) =>
-            (booking.assignedTableIds || []).includes(table.id) &&
-            start <
-              slots.indexOf(booking.time.slice(0, 5)) +
-                Math.ceil((booking.durationMinutes || 90) / 30) &&
-            slots.indexOf(booking.time.slice(0, 5)) < start + length,
-        ),
-    );
-  }, [bookings, draft, slots, tables]);
+  const [tables, setTables] = useState<Table[]>([]);
+  useEffect(() => {
+    if (!draft?.time) {
+      setTables([]);
+      return;
+    }
+    const controller = new AbortController();
+    const query = new URLSearchParams({
+      date,
+      time: draft.time,
+      guests: String(draft.guests),
+      durationMinutes: String(draft.duration),
+    });
+    void fetch(`/api/diary/availability?${query}`, { signal: controller.signal })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw Error(data.message || 'Unable to check table availability.');
+        setTables(data.tables || []);
+      })
+      .catch((error) => {
+        if (error.name !== 'AbortError') setTables([]);
+      });
+    return () => controller.abort();
+  }, [date, draft?.time, draft?.guests, draft?.duration]);
+  return tables;
 }

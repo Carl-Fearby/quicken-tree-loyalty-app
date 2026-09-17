@@ -1,6 +1,5 @@
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import postgres from 'postgres';
 import { describe, quote, remove } from './db.js';
 if (!process.env.DATABASE_URL) throw Error('Set DATABASE_URL in management/.env first.');
@@ -18,18 +17,6 @@ const sql = postgres(process.env.DATABASE_URL, {
         ? 'require'
         : false,
 });
-const files = {
-  '/theme.js': ['theme.js', 'text/javascript'],
-  '/theme.css': ['theme.css', 'text/css'],
-  '/database-gate.js': ['database-gate.js', 'text/javascript'],
-  '/': ['index.html', 'text/html'],
-  '/app.js': ['app.js', 'text/javascript'],
-  '/style.css': ['style.css', 'text/css'],
-  '/workspace.css': ['workspace.css', 'text/css'],
-  '/menu-polish.css': ['menu-polish.css', 'text/css'],
-};
-files['/diary.js'] = ['diary.js', 'text/javascript'];
-files['/diary.css'] = ['diary.css', 'text/css'];
 async function readJson(req, limit = 16384) {
   let raw = '';
   for await (const chunk of req) {
@@ -88,37 +75,6 @@ const server = http.createServer(async (req, res) => {
     );
     res.setHeader('X-Content-Type-Options', 'nosniff');
     const url = new URL(req.url, `http://localhost:${port}`);
-    if (req.method === 'GET' && url.pathname === '/fontawesome.css') {
-      res.writeHead(200, { 'Content-Type': 'text/css', 'Cache-Control': 'no-store' });
-      return res.end(
-        await readFile(
-          new URL(
-            '../app/node_modules/@fortawesome/fontawesome-free/css/all.min.css',
-            import.meta.url,
-          ),
-        ),
-      );
-    }
-    if (
-      req.method === 'GET' &&
-      url.pathname.startsWith('/webfonts/') &&
-      /^[a-z0-9-]+\.woff2$/i.test(url.pathname.slice(10))
-    ) {
-      res.writeHead(200, { 'Content-Type': 'font/woff2', 'Cache-Control': 'no-store' });
-      return res.end(
-        await readFile(
-          new URL(
-            `../app/node_modules/@fortawesome/fontawesome-free/webfonts/${url.pathname.slice(10)}`,
-            import.meta.url,
-          ),
-        ),
-      );
-    }
-    if (req.method === 'GET' && files[url.pathname]) {
-      const [file, type] = files[url.pathname];
-      res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
-      return res.end(await readFile(new URL(`public/${file}`, import.meta.url)));
-    }
     if (url.pathname === '/api/diary' && req.method === 'GET') {
       const date = url.searchParams.get('date');
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '') || Number.isNaN(Date.parse(date)))
@@ -174,7 +130,7 @@ const server = http.createServer(async (req, res) => {
         'saturday',
       ][day];
       const [hours] =
-        await sql`select opens_at,closes_at from opening_hours where map_key=${hourKey} limit 1`;
+        await sql`select opens_at,closes_at from opening_hours where parent_id='appointments' and map_key=${hourKey} limit 1`;
       const tables =
         await sql`select id,name,table_number as number,seat_count as seats from booking_tables order by table_number`;
       const [setting] =
@@ -188,6 +144,28 @@ const server = http.createServer(async (req, res) => {
         bookings,
         bookingSettings: { defaultDurationMinutes: Number(setting?.defaultDurationMinutes ?? 90) },
       });
+    }
+    if (url.pathname === '/api/diary/availability' && req.method === 'GET') {
+      const date = url.searchParams.get('date') || '';
+      const time = url.searchParams.get('time') || '';
+      const guests = Number(url.searchParams.get('guests'));
+      const durationMinutes = Number(url.searchParams.get('durationMinutes'));
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+        Number.isNaN(Date.parse(date)) ||
+        !/^\d{2}:\d{2}$/.test(time) ||
+        !Number.isInteger(guests) ||
+        guests < 1 ||
+        guests > 20 ||
+        !Number.isInteger(durationMinutes) ||
+        durationMinutes < 30 ||
+        durationMinutes > 360 ||
+        durationMinutes % 15
+      )
+        return json(400, { message: 'Provide valid booking availability details.' });
+      const tables =
+        await sql`select bt.id,bt.name,bt.seat_count as seats from booking_tables bt where bt.seat_count>=${guests} and not exists(select 1 from bookings b join booking_table_assignments bta on bta.booking_id=b.id where bta.table_id=bt.id and b.booking_date=${date}::date and b.status<>'cancelled' and b.booking_time<(${time}::time+make_interval(mins=>${durationMinutes})) and (b.booking_time+make_interval(mins=>b.booking_duration_minutes))>${time}::time) order by bt.seat_count,bt.table_number`;
+      return json(200, { tables });
     }
     if (url.pathname === '/api/diary/bookings' && req.method === 'POST') {
       const body = await readJson(req);
