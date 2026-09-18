@@ -7,12 +7,20 @@ import { RoundedSelect } from '../../ui/RoundedSelect';
 type Props = {
   date: string;
   slots: string[];
+  kitchenClose?: number;
   value: BookingDraft;
   onChange: (value: BookingDraft) => void;
   onDateChange: (date: string) => void;
 };
 
-export function BookingScheduleFields({ date, slots, value, onChange, onDateChange }: Props) {
+export function BookingScheduleFields({
+  date,
+  slots,
+  kitchenClose,
+  value,
+  onChange,
+  onDateChange,
+}: Props) {
   const availableSlots = useMemo(() => {
     if (!slots.length) return [];
     const now = new Intl.DateTimeFormat('en-GB', {
@@ -25,13 +33,17 @@ export function BookingScheduleFields({ date, slots, value, onChange, onDateChan
       Number(slots.at(-1)!.slice(0, 2)) * 60 + Number(slots.at(-1)!.slice(3)) + 30;
     return slots.filter((slot) => {
       const minutes = Number(slot.slice(0, 2)) * 60 + Number(slot.slice(3));
-      return (date !== today() || slot > now) && minutes + value.duration <= closingMinutes;
+      return (
+        (date !== today() || slot > now) &&
+        minutes + value.duration <= closingMinutes &&
+        minutes < (kitchenClose ?? 0) * 60
+      );
     });
-  }, [date, slots, value.duration]);
+  }, [date, slots, kitchenClose, value.duration]);
 
   useEffect(() => {
-    if (availableSlots.length && !availableSlots.includes(value.time))
-      onChange({ ...value, time: availableSlots[0] });
+    if (!availableSlots.includes(value.time) && value.time !== (availableSlots[0] || ''))
+      onChange({ ...value, time: availableSlots[0] || '', tableIds: [] });
   }, [availableSlots, onChange, value]);
 
   return (
@@ -49,6 +61,11 @@ export function BookingScheduleFields({ date, slots, value, onChange, onDateChan
           onChange={(time) => onChange({ ...value, time: String(time) })}
         />
       </label>
+      {!availableSlots.length && (
+        <p className="dialog-warning">
+          No booking times are available for this date and length within service hours.
+        </p>
+      )}
       <label>
         Booking length
         <RoundedSelect

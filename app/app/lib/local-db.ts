@@ -7,7 +7,7 @@ export type CachedEntity = {key: string; type: string; id: string; updatedAt: st
 export type OfflineRequest = {id?: number; method: 'POST' | 'PATCH' | 'PUT' | 'DELETE'; path: string; body?: unknown; createdAt: string; attempts: number; lastError?: string};
 export type LocalMetadata = {key: string; value: unknown};
 
-class QuickenTreeDatabase extends Dexie {
+class PaceTenantDatabase extends Dexie {
     content!: EntityTable<CachedContent, 'key'>;
     entities!: EntityTable<CachedEntity, 'key'>;
     outbox!: EntityTable<OfflineRequest, 'id'>;
@@ -19,7 +19,7 @@ class QuickenTreeDatabase extends Dexie {
     }
 }
 
-export const localDb = new QuickenTreeDatabase();
+export const localDb = new PaceTenantDatabase();
 
 export async function cacheEntity(type: string, id: string, data: unknown, updatedAt = new Date().toISOString()) {
     await localDb.entities.put({key: `${type}:${id}`, type, id, data, updatedAt});

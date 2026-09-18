@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Quicken Tree Content API
+  title: Pace Content API
   version: 1.0.0
   description: Platform-neutral content delivery and management contract for the loyalty app.
 paths:

@@ -1,5 +1,5 @@
 {
-  "name": "quicken-tree-loyalty",
+  "name": "pace-customer-app",
   "private": true,
   "scripts": {
     "dev": "next dev",

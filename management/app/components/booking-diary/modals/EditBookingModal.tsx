@@ -7,6 +7,7 @@ type Props = {
   booking: Booking;
   date: string;
   slots: string[];
+  kitchenClose?: number;
   tables: Table[];
   value: BookingDraft;
   saving: boolean;
@@ -32,7 +33,7 @@ export function EditBookingModal(props: Props) {
         </button>
         <button
           className="primary"
-          disabled={props.saving}
+          disabled={props.saving || !props.value.time}
           onClick={() =>
             document.querySelector<HTMLFormElement>('.booking-dialog form')?.requestSubmit()
           }

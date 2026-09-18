@@ -1,4 +1,4 @@
-# Quicken Tree application stack
+# Pace hospitality platform
 
 This repository contains three independently installed Node projects:
 

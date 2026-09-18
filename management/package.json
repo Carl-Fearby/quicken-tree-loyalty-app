@@ -1,5 +1,5 @@
 {
-  "name": "quicken-tree-management",
+  "name": "pace-management",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -12,11 +12,14 @@
     "api:start": "PORT=4101 node --env-file=.env server.js",
     "api:dev": "PORT=4101 node --watch --env-file=.env server.js",
     "test": "node --test",
-    "setup:booking-tables": "node --env-file=.env setup-booking-tables.js"
+    "setup:booking-tables": "node --env-file=.env setup-booking-tables.js",
+    "setup:rewards": "node --env-file=.env setup-rewards.js",
+    "setup:kitchen-hours": "node --env-file=.env setup-kitchen-hours.js"
   },
   "dependencies": {
     "next": "^16.3.4",
     "postgres": "^3.4.9",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

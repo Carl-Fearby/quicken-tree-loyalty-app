@@ -6,6 +6,7 @@ import { ModalShell } from './ModalShell';
 type Props = {
   date: string;
   slots: string[];
+  kitchenClose?: number;
   tables: Table[];
   value: BookingDraft;
   saving: boolean;
@@ -26,7 +27,7 @@ export function AddBookingModal(props: Props) {
       <div className="dialog-actions">
         <button
           className="primary"
-          disabled={props.saving || !props.slots.length}
+          disabled={props.saving || !props.slots.length || !props.value.time}
           onClick={() =>
             document.querySelector<HTMLFormElement>('.booking-dialog form')?.requestSubmit()
           }

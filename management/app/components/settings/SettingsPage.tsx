@@ -88,7 +88,7 @@ export function SettingsPage({
       ? 'Restaurant tables'
       : view === 'duration'
         ? 'Booking duration'
-        : 'Opening hours';
+        : 'Opening & kitchen hours';
   return (
     <section className="settings-page">
       <Breadcrumbs current={title} onSettings={() => onViewChange('home')} />
@@ -99,7 +99,7 @@ export function SettingsPage({
           ? 'Manage tables available in the booking diary.'
           : view === 'duration'
             ? 'Set the default length used when creating new table bookings.'
-            : 'Set the times guests can book on each day.'}
+            : 'Set venue hours and the kitchen closing time for each day. Bookings must start before the kitchen closes and finish by venue closing.'}
       </p>
       <section className="settings-card">
         {view === 'tables' ? (

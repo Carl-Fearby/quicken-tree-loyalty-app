@@ -7,6 +7,7 @@ import { BookingTableFields } from './BookingTableFields';
 type Props = {
   date: string;
   slots: string[];
+  kitchenClose?: number;
   tables: Table[];
   value: BookingDraft;
   onChange: (value: BookingDraft) => void;
@@ -17,6 +18,7 @@ type Props = {
 export function BookingForm({
   date,
   slots,
+  kitchenClose,
   tables,
   value,
   onChange,
@@ -30,6 +32,7 @@ export function BookingForm({
         <BookingScheduleFields
           date={date}
           slots={slots}
+          kitchenClose={kitchenClose}
           value={value}
           onChange={onChange}
           onDateChange={onDateChange}

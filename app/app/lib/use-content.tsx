@@ -3,6 +3,7 @@ import {createContext,useContext,useEffect,useState,type ReactNode} from 'react'
 import {localDb} from './local-db';
 import {checkForContentUpdate} from './content-sync';
 import type {Content} from './content-types';
+import {tenantBrand} from './tenant-brand';
 const Context=createContext<Content|null>(null);
 const keys:(keyof Content)[]=['appointments','appConfig','menu','points','profile','rewards','events'];
 export function ContentProvider({children}:{children:ReactNode}){
@@ -26,7 +27,7 @@ export function ContentProvider({children}:{children:ReactNode}){
   window.addEventListener('focus',sync);window.addEventListener('online',sync);const timer=setInterval(sync,60000);
   return()=>{active=false;clearInterval(timer);window.removeEventListener('focus',sync);window.removeEventListener('online',sync);};
  },[attempt]);
- if(!content)return <main><h1>The Quicken Tree</h1><p role="status">{error||'Loading app data…'}</p>{error&&<button onClick={()=>{setError('');setAttempt(n=>n+1);}}>Retry</button>}</main>;
+ if(!content)return <main><h1>{tenantBrand.name}</h1><p role="status">{error||'Loading app data…'}</p>{error&&<button onClick={()=>{setError('');setAttempt(n=>n+1);}}>Retry</button>}</main>;
  return <Context.Provider value={content}>{children}</Context.Provider>;
 }
 export function useContent(){const content=useContext(Context);if(!content)throw Error('ContentProvider is required');return content;}

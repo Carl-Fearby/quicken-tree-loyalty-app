@@ -65,7 +65,7 @@ const toBooking = (booking: ApiBooking): Booking => ({
     notes: ''
 });
 
-export function QuickenTreeApp({dark: controlledDark, onShowNotification}: {dark?: boolean; onShowNotification?: () => void}) {
+export function PaceApp({dark: controlledDark, onShowNotification}: {dark?: boolean; onShowNotification?: () => void}) {
     const {appointments: appointmentsData, menu: menuData, points: pointsData, profile: profileData, rewards: rewardsData} = useContent();
 const experiencePrices = Object.fromEntries(appointmentsData.experiences.map(experience => [experience.name, experience.price])) as Record<'Table' | 'Afternoon Tea' | 'Bottomless Brunch', number>;
 const dietaryTags: Record<string, string[]> = menuData.dietaryTags;
@@ -706,16 +706,18 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
         return next;
     });
 
+    const authenticate = (nextSession: LocalSession) => {
+        setMemberToken(nextSession.accessToken);
+        setSession(nextSession);
+        setProfileName(nextSession.name);
+        setProfileEmail(nextSession.email);
+        setBookingName(nextSession.name);
+        setBookingEmail(nextSession.email);
+    };
+
     if (session !== undefined && !session) {
         return <LoyaltyApp motion="idle" dark={isDarkMode} embedded={controlledDark !== undefined}>
-            <AuthScreen onAuthenticated={nextSession => {
-                setMemberToken(nextSession.accessToken);
-                setSession(nextSession);
-                setProfileName(nextSession.name);
-                setProfileEmail(nextSession.email);
-                setBookingName(nextSession.name);
-                setBookingEmail(nextSession.email);
-            }}/>
+            <AuthScreen onAuthenticated={authenticate}/>
         </LoyaltyApp>;
     }
 

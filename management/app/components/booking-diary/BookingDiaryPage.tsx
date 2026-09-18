@@ -8,6 +8,7 @@ import { EditBookingModal } from './modals/EditBookingModal';
 import { OrderDetailsModal } from './modals/OrderDetailsModal';
 import { CancelBookingDialog } from './modals/CancelBookingDialog';
 import { SettingsPage, type SettingsView } from '../settings/SettingsPage';
+import { RewardsPage } from '../rewards/RewardsPage';
 import { DatePicker } from '../ui/DatePicker';
 import { useBookingAvailability } from './hooks/useBookingAvailability';
 import { useBookingDiary } from './hooks/useBookingDiary';
@@ -42,7 +43,7 @@ type Diary = {
   date: string;
   tables: Table[];
   bookings: Booking[];
-  openingHours: { open: number; close: number } | null;
+  openingHours: { open: number; close: number; kitchenClose: number } | null;
   bookingSettings: { defaultDurationMinutes: number };
 };
 type Draft = {
@@ -55,7 +56,7 @@ type Draft = {
   notes: string;
   tableIds: number[];
 };
-type Area = 'diary' | 'settings';
+type Area = 'diary' | 'rewards' | 'settings';
 const today = () =>
   new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/London',
@@ -94,7 +95,7 @@ export default function BookingDiaryPage() {
     const requestedView = parameters.get('settings');
     const views: SettingsView[] = ['home', 'tables', 'duration', 'hours', 'database', 'menu'];
     return {
-      area: requestedArea === 'settings' ? 'settings' : 'diary',
+      area: requestedArea === 'settings' || requestedArea === 'rewards' ? requestedArea : 'diary',
       settingsView: views.includes(requestedView as SettingsView)
         ? (requestedView as SettingsView)
         : 'home',
@@ -106,7 +107,9 @@ export default function BookingDiaryPage() {
     const query =
       nextArea === 'settings'
         ? `?area=settings${nextSettingsView === 'home' ? '' : `&settings=${nextSettingsView}`}`
-        : '';
+        : nextArea === 'rewards'
+          ? '?area=rewards'
+          : '';
     window.history.pushState({ area: nextArea, settingsView: nextSettingsView }, '', `/${query}`);
   };
   useEffect(() => {
@@ -121,6 +124,9 @@ export default function BookingDiaryPage() {
     return () => window.removeEventListener('popstate', syncNavigation);
   }, []);
   const { bookings: active, diary, error, load, setError, slots } = useBookingDiary(date);
+  useEffect(() => {
+    if (area === 'diary') void load();
+  }, [area, load]);
   const candidates = useBookingAvailability({
     date,
     draft,
@@ -255,11 +261,26 @@ export default function BookingDiaryPage() {
   return (
     <>
       <header>
-        <a className="brand" href="/">
-          <b>QT</b>
-          <span>
-            QUICKEN TREE<small>BACK-OFFICE</small>
-          </span>
+        <a
+          className="brand pace-brand"
+          href="/"
+          aria-label="Pace — Service in Sync, back-office home"
+        >
+          <img
+            className="pace-logo pace-logo-light"
+            src="/branding/pace-light.png"
+            alt="Pace — Service in Sync"
+            width="1448"
+            height="1086"
+          />
+          <img
+            className="pace-logo pace-logo-dark"
+            src="/branding/pace-dark.png"
+            alt=""
+            aria-hidden="true"
+            width="1448"
+            height="1086"
+          />
         </a>
         <nav className="global-tabs">
           <button
@@ -268,6 +289,13 @@ export default function BookingDiaryPage() {
             onClick={() => navigate('diary')}
           >
             Booking diary
+          </button>
+          <button
+            className="global-tab"
+            aria-selected={area === 'rewards'}
+            onClick={() => navigate('rewards')}
+          >
+            Rewards
           </button>
           <button
             className="global-tab"
@@ -292,7 +320,11 @@ export default function BookingDiaryPage() {
           </span>
         </label>
       </header>
-      {area === 'settings' ? (
+      {area === 'rewards' ? (
+        <main id="booking-workspace">
+          <RewardsPage />
+        </main>
+      ) : area === 'settings' ? (
         <main id="booking-workspace">
           <SettingsPage
             view={settingsView}
@@ -340,7 +372,9 @@ export default function BookingDiaryPage() {
             />
             <DiaryGrid
               bookings={active}
+              date={date}
               slots={slots}
+              kitchenClose={diary?.openingHours?.kitchenClose}
               tables={diary?.tables ?? []}
               onSelect={setEditing}
             />
@@ -351,6 +385,7 @@ export default function BookingDiaryPage() {
         <AddBookingModal
           date={date}
           slots={slots}
+          kitchenClose={diary?.openingHours?.kitchenClose}
           tables={candidates}
           value={draft}
           saving={saving}
@@ -366,6 +401,7 @@ export default function BookingDiaryPage() {
           booking={editing}
           date={date}
           slots={slots}
+          kitchenClose={diary?.openingHours?.kitchenClose}
           tables={existingCandidates(
             {
               name: editing.name,

@@ -1,4 +1,4 @@
-export type OpeningHour = { day: string; open: number; close: number };
+export type OpeningHour = { day: string; open: number; close: number; kitchenClose: number };
 const days = [
   ['monday', 'Monday'],
   ['tuesday', 'Tuesday'],
@@ -29,8 +29,13 @@ export function OpeningHoursSettings({
   onChange: (hours: OpeningHour[]) => void;
 }) {
   const valueFor = (day: string) =>
-    hours.find((hour) => hour.day === day) || { day, open: 9, close: 17 };
-  const update = (day: string, key: 'open' | 'close', value: number) =>
+    hours.find((hour) => hour.day === day) || {
+      day,
+      open: 9,
+      close: 21,
+      kitchenClose: day === 'sunday' ? 18 : 21,
+    };
+  const update = (day: string, key: 'open' | 'close' | 'kitchenClose', value: number) =>
     onChange(
       days.map(([id]) => {
         const item = valueFor(id);
@@ -56,7 +61,7 @@ export function OpeningHoursSettings({
               />
             </label>
             <label>
-              Close
+              Venue closes
               <RoundedSelect
                 ariaLabel={`${title} closing time`}
                 value={hour.close}
@@ -64,6 +69,17 @@ export function OpeningHoursSettings({
                   .filter((time) => time > hour.open)
                   .map((time) => ({ value: time, label: label(time) }))}
                 onChange={(time) => update(id, 'close', Number(time))}
+              />
+            </label>
+            <label>
+              Kitchen closes
+              <RoundedSelect
+                ariaLabel={`${title} kitchen closing time`}
+                value={hour.kitchenClose}
+                options={times
+                  .filter((time) => time > hour.open && time <= hour.close)
+                  .map((time) => ({ value: time, label: label(time) }))}
+                onChange={(time) => update(id, 'kitchenClose', Number(time))}
               />
             </label>
           </div>

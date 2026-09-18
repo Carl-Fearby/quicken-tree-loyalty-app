@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { rewardsRoute } from './rewards.js';
 import { randomUUID } from 'node:crypto';
 import postgres from 'postgres';
 import { describe, quote, remove } from './db.js';
@@ -75,6 +76,7 @@ const server = http.createServer(async (req, res) => {
     );
     res.setHeader('X-Content-Type-Options', 'nosniff');
     const url = new URL(req.url, `http://localhost:${port}`);
+    if (await rewardsRoute({ req, res, url, sql, json, readJson })) return;
     if (url.pathname === '/api/diary' && req.method === 'GET') {
       const date = url.searchParams.get('date');
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '') || Number.isNaN(Date.parse(date)))
@@ -130,7 +132,7 @@ const server = http.createServer(async (req, res) => {
         'saturday',
       ][day];
       const [hours] =
-        await sql`select opens_at,closes_at from opening_hours where parent_id='appointments' and map_key=${hourKey} limit 1`;
+        await sql`select o.opens_at,o.closes_at,k.closes_at as kitchen_close from opening_hours o join kitchen_hours k on k.day=o.map_key where o.parent_id='appointments' and o.map_key=${hourKey} limit 1`;
       const tables =
         await sql`select id,name,table_number as number,seat_count as seats from booking_tables order by table_number`;
       const [setting] =
@@ -138,7 +140,11 @@ const server = http.createServer(async (req, res) => {
       return json(200, {
         date,
         openingHours: hours
-          ? { open: Number(hours.opens_at), close: Number(hours.closes_at) }
+          ? {
+              open: Number(hours.opens_at),
+              close: Number(hours.closes_at),
+              kitchenClose: Number(hours.kitchen_close),
+            }
           : null,
         tables,
         bookings,
@@ -163,6 +169,7 @@ const server = http.createServer(async (req, res) => {
         durationMinutes % 15
       )
         return json(400, { message: 'Provide valid booking availability details.' });
+      await sql`select assert_booking_service_hours(${date}::date,${time}::time,${durationMinutes})`;
       const tables =
         await sql`select bt.id,bt.name,bt.seat_count as seats from booking_tables bt where bt.seat_count>=${guests} and not exists(select 1 from bookings b join booking_table_assignments bta on bta.booking_id=b.id where bta.table_id=bt.id and b.booking_date=${date}::date and b.status<>'cancelled' and b.booking_time<(${time}::time+make_interval(mins=>${durationMinutes})) and (b.booking_time+make_interval(mins=>b.booking_duration_minutes))>${time}::time) order by bt.seat_count,bt.table_number`;
       return json(200, { tables });
@@ -222,6 +229,7 @@ const server = http.createServer(async (req, res) => {
       ][day];
       const [hours] =
         await sql`select opens_at,closes_at from opening_hours where parent_id='appointments' and map_key=${hourKey}`;
+      await sql`select assert_booking_service_hours(${date}::date,${time}::time,${durationMinutes})`;
       const startMinutes = Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
       if (
         !hours ||
@@ -310,6 +318,7 @@ const server = http.createServer(async (req, res) => {
       ][day];
       const [hours] =
         await sql`select opens_at,closes_at from opening_hours where parent_id='appointments' and map_key=${hourKey}`;
+      await sql`select assert_booking_service_hours(${date}::date,${time}::time,${durationMinutes})`;
       const startMinutes = Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
       if (
         !hours ||
@@ -351,7 +360,7 @@ const server = http.createServer(async (req, res) => {
         });
         return json(200, updated);
       } catch (error) {
-        return json(error.status ?? 500, {
+        return json(error.code === 'P1001' ? 409 : (error.status ?? 500), {
           message: error.message ?? 'Unable to save this booking.',
         });
       }
@@ -366,12 +375,13 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/opening-hours' && req.method === 'GET') {
       const hours =
-        await sql`select map_key as "day",opens_at as open,closes_at as close from opening_hours where parent_id='appointments' order by position`;
+        await sql`select o.map_key as "day",o.opens_at as open,o.closes_at as close,k.closes_at as "kitchenClose" from opening_hours o join kitchen_hours k on k.day=o.map_key where o.parent_id='appointments' order by o.position`;
       return json(200, {
         hours: hours.map((hour) => ({
           ...hour,
           open: Number(hour.open),
           close: Number(hour.close),
+          kitchenClose: Number(hour.kitchenClose),
         })),
       });
     }
@@ -390,15 +400,25 @@ const server = http.createServer(async (req, res) => {
             hour.open < 0 ||
             hour.open > 24 ||
             hour.close <= hour.open ||
-            hour.close > 24,
+            hour.close > 24 ||
+            !Number.isFinite(hour.kitchenClose) ||
+            hour.kitchenClose <= hour.open ||
+            hour.kitchenClose > hour.close ||
+            !Number.isInteger(hour.open * 2) ||
+            !Number.isInteger(hour.close * 2) ||
+            !Number.isInteger(hour.kitchenClose * 2),
         )
       )
-        return json(400, { message: 'Provide valid opening hours for every day.' });
+        return json(400, {
+          message:
+            'Provide valid opening and kitchen hours for every day. Kitchen closing must be after opening and no later than venue closing.',
+        });
       if (new Set(hours.map((hour) => hour.day)).size !== 7)
         return json(400, { message: 'Each day needs one opening-hours record.' });
       await sql.begin(async (transaction) => {
         for (const [position, day] of days.entries()) {
           const hour = hours.find((value) => value.day === day);
+          await transaction`update kitchen_hours set closes_at=${hour.kitchenClose} where day=${day}`;
           await transaction`update opening_hours set position=${position},opens_at=${hour.open},closes_at=${hour.close} where parent_id='appointments' and map_key=${day}`;
         }
       });
@@ -470,7 +490,7 @@ const server = http.createServer(async (req, res) => {
         });
         return json(200, assignment);
       } catch (error) {
-        return json(error.status ?? 500, {
+        return json(error.code === 'P1001' ? 409 : (error.status ?? 500), {
           message: error.message ?? 'Unable to assign this table.',
         });
       }
@@ -923,12 +943,13 @@ const server = http.createServer(async (req, res) => {
     json(405, { message: 'Method not allowed.' });
   } catch (error) {
     console.error(error.message);
-    json(error.status || 500, {
-      message: error.status
-        ? error.message
-        : error.code === '23503'
-          ? 'Related rows prevent this deletion. Nothing was deleted.'
-          : 'Database request failed. Check the database connection and server log.',
+    json(error.code === 'P1001' ? 409 : error.status || 500, {
+      message:
+        error.status || error.code === 'P1001'
+          ? error.message
+          : error.code === '23503'
+            ? 'Related rows prevent this deletion. Nothing was deleted.'
+            : 'Database request failed. Check the database connection and server log.',
     });
   }
 });

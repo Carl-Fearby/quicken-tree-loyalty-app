@@ -15,8 +15,8 @@ const options = [
   ],
   [
     'hours',
-    'Opening hours',
-    'Manage service hours and the booking calendar.',
+    'Opening & kitchen hours',
+    'Configure venue hours and daily kitchen closing times.',
     'Configure opening hours',
   ],
   [
@@ -39,7 +39,7 @@ export function SettingsHome({ onOpen }: Props) {
       <p className="eyebrow">BACK-OFFICE SETTINGS</p>
       <h1>System settings</h1>
       <p className="settings-intro">
-        Configure how The Quicken Tree operates across bookings, menus, data and member experiences.
+        Configure this venue across bookings, menus, data and member experiences.
       </p>
       <div className="settings-options">
         {options.map(([view, title, copy, action]) => (
