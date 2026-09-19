@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { SiteFooter, SiteHeader } from '../SiteChrome';
-import { metadata } from '../../lib/seo';
+import { ArrowIcon } from '../WhatsAppLink';
+import { jsonLd, metadata, siteUrl } from '../../lib/seo';
 
 export const generateMetadata = (): Metadata => metadata('FAQs | Pace', 'Answers about Pace restaurant management software and its booking, menu and rewards tools.', '/faqs');
 
@@ -59,5 +60,7 @@ const groups = [
 ];
 
 export default function FaqPage() {
-  return <><SiteHeader/><main className="subpage faq-page wrap"><p className="eyebrow">A FEW GOOD QUESTIONS</p><h1>Let’s clear the <em>table.</em></h1><p className="subpage-intro">Straight answers about what Pace does today, how the connected platform works and what a sensible rollout could look like for your venue.</p><div className="faq-index">{groups.map(([title])=><a key={title as string} href={`#${(title as string).toLowerCase().replace(/[^a-z]+/g, '-')}`}>{title as string} <span>↓</span></a>)}</div><div className="faq-page-list">{groups.map(([title, questions])=><section className="faq-group" id={(title as string).toLowerCase().replace(/[^a-z]+/g, '-')} key={title as string}><p className="eyebrow">{title as string}</p>{(questions as string[][]).map(([question, answer])=><details key={question}><summary>{question}<span>+</span></summary><p>{answer}</p></details>)}</section>)}</div><div className="subpage-callout"><h2>Still have a question?</h2><p>Tell us about your venue and the workflow you want to improve. We’ll help you find the relevant part of Pace.</p><a className="button" href="/contact">Talk to the Pace team <span>↗</span></a></div></main><SiteFooter/></>;
+  const faqQuestions = groups.flatMap(([, questions]) => questions as string[][]).map(([name, text]) => ({'@type': 'Question', name, acceptedAnswer: {'@type': 'Answer', text}}));
+  const faqSchema = {'@context': 'https://schema.org', '@type': 'FAQPage', ...(siteUrl ? {url: `${siteUrl}/faqs`} : {}), mainEntity: faqQuestions};
+  return <><SiteHeader/><main className="subpage faq-page wrap"><script type="application/ld+json" dangerouslySetInnerHTML={{__html: jsonLd(faqSchema)}}/><p className="eyebrow">A FEW GOOD QUESTIONS</p><h1>Let’s clear the <em>table.</em></h1><p className="subpage-intro">Straight answers about what Pace does today, how the connected platform works and what a sensible rollout could look like for your venue.</p><div className="faq-index">{groups.map(([title])=><a key={title as string} href={`#${(title as string).toLowerCase().replace(/[^a-z]+/g, '-')}`}>{title as string} <span><ArrowIcon direction="down"/></span></a>)}</div><div className="faq-page-list">{groups.map(([title, questions])=><section className="faq-group" id={(title as string).toLowerCase().replace(/[^a-z]+/g, '-')} key={title as string}><p className="eyebrow">{title as string}</p>{(questions as string[][]).map(([question, answer])=><details key={question}><summary>{question}<span>+</span></summary><p>{answer}</p></details>)}</section>)}</div><div className="subpage-callout"><h2>Still have a question?</h2><p>Tell us about your venue and the workflow you want to improve. We’ll help you find the relevant part of Pace.</p><a className="button" href="/contact">Talk to the Pace team <span><ArrowIcon/></span></a></div></main><SiteFooter/></>;
 }

@@ -10,6 +10,8 @@ npm run dev
 
 Open http://localhost:4300. Production: `npm run build`, then `npm start`.
 
+For Fasthosts static hosting, copy `.env.deploy.example` to `.env.deploy`, enter the FTP password locally, and run `npm run deploy`. The script builds the static export, uploads the contents and `.htaccess` directly into the FTP account's current website root, and never stores the password in Git. Leave `FTP_REMOTE_DIR` empty when the account opens directly in the site root. Use `FTP_PROTOCOL=ftp` for ordinary FTP, `FTP_PROTOCOL=ftps` for explicit FTP over TLS, or `FTP_PROTOCOL=sftp` only if SFTP is enabled for the hosting account.
+
 The site includes responsive navigation, interactive Bookings / Menus / Rewards sections, illustrative product previews, accessible expandable FAQs, and a backend-connected enquiry form. The form posts to `POST /contact` on the Pace API; set `NEXT_PUBLIC_BACKEND_URL` for the target API origin and configure the backend Mailtrap settings before launch.
 
 Edit content in `app/page.tsx`, styling in `app/globals.css`, and page metadata in `app/layout.tsx`. Brand files live in `public/branding`. The site is not deployed automatically.

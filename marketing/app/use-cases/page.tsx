@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MarketingPage } from '../MarketingPage';
+import { ArrowIcon } from '../WhatsAppLink';
 import { metadata } from '../../lib/seo';
 
 export const generateMetadata = (): Metadata =>
@@ -17,7 +18,7 @@ const useCases = [
 
 export default function UseCasesPage() {
   return <MarketingPage eyebrow="USE CASES" title={<>Solve the parts of service that create the most <em>friction.</em></>} intro="Pace brings practical hospitality workflows together, so teams can improve one important part of the working day without losing sight of the wider guest journey.">
-    <div className="resource-grid">{useCases.map(([number, title, copy, href]) => <article key={title}><span>{number}</span><h2>{title}</h2><p>{copy}</p><Link href={href}>Explore this use case <span>↗</span></Link></article>)}</div>
-    <section className="resource-callout"><p className="eyebrow">NOT SURE WHERE TO START?</p><h2>Bring us the workflow that is slowing the team down.</h2><p>We can map the current process against Pace and suggest a focused first phase.</p><Link className="button" href="/contact">Talk through your workflow <span>↗</span></Link></section>
+    <div className="resource-grid">{useCases.map(([number, title, copy, href]) => <article key={title}><span>{number}</span><h2>{title}</h2><p>{copy}</p><Link href={href}>Explore this use case <span><ArrowIcon/></span></Link></article>)}</div>
+    <section className="resource-callout"><p className="eyebrow">NOT SURE WHERE TO START?</p><h2>Bring us the workflow that is slowing the team down.</h2><p>We can map the current process against Pace and suggest a focused first phase.</p><Link className="button" href="/contact">Talk through your workflow <span><ArrowIcon/></span></Link></section>
   </MarketingPage>;
 }

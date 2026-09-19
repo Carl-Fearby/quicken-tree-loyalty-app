@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MarketingPage } from '../MarketingPage';
+import { ArrowIcon } from '../WhatsAppLink';
 import { metadata } from '../../lib/seo';
 
 export const generateMetadata = (): Metadata => metadata('Hospitality operations centre | Pace', 'Practical guides and platform information for hospitality operators planning clearer service workflows.', '/operations-centre');
@@ -18,6 +19,6 @@ const links = [
 
 export default function OperationsCentrePage() {
   return <MarketingPage eyebrow="OPERATIONS CENTRE" title={<>Useful answers for better <em>service.</em></>} intro="A practical library for venue owners, operators and teams deciding how to improve the working day. Start with the question closest to the problem you are trying to solve.">
-    <div className="resource-grid">{links.map(([href, title, copy]) => <article key={href}><h2>{title}</h2><p>{copy}</p><Link href={href}>Explore the guide <span>↗</span></Link></article>)}</div>
+    <div className="resource-grid">{links.map(([href, title, copy]) => <article key={href}><h2>{title}</h2><p>{copy}</p><Link href={href}>Explore the guide <span><ArrowIcon/></span></Link></article>)}</div>
   </MarketingPage>;
 }

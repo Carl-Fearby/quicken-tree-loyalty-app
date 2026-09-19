@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MarketingPage } from '../MarketingPage';
+import { ArrowIcon } from '../WhatsAppLink';
 import { metadata } from '../../lib/seo';
 
 export const generateMetadata = (): Metadata => metadata('Pace workflow examples', 'See practical examples of how Pace can support booking, menu and loyalty workflows.', '/workflow-examples');
@@ -14,7 +15,7 @@ const examples = [
 
 export default function WorkflowExamplesPage() {
   return <MarketingPage eyebrow="WORKFLOW EXAMPLES" title={<>See how the pieces work together in a <em>real day.</em></>} intro="These are product workflow examples, not customer claims. They show the kinds of operational conversations Pace is designed to support.">
-    <div className="resource-grid">{examples.map(([title, copy, href]) => <article key={title}><h2>{title}</h2><p>{copy}</p><Link href={href}>Read the related guide <span>↗</span></Link></article>)}</div>
-    <section className="resource-callout"><p className="eyebrow">HAVE A DIFFERENT WORKFLOW?</p><h2>Bring the actual process.</h2><p>A product conversation is most useful when it starts with the way your team works today, including the handoffs and exceptions that are easy to miss in a feature list.</p><Link className="button" href="/contact">Describe your workflow <span>↗</span></Link></section>
+    <div className="resource-grid">{examples.map(([title, copy, href]) => <article key={title}><h2>{title}</h2><p>{copy}</p><Link href={href}>Read the related guide <span><ArrowIcon/></span></Link></article>)}</div>
+    <section className="resource-callout"><p className="eyebrow">HAVE A DIFFERENT WORKFLOW?</p><h2>Bring the actual process.</h2><p>A product conversation is most useful when it starts with the way your team works today, including the handoffs and exceptions that are easy to miss in a feature list.</p><Link className="button" href="/contact">Describe your workflow <span><ArrowIcon/></span></Link></section>
   </MarketingPage>;
 }

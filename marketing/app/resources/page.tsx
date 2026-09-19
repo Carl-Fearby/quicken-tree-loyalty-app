@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MarketingPage } from '../MarketingPage';
+import { ArrowIcon } from '../WhatsAppLink';
 import { metadata } from '../../lib/seo';
 
 export const generateMetadata = (): Metadata =>
@@ -23,7 +24,7 @@ const resources = [
 
 export default function ResourcesPage() {
   return <MarketingPage eyebrow="RESOURCES" title={<>Useful thinking for the people who make hospitality <em>happen.</em></>} intro="Practical starting points for venue owners, operators and teams deciding how to make the working day clearer.">
-    <div className="resource-grid">{resources.map(([type, title, copy, href]) => <article key={title}><span>{type}</span><h2>{title}</h2><p>{copy}</p><Link href={href}>Read the guide <span>↗</span></Link></article>)}</div>
-    <section className="resource-callout"><p className="eyebrow">WANT A PRODUCT WALKTHROUGH?</p><h2>Turn the questions into a conversation.</h2><p>Book a demo or discuss a focused pilot around the part of service you want to improve first.</p><Link className="button" href="/contact">Book a demo <span>↗</span></Link></section>
+    <div className="resource-grid">{resources.map(([type, title, copy, href]) => <article key={title}><span>{type}</span><h2>{title}</h2><p>{copy}</p><Link href={href}>Read the guide <span><ArrowIcon/></span></Link></article>)}</div>
+    <section className="resource-callout"><p className="eyebrow">WANT A PRODUCT WALKTHROUGH?</p><h2>Turn the questions into a conversation.</h2><p>Book a demo or discuss a focused pilot around the part of service you want to improve first.</p><Link className="button" href="/contact?enquiry=demo">Book a demo <span><ArrowIcon/></span></Link></section>
   </MarketingPage>;
 }
