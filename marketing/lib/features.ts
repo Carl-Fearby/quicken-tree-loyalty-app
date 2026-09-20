@@ -13,14 +13,14 @@ export const features = [
   },
   {
     slug: 'restaurant-menu-management', title: 'Restaurant Menu Management Software',
-    description: 'Organise restaurant menus, dishes, prices and availability in one back office. Keep menu maintenance simple for your hospitality team with Pace.',
+    description: 'Manage restaurant menus, dish options, prices, availability, dietary symbols and allergens in one back office, with updates reflected in the guest app.',
     heading: 'Menu management that keeps up with service.',
-    intro: 'Your menu changes with the kitchen. Pace gives your team a place to organise menu sections, maintain dishes and update availability without spreading the work across disconnected tools.',
+    intro: 'Your menu changes with the kitchen. Pace gives your team one place to organise sections, maintain dishes, build choices and keep guest-facing menu information current.',
     sections: [
       ['Give every dish a place', 'Arrange menus into sections that match how guests browse and order. Maintain dish names and descriptions together, keeping the catalogue organised as your offering grows or changes with the season.'],
-      ['Maintain prices and availability', 'Update dish prices in the back office and manage which items are available. An organised catalogue gives your team a consistent place to maintain the information behind the customer menu.'],
-      ['Keep dietary information close', 'Maintain dietary information alongside your menu catalogue. Staff should still confirm specific allergy requirements with the kitchen; menu labels support those conversations rather than replace them.'],
-      ['Bring menu administration into the back office', 'Menu maintenance sits alongside the booking diary and rewards tools. Your team can move between daily service planning and catalogue updates in the same management interface.'],
+      ['Build the choices each dish needs', 'Create option groups for sizes, flavours, sides and other choices. Set required selections and price differences so dishes such as wings, pies and children’s meals are represented clearly rather than hidden in description text.'],
+      ['Keep dietary and allergen details visible', 'Assign dietary symbols and allergen keys to individual dishes, using a consistent colour and icon system across the back office and guest app. Staff should still confirm specific allergy requirements with the kitchen; menu labels support those conversations rather than replace them.'],
+      ['Update the menu guests actually see', 'Maintain base prices, option price differences and availability from the same catalogue used by the guest app. Price ranges and available choices stay driven by menu data instead of separate hard-coded displays.'],
     ],
   },
   {

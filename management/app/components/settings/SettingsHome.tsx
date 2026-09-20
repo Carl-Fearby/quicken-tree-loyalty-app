@@ -1,4 +1,6 @@
-type Props = { onOpen: (view: 'tables' | 'duration' | 'hours' | 'database' | 'menu') => void };
+import type { SettingsView } from './SettingsPage';
+
+type Props = { onOpen: (view: SettingsView) => void };
 
 const options = [
   [
@@ -24,6 +26,12 @@ const options = [
     'Menu maintenance',
     'Manage customer menus, sections, dishes, prices and availability.',
     'Open menu maintenance',
+  ],
+  [
+    'menu-symbols',
+    'Dietary & allergen symbols',
+    'Manage white-label dietary keys, allergen colours and icons.',
+    'Edit menu symbols',
   ],
   [
     'database',

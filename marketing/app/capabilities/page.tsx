@@ -8,7 +8,7 @@ export const generateMetadata = (): Metadata => metadata('Capabilities | Pace', 
 
 const capabilities = [
   ['01', 'Plan every service', 'Manage reservations in a visual diary, see guest numbers at a glance, configure table capacities and assign tables that fit each booking.'],
-  ['02', 'Control the details', 'Set venue and kitchen closing times by day, organise menus into sections, maintain dish prices and availability, and keep dietary information close to the catalogue.'],
+  ['02', 'Control the details', 'Set venue and kitchen closing times by day, organise menus into sections, build dish options and price differences, manage availability, and maintain dietary and allergen symbols.'],
   ['03', 'Build customer loyalty', 'Create single-use QR rewards worth 0–1,000 points, choose expiry dates, credit existing customers and keep an auditable reason for every manual points change.'],
   ['04', 'Keep teams aligned', 'Give staff one place to review bookings, menus and rewards. Changes stay visible in the back office so the team can act on the latest service information.'],
 ];

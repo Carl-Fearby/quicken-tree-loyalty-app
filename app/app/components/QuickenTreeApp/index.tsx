@@ -5,9 +5,6 @@ import {Header} from '../Header';
 import {Icon} from '../Icon';
 import {RedemptionPass, type Redemption} from '../RedemptionPass';
 import {UpcomingBookings} from '../UpcomingBookings';
-import {WingOptionsDialog} from '../WingOptionsDialog';
-import {WingsWednesdayDialog} from '../WingsWednesdayDialog';
-import {PieChoiceDialog} from '../PieChoiceDialog';
 import {CourseMenuDialog} from '../CourseMenuDialog';
 import {ItemOptionsDialog, type ItemOptionSet} from '../ItemOptionsDialog';
 import {HomeScreen} from '../screens/HomeScreen';
@@ -70,6 +67,9 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {dark?: bool
 const experiencePrices = Object.fromEntries(appointmentsData.experiences.map(experience => [experience.name, experience.price])) as Record<'Table' | 'Afternoon Tea' | 'Bottomless Brunch', number>;
 const dietaryTags: Record<string, string[]> = menuData.dietaryTags;
 const dietaryTagNames: Record<string, string> = menuData.dietaryTagNames;
+const allergenTags: Record<string, string[]> = menuData.allergenTags ?? {};
+const allergenTagNames: Record<string, string> = menuData.allergenTagNames ?? {};
+const allergenTagStyles: Record<string, {color: string; icon: string}> = menuData.allergenTagStyles ?? {};
 const defaultOutOfStockItems = new Set(menuData.outOfStockItems);
 type MenuSection = { title: string; items: ReadonlyArray<readonly [string, string, string]> };
 type MenuServicePeriod = {id: string; label: string; start: string; end: string; days?: number[]; categories: string[]};
@@ -139,7 +139,7 @@ const iCalendarTimestamp = (date: Date) => `${date.getFullYear()}${String(date.g
 const iCalendarUtcTimestamp = (date: Date) => `${date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`;
 const orderItemPrice = (name: string) => {
     const item = allMenuSections.flatMap(section => section.items).find(([itemName]) => name.startsWith(itemName));
-    return name.includes('· Small ·') ? 9 : name.includes('· Large ·') ? 15 : item ? priceValue(item[2]) : 0;
+    return item ? priceValue(item[2]) : 0;
 };
 const summariseOrder = (items: Record<string, number>, customLines: Record<string, CustomOrderLine> = {}): OrderSummary => Object.entries(items).reduce(
     (summary, [name, quantity]) => ({
@@ -185,12 +185,8 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
     const [bookingPendingCancellation, setBookingPendingCancellation] = useState<Booking | null>(null);
     const [orderToast, setOrderToast] = useState('');
     const [orderToastClosing, setOrderToastClosing] = useState(false);
-    const [wingSizePrompt, setWingSizePrompt] = useState(false);
-    const [wingsWednesdayPrompt, setWingsWednesdayPrompt] = useState(false);
-    const [pieChoicePrompt, setPieChoicePrompt] = useState(false);
     const [courseMenuPrompt, setCourseMenuPrompt] = useState(false);
     const [itemOptionsPrompt, setItemOptionsPrompt] = useState<string | null>(null);
-    const [wingSize, setWingSize] = useState<'Small' | 'Large' | null>(null);
     const [guests, setGuests] = useState('5 Guests');
     const [bookingExperience, setBookingExperience] = useState<'Table' | 'Afternoon Tea' | 'Bottomless Brunch'>('Table');
     const [afternoonTeaUpgrade, setAfternoonTeaUpgrade] = useState(false);
@@ -295,10 +291,17 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
     const selectedCourseOffer = courseOffers[selectedMenuCategory.source];
     const availability=(menuData as typeof menuData & {itemAvailability?:Record<string,{days:number[]}>}).itemAvailability??{};
     const menuDay=orderAheadBooking?fromInputDate(orderAheadBooking.date).getDay():new Date().getDay();
-    const filteredMenuSections = selectedMenuCategory.sections.map(section => ({
+    const menuSearchTerm = menuSearch.trim().toLowerCase();
+    const menuCategoriesToSearch = menuSearchTerm ? availableMenuCategories : [selectedMenuCategory];
+    const filteredMenuSections = menuCategoriesToSearch.flatMap(category => category.sections.map(section => ({
         ...section,
-        items: section.items.filter(([name, description]) => (!availability[name]?.days?.length||availability[name].days.includes(menuDay))&&`${name} ${description}`.toLowerCase().includes(menuSearch.trim().toLowerCase()))
-    })).filter(section => section.items.length);
+        // Identify where each result came from whenever the search spans menus.
+        title: menuSearchTerm ? `${category.label} · ${section.title}` : section.title,
+        items: section.items.filter(([name, description]) =>
+            (!availability[name]?.days?.length || availability[name].days.includes(menuDay)) &&
+            `${name} ${description}`.toLowerCase().includes(menuSearchTerm)
+        )
+    }))).filter(section => section.items.length);
     const preOrderCount = Object.values(preOrderItems).reduce((total, quantity) => total + quantity, 0);
     const preOrderTotal = summariseOrder(preOrderItems, customOrderLines).total;
     const preOrderLines = Object.entries(preOrderItems).flatMap(([name, quantity]) => {
@@ -857,17 +860,18 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
                                                             onSearchChange={setMenuSearch}
                                                             sections={filteredMenuSections} dietaryTags={dietaryTags}
                                                             dietaryTagNames={dietaryTagNames}
+                                                            allergenTags={allergenTags}
+                                                            allergenTagNames={allergenTagNames}
+                                                            allergenTagStyles={allergenTagStyles}
                                                             outOfStockItems={outOfStockItems}
-                                                            courseOffer={selectedCourseOffer}
+                                                            courseOffer={menuSearchTerm ? undefined : selectedCourseOffer}
                                                             onBuildCourseMenu={() => setCourseMenuPrompt(true)}
                                                             itemOptions={itemOptions}
                                                             onPromptItemOptions={setItemOptionsPrompt}
                                                             serviceLabel={activeMenuService?.label}
-                                                            orderAheadBooking={orderAheadBooking} onAdd={addToOrder}
-                                                            onPromptWings={() => {
-                                                                setWingSize(null);
-                                                                setWingSizePrompt(true);
-                                                            }} onPromptWingsWednesday={() => setWingsWednesdayPrompt(true)} onPromptPie={() => setPieChoicePrompt(true)} onBook={() => navigate('book')}/>} 
+                                                            orderAheadBooking={orderAheadBooking}
+                                                            onAdd={addToOrder}
+                                                            onBook={() => navigate('book')}/>}
                             {view === 'cart' &&
                                 <CartScreen lines={preOrderLines} total={preOrderTotal} booking={orderAheadBooking} guestDetails={orderGuestDetails} onGuestDetailsChange={setOrderGuestDetails}
                                             onBack={() => navigate('menu', true)} onAdd={addToOrder}
@@ -986,22 +990,13 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
                     setBookingPendingCancellation(null);
                 }}/>}
                 {orderToast && <p className={`orderToast${orderToast.startsWith('Could not') ? ' error' : ''}${orderToastClosing ? ' closing' : ''}`} role="status"><Icon name={orderToast.startsWith('Could not') ? 'fa-circle-exclamation' : 'fa-check'}/><span><b>{orderToast.startsWith('Could not') ? 'Please try again' : orderToast.includes('Booking') ? 'Canceled' : 'Added!'}</b><small>{orderToast.startsWith('Could not') ? 'We could not redeem that reward. Your points have not changed.' : orderToast === 'Booking and order cancelled' ? 'Your booking and order has been canceled' : orderToast === 'Booking cancelled' ? 'Your booking has been canceled' : `${orderToast.replace(' added to your order', '')} is ready in your order`}</small></span></p>}
-                {wingSizePrompt && <WingOptionsDialog size={wingSize} onSizeChange={setWingSize}
-                                                      onClose={() => setWingSizePrompt(false)} onAdd={item => {
-                    addToOrder(item);
-                    setWingSizePrompt(false);
-                    setWingSize(null);
-                }}/>}
-                {pieChoicePrompt && <PieChoiceDialog onClose={() => setPieChoicePrompt(false)} onAdd={item => {
-                    addToOrder(item);
-                    setPieChoicePrompt(false);
-                }}/>}
                 {itemOptionsPrompt && itemOptions[itemOptionsPrompt] && <ItemOptionsDialog itemName={itemOptionsPrompt} optionSet={itemOptions[itemOptionsPrompt]} onClose={() => setItemOptionsPrompt(null)} onAdd={item => {
-                    addToOrder(item);
+                    const baseItem = allMenuSections.flatMap(section => section.items).find(([itemName]) => itemOptionsPrompt.startsWith(itemName));
+                    setCustomOrderLines(current => ({...current, [item.name]: {description: item.description || baseItem?.[1] || itemOptionsPrompt, price: orderItemPrice(itemOptionsPrompt) + item.priceDelta}}));
+                    addToOrder(item.name);
                     setItemOptionsPrompt(null);
                 }}/>} 
                 {courseMenuPrompt && selectedCourseOffer && <CourseMenuDialog offer={selectedCourseOffer} sections={filteredMenuSections} outOfStockItems={outOfStockItems} onClose={() => setCourseMenuPrompt(false)} onAdd={addCourseMenuToOrder}/>} 
-                {wingsWednesdayPrompt && <WingsWednesdayDialog onClose={() => setWingsWednesdayPrompt(false)} onAdd={(item,quantity) => {addToOrder(item,quantity);setWingsWednesdayPrompt(false);}}/>}
             </LoyaltyApp>
     </AppNavigationProvider>;
 }

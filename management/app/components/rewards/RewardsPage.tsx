@@ -34,7 +34,17 @@ async function request(path: string, body?: object, signal?: AbortSignal) {
         }
       : { signal },
   );
-  const data = await response.json();
+  const text = await response.text();
+  let data: any = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw Error(
+      response.ok
+        ? 'The rewards service returned an invalid response.'
+        : 'The rewards service is unavailable. Please retry.',
+    );
+  }
   if (!response.ok) throw Error(data.message || 'Unable to load rewards.');
   return data;
 }

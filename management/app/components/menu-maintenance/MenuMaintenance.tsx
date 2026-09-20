@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { ModalShell } from '../booking-diary/modals/ModalShell';
 import { Breadcrumbs } from '../ui/Breadcrumbs';
 
@@ -15,6 +15,13 @@ type Item = {
   priceLabel: string;
   position: number;
 };
+type ItemOption = { label: string; priceDeltaPence: number | null; priceDeltaInput?: string };
+type ItemOptionGroup = {
+  label: string;
+  minSelections: number;
+  maxSelections: number;
+  options: ItemOption[];
+};
 type MenuData = {
   menus: Menu[];
   categories: Category[];
@@ -22,10 +29,72 @@ type MenuData = {
   items: Item[];
   categorySections: { categoryId: string; sectionPosition: number }[];
   dietaryTags?: { itemName: string; tagCode: string; label?: string }[];
+  dietaryTagDefinitions?: { code: string; label: string }[];
+  allergenTags?: { itemName: string; code: string; label?: string; color?: string; icon?: string }[];
+  allergenDefinitions?: { code: string; label: string; color?: string; icon?: string }[];
   unavailableItems?: { itemName: string }[];
+  itemOptions?: { itemName: string; groups: ItemOptionGroup[] }[];
 };
-type ItemDraft = { name: string; description: string; priceLabel: string };
-const emptyItem: ItemDraft = { name: '', description: '', priceLabel: '' };
+type ItemDraft = { name: string; description: string; priceLabel: string; dietaryTags: string[]; allergens: string[]; optionGroups: ItemOptionGroup[] };
+const emptyItem: ItemDraft = { name: '', description: '', priceLabel: '', dietaryTags: [], allergens: [], optionGroups: [] };
+const emptyGroup = (): ItemOptionGroup => ({
+  label: '',
+  minSelections: 1,
+  maxSelections: 1,
+  options: [{ label: '', priceDeltaPence: null }],
+});
+const optionPriceLabel = (pence: number | null) =>
+  pence ? `${pence > 0 ? '+' : '-'}£${(Math.abs(pence) / 100).toFixed(2)}` : 'Included';
+const allergenPresentation: Record<string, { color: string; icon: string }> = {
+  g: { color: '#e4c45b', icon: 'fa-wheat-awn' },
+  cr: { color: '#f38a31', icon: 'fa-shrimp' },
+  e: { color: '#7ccfd0', icon: 'fa-egg' },
+  f: { color: '#55bd80', icon: 'fa-fish' },
+  p: { color: '#f47b2c', icon: 'fa-seedling' },
+  s: { color: '#b975d3', icon: 'fa-leaf' },
+  m: { color: '#82cfd2', icon: 'fa-bottle-water' },
+  n: { color: '#d8585d', icon: 'fa-cookie-bite' },
+  c: { color: '#82cfd2', icon: 'fa-carrot' },
+  md: { color: '#d2a63a', icon: 'fa-bottle-droplet' },
+  se: { color: '#f49a2d', icon: 'fa-jar-wheat' },
+  sd: { color: '#82cfd2', icon: 'fa-bottle-droplet' },
+  l: { color: '#83b75c', icon: 'fa-seedling' },
+  mo: { color: '#d64d50', icon: 'fa-fan' },
+};
+const allergenBadgeStyle = (code: string, color?: string) =>
+  ({
+    '--badge-color': color ?? allergenPresentation[code.toLowerCase()]?.color ?? '#c44d4d',
+  }) as CSSProperties;
+const allergenIcon = (code: string, icon?: string) =>
+  icon ?? allergenPresentation[code.toLowerCase()]?.icon ?? 'fa-circle-info';
+const sanitizeMoneyInput = (value: string) => {
+  const cleaned = value.replace(/[^\d.]/g, '');
+  const [whole = '', ...decimalParts] = cleaned.split('.');
+  const decimals = decimalParts.join('').slice(0, 2);
+  return decimalParts.length ? `${whole}.${decimals}` : whole;
+};
+const moneyInputValue = (value: string) => {
+  const match = value.match(/£?\s*(\d+(?:\.\d{1,2})?)/);
+  return match ? Number(match[1]).toFixed(2) : '';
+};
+const formatPriceLabel = (value: string) => {
+  const clean = sanitizeMoneyInput(value);
+  if (!clean) return '';
+  const amount = Number(clean);
+  return Number.isFinite(amount) ? `£${amount.toFixed(2)}` : '';
+};
+const poundsToPence = (value: string) => {
+  const trimmed = sanitizeMoneyInput(value);
+  if (!trimmed) return null;
+  const amount = Number(trimmed);
+  return Number.isFinite(amount) ? Math.round(amount * 100) : null;
+};
+const penceToPounds = (value: number | null) => (value ? (value / 100).toFixed(2) : '');
+const cleanOptionGroups = (groups: ItemOptionGroup[]): ItemOptionGroup[] =>
+  groups.map((group) => ({
+    ...group,
+    options: group.options.map(({ priceDeltaInput, ...option }) => option),
+  }));
 
 async function request(path: string, init?: RequestInit) {
   const response = await fetch(path, init);
@@ -46,6 +115,7 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
   const [deleteItem, setDeleteItem] = useState<Item | null>(null);
   const [name, setName] = useState('');
   const [draft, setDraft] = useState<ItemDraft>(emptyItem);
+  const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -61,7 +131,7 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
     () => data?.categories.filter((category) => category.label !== 'Brunch') ?? [],
     [data],
   );
-  const active = categories.find((category) => category.id === selectedCategoryId);
+  const active = categories.find((category) => category.id === selectedCategoryId) ?? categories[0];
   const sectionsFor = useCallback(
     (category: Category) => {
       if (!data) return [];
@@ -85,6 +155,49 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
   const shownSections = selectedSectionId
     ? visibleSections.filter((section) => section.id === selectedSectionId)
     : visibleSections;
+  const searchTerm = search.trim().toLowerCase();
+  const itemMatchesSearch = useCallback(
+    (item: Item) => {
+      if (!data || !searchTerm) return true;
+      const section = data.sections.find((entry) => entry.id === item.sectionId);
+      const menu = data.menus.find((entry) => entry.id === section?.menuId);
+      const category = categories.find((entry) => entry.menuName === menu?.name);
+      return [
+        item.name,
+        item.description,
+        item.priceLabel,
+        section?.title ?? '',
+        menu?.name ?? '',
+        category?.label ?? '',
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(searchTerm);
+    },
+    [categories, data, searchTerm],
+  );
+  const displaySections = useMemo(() => {
+    if (!data || !searchTerm) return shownSections;
+    return data.sections.filter((section) =>
+      data.items.some((item) => item.sectionId === section.id && itemMatchesSearch(item)),
+    );
+  }, [data, itemMatchesSearch, searchTerm, shownSections]);
+  const displayDishCount = useMemo(
+    () =>
+      displaySections.reduce(
+        (count, section) =>
+          count +
+          (data?.items.filter((item) => item.sectionId === section.id && itemMatchesSearch(item))
+            .length ?? 0),
+        0,
+      ),
+    [data, displaySections, itemMatchesSearch],
+  );
+  const contentTitle = searchTerm
+    ? `Search results for "${search.trim()}"`
+    : selectedSectionId
+      ? shownSections[0]?.title ?? active?.label ?? 'Menu'
+      : active?.label ?? 'Menu';
 
   const saveOrder = async (path: string, key: string, ids: string[]) => {
     try {
@@ -142,7 +255,12 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
       await request(itemDialog.item ? `/api/menu/items/${itemDialog.item.id}` : '/api/menu/items', {
         method: itemDialog.item ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...draft, sectionId: itemDialog.sectionId }),
+        body: JSON.stringify({
+          ...draft,
+          priceLabel: formatPriceLabel(draft.priceLabel),
+          optionGroups: cleanOptionGroups(draft.optionGroups),
+          sectionId: itemDialog.sectionId,
+        }),
       });
       setItemDialog(null);
       await load();
@@ -165,92 +283,122 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
       setMessage(error instanceof Error ? error.message : 'Unable to change availability.');
     }
   };
+  const optionsFor = (itemName: string) =>
+    data?.itemOptions?.find((entry) => entry.itemName === itemName)?.groups ?? [];
+  const tagsFor = (itemName: string) =>
+    data?.dietaryTags?.filter((tag) => tag.itemName === itemName).map((tag) => tag.tagCode) ?? [];
+  const allergensFor = (itemName: string) =>
+    data?.allergenTags?.filter((tag) => tag.itemName === itemName).map((tag) => tag.code) ?? [];
+  const dietaryTagDefinitions = data?.dietaryTagDefinitions?.length
+    ? data.dietaryTagDefinitions
+    : [
+        { code: 'V', label: 'Vegetarian' },
+        { code: 'VG', label: 'Vegan' },
+        { code: 'GF', label: 'Gluten Free' },
+        { code: 'GFO', label: 'Gluten Free Option Available' },
+        { code: 'VGO', label: 'Vegan Option Available' },
+      ];
+  const toggleDietaryTag = (code: string) =>
+    setDraft((current) => ({
+      ...current,
+      dietaryTags: current.dietaryTags.includes(code)
+        ? current.dietaryTags.filter((tag) => tag !== code)
+        : [...current.dietaryTags, code],
+    }));
+  const allergenDefinitions = data?.allergenDefinitions?.length
+    ? data.allergenDefinitions
+    : [
+        { code: 'g', label: 'Gluten' },
+        { code: 'cr', label: 'Crustaceans' },
+        { code: 'e', label: 'Eggs' },
+        { code: 'f', label: 'Fish' },
+        { code: 'p', label: 'Peanuts' },
+        { code: 's', label: 'Soybeans' },
+        { code: 'm', label: 'Milk' },
+        { code: 'n', label: 'Nuts' },
+        { code: 'c', label: 'Celery' },
+        { code: 'md', label: 'Mustard' },
+        { code: 'se', label: 'Sesame' },
+        { code: 'sd', label: 'Sulphites' },
+        { code: 'l', label: 'Lupin' },
+        { code: 'mo', label: 'Molluscs' },
+      ];
+  const toggleAllergen = (code: string) =>
+    setDraft((current) => ({
+      ...current,
+      allergens: current.allergens.includes(code)
+        ? current.allergens.filter((tag) => tag !== code)
+        : [...current.allergens, code],
+    }));
+  const updateGroup = (index: number, group: ItemOptionGroup) =>
+    setDraft((current) => ({
+      ...current,
+      optionGroups: current.optionGroups.map((entry, entryIndex) =>
+        entryIndex === index ? group : entry,
+      ),
+    }));
+  const updateOption = (groupIndex: number, optionIndex: number, option: ItemOption) =>
+    setDraft((current) => ({
+      ...current,
+      optionGroups: current.optionGroups.map((group, entryIndex) =>
+        entryIndex === groupIndex
+          ? {
+              ...group,
+              options: group.options.map((entry, choiceIndex) =>
+                choiceIndex === optionIndex ? option : entry,
+              ),
+            }
+          : group,
+      ),
+    }));
 
   return (
     <section className="menu-maintenance">
       <Breadcrumbs
         current={active?.label || 'Menu maintenance'}
-        onParent={active ? () => setSelectedCategoryId('') : undefined}
         onSettings={onBack}
-        parent={active ? 'Menu maintenance' : undefined}
       />
       <div className="menu-heading">
         <div>
           <p className="eyebrow">MENU MAINTENANCE</p>
           <h1>{active?.label || 'Menu maintenance'}</h1>
           <p className="settings-intro">
-            {active
-              ? 'Manage sections, dishes, prices and availability.'
-              : 'Choose a service to manage its menu, sections, dishes and availability.'}
+            Manage sections, dishes, prices, options and availability.
           </p>
         </div>
         <div className="menu-actions">
+          <label className="menu-search">
+            Search dishes
+            <span className="menu-search-field">
+              <span aria-hidden="true" className="menu-search-icon">
+              </span>
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search all menu items"
+              />
+              {search && (
+                <button
+                  aria-label="Clear search"
+                  className="menu-search-clear"
+                  type="button"
+                  onClick={() => setSearch('')}
+                >
+                  ×
+                </button>
+              )}
+            </span>
+          </label>
           <button type="button" onClick={() => void load()}>
             Refresh
           </button>
-          <button className="primary" type="button" onClick={() => setMenuDialog(true)}>
+          <button className="primary menu-add-button" type="button" onClick={() => setMenuDialog(true)}>
             + Add menu
           </button>
         </div>
       </div>
       {message && <p className="error-message">{message}</p>}
       {active && (
-        <div aria-label="Service zones" className="menu-zone-grid">
-          {categories.map((category) => {
-            const sections = sectionsFor(category);
-            const dishes = sections.flatMap(
-              (section) => data?.items.filter((item) => item.sectionId === section.id) ?? [],
-            );
-            return (
-              <button
-                aria-current={category.id === active.id}
-                className="menu-zone"
-                key={category.id}
-                type="button"
-                onClick={() => {
-                  setSelectedCategoryId(category.id);
-                  setSelectedSectionId('');
-                  setExpandedCategoryId(category.id);
-                }}
-              >
-                <b>{category.label}</b>
-                <span>
-                  {sections.length} sections · {dishes.length} dishes
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-      {!active ? (
-        <div className="menu-service-grid">
-          {categories.map((category) => {
-            const sections = sectionsFor(category);
-            const dishes = sections.flatMap(
-              (section) => data?.items.filter((item) => item.sectionId === section.id) ?? [],
-            );
-            return (
-              <button
-                className="menu-service-card"
-                key={category.id}
-                type="button"
-                onClick={() => {
-                  setSelectedCategoryId(category.id);
-                  setSelectedSectionId('');
-                  setExpandedCategoryId(category.id);
-                }}
-              >
-                <span>MENU</span>
-                <strong>{category.label}</strong>
-                <small>
-                  {sections.length} sections · {dishes.length} dishes
-                </small>
-                <b>Manage menu →</b>
-              </button>
-            );
-          })}
-        </div>
-      ) : (
         <div className="menu-workspace">
           <aside className="menu-navigation">
             <h2>Menus</h2>
@@ -258,7 +406,7 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
               const children = sectionsFor(category).filter(
                 (section) => section.title !== category.label,
               );
-              const expanded = expandedCategoryId === category.id;
+              const expanded = expandedCategoryId ? expandedCategoryId === category.id : active?.id === category.id;
               return (
                 <div
                   className="menu-nav-group"
@@ -319,17 +467,16 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
           </aside>
           <div className="menu-content">
             <div className="menu-content-toolbar">
-              <div className="menu-stats">
-                <span>{visibleSections.length} sections</span>
-                <span>
-                  {
-                    visibleSections.flatMap(
-                      (section) =>
-                        data?.items.filter((item) => item.sectionId === section.id) ?? [],
-                    ).length
-                  }{' '}
-                  dishes
-                </span>
+              <div>
+                <h2>{contentTitle}</h2>
+                <div className="menu-stats">
+                  <span>
+                    {displaySections.length} section{displaySections.length === 1 ? '' : 's'}
+                  </span>
+                  <span>
+                    {displayDishCount} dish{displayDishCount === 1 ? '' : 'es'}
+                  </span>
+                </div>
               </div>
               {!selectedSectionId && active && (
                 <button
@@ -343,14 +490,19 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
                 </button>
               )}
             </div>
-            {shownSections.map((section) => {
-              const items = data?.items.filter((item) => item.sectionId === section.id) ?? [];
+            {searchTerm && displaySections.length === 0 && (
+              <p className="menu-empty-state">No dishes match “{search.trim()}”.</p>
+            )}
+            {displaySections.map((section) => {
+              const sectionItems = data?.items.filter((item) => item.sectionId === section.id) ?? [];
+              const items = sectionItems.filter(itemMatchesSearch);
               return (
                 <article className="menu-section" key={section.id}>
                   <header
-                    draggable={visibleSections.length === sourceSections.length}
+                    draggable={!searchTerm && visibleSections.length === sourceSections.length}
                     onDragOver={(event) => {
-                      if (visibleSections.length === sourceSections.length) event.preventDefault();
+                      if (!searchTerm && visibleSections.length === sourceSections.length)
+                        event.preventDefault();
                     }}
                     onDragStart={(event) => event.dataTransfer.setData('menu-section', section.id)}
                     onDrop={(event) => {
@@ -358,6 +510,7 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
                       if (
                         from &&
                         from !== section.id &&
+                        !searchTerm &&
                         visibleSections.length === sourceSections.length
                       )
                         void saveOrder(
@@ -389,10 +542,11 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
                     className="menu-item-list"
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={(event) => {
+                      if (searchTerm) return;
                       const from = event.dataTransfer.getData('menu-item');
                       if (from)
                         void saveOrder('/api/menu/items/order', 'itemIds', [
-                          ...items.map((item) => item.id).filter((id) => id !== from),
+                          ...sectionItems.map((item) => item.id).filter((id) => id !== from),
                           from,
                         ]);
                     }}
@@ -403,22 +557,27 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
                         false;
                       const tags =
                         data?.dietaryTags?.filter((tag) => tag.itemName === item.name) ?? [];
+                      const allergens =
+                        data?.allergenTags?.filter((tag) => tag.itemName === item.name) ?? [];
                       return (
                         <div
                           className="menu-item"
-                          draggable
+                          draggable={!searchTerm}
                           key={item.id}
-                          onDragOver={(event) => event.preventDefault()}
+                          onDragOver={(event) => {
+                            if (!searchTerm) event.preventDefault();
+                          }}
                           onDragStart={(event) => event.dataTransfer.setData('menu-item', item.id)}
                           onDrop={(event) => {
                             event.stopPropagation();
+                            if (searchTerm) return;
                             const from = event.dataTransfer.getData('menu-item');
                             if (from && from !== item.id)
                               void saveOrder(
                                 '/api/menu/items/order',
                                 'itemIds',
                                 move(
-                                  items.map((entry) => entry.id),
+                                  sectionItems.map((entry) => entry.id),
                                   from,
                                   item.id,
                                 ),
@@ -430,12 +589,47 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
                           </span>
                           <div className="menu-item-copy">
                             <b>{item.name}</b>
-                            {tags.length > 0 && (
-                              <small>{tags.map((tag) => tag.tagCode).join(' · ')}</small>
+                            {(tags.length > 0 || allergens.length > 0) && (
+                              <div className="menu-item-badges">
+                                {tags.length > 0 && (
+                                  <span className="menu-badge-group">
+                                    <small>Dietary</small>
+                                    {tags.map((tag) => (
+                                      <mark className="menu-code-badge dietary" key={tag.tagCode} title={tag.label}>
+                                        {tag.tagCode}
+                                      </mark>
+                                    ))}
+                                  </span>
+                                )}
+                                {allergens.length > 0 && (
+                                  <span className="menu-badge-group">
+                                    <small>Allergens</small>
+                                    {allergens.map((tag) => (
+                                      <mark
+                                        className="menu-code-badge allergen"
+                                        key={tag.code}
+                                        style={allergenBadgeStyle(tag.code, tag.color)}
+                                        title={tag.label}
+                                      >
+                                        <span className="allergen-icon-dot">
+                                          <i aria-hidden="true" className={`fa-solid ${allergenIcon(tag.code, tag.icon)}`} />
+                                        </span>
+                                        <span>{tag.label ?? tag.code}</span>
+                                      </mark>
+                                    ))}
+                                  </span>
+                                )}
+                              </div>
                             )}
                             <p>{item.description}</p>
                           </div>
                           <em>{item.priceLabel}</em>
+                          {optionsFor(item.name).length > 0 && (
+                            <small className="menu-item-options">
+                              {optionsFor(item.name).length} option group
+                              {optionsFor(item.name).length === 1 ? '' : 's'}
+                            </small>
+                          )}
                           <button
                             className={
                               unavailable
@@ -453,7 +647,10 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
                               setDraft({
                                 name: item.name,
                                 description: item.description,
-                                priceLabel: item.priceLabel,
+                                priceLabel: moneyInputValue(item.priceLabel),
+                                dietaryTags: tagsFor(item.name),
+                                allergens: allergensFor(item.name),
+                                optionGroups: optionsFor(item.name),
                               });
                               setItemDialog({ sectionId: section.id, item });
                             }}
@@ -548,16 +745,195 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
               />
             </label>
             <label>
-              Price
-              <label>
+              Base price
+              <span className="currency-field">
+                <span>£</span>
                 <input
-                  maxLength={40}
+                  inputMode="decimal"
                   value={draft.priceLabel}
-                  onChange={(event) => setDraft({ ...draft, priceLabel: event.target.value })}
-                  placeholder="e.g. £12.50"
+                  onBlur={() =>
+                    setDraft((current) => ({
+                      ...current,
+                      priceLabel: moneyInputValue(current.priceLabel),
+                    }))
+                  }
+                  onChange={(event) =>
+                    setDraft({ ...draft, priceLabel: sanitizeMoneyInput(event.target.value) })
+                  }
+                  placeholder="0.00"
                 />
-              </label>
+              </span>
             </label>
+            <fieldset className="dietary-tag-editor">
+              <legend>Dietary symbols</legend>
+              <div>
+                {dietaryTagDefinitions.map((tag) => (
+                  <button
+                    aria-pressed={draft.dietaryTags.includes(tag.code)}
+                    key={tag.code}
+                    title={tag.label}
+                    type="button"
+                    onClick={() => toggleDietaryTag(tag.code)}
+                  >
+                    <span>{tag.code}</span>
+                    <small>{tag.label}</small>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <fieldset className="dietary-tag-editor allergen-tag-editor">
+              <legend>Allergens</legend>
+              <div>
+                {allergenDefinitions.map((tag) => (
+                  <button
+                    aria-pressed={draft.allergens.includes(tag.code)}
+                    key={tag.code}
+                    title={tag.label}
+                    type="button"
+                    onClick={() => toggleAllergen(tag.code)}
+                  >
+                    <span style={allergenBadgeStyle(tag.code, tag.color)}>
+                      <i aria-hidden="true" className={`fa-solid ${allergenIcon(tag.code, tag.icon)}`} />
+                    </span>
+                    <small>{tag.label}</small>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <section className="menu-option-editor">
+              <div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDraft((current) => ({
+                      ...current,
+                      optionGroups: [...current.optionGroups, emptyGroup()],
+                    }))
+                  }
+                >
+                  + Add option group
+                </button>
+              </div>
+              {draft.optionGroups.map((group, groupIndex) => (
+                <article className="menu-option-group" key={groupIndex}>
+                  <div className="menu-option-group-header">
+                    <label>
+                      Group label
+                      <input
+                        maxLength={80}
+                        required
+                        value={group.label}
+                        onChange={(event) =>
+                          updateGroup(groupIndex, { ...group, label: event.target.value })
+                        }
+                        placeholder="e.g. Choose a size"
+                      />
+                    </label>
+                    <label>
+                      Min
+                      <input
+                        min={0}
+                        type="number"
+                        value={group.minSelections}
+                        onChange={(event) =>
+                          updateGroup(groupIndex, {
+                            ...group,
+                            minSelections: Number(event.target.value),
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Max
+                      <input
+                        min={1}
+                        type="number"
+                        value={group.maxSelections}
+                        onChange={(event) =>
+                          updateGroup(groupIndex, {
+                            ...group,
+                            maxSelections: Number(event.target.value),
+                          })
+                        }
+                      />
+                    </label>
+                    <button
+                      className="danger"
+                      type="button"
+                      onClick={() =>
+                        setDraft((current) => ({
+                          ...current,
+                          optionGroups: current.optionGroups.filter((_, index) => index !== groupIndex),
+                        }))
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <h3 className="menu-option-heading">Options</h3>
+                  <div className="menu-option-choices">
+                    {group.options.map((option, optionIndex) => (
+                      <div className="menu-option-choice" key={optionIndex}>
+                        <input
+                          maxLength={80}
+                          required
+                          value={option.label}
+                          onChange={(event) =>
+                            updateOption(groupIndex, optionIndex, {
+                              ...option,
+                              label: event.target.value,
+                            })
+                          }
+                          placeholder="Option label"
+                        />
+                        <input
+                          inputMode="decimal"
+                          value={option.priceDeltaInput ?? penceToPounds(option.priceDeltaPence)}
+                          onBlur={() =>
+                            updateOption(groupIndex, optionIndex, {
+                              ...option,
+                              priceDeltaInput: undefined,
+                            })
+                          }
+                          onChange={(event) => {
+                            const value = sanitizeMoneyInput(event.target.value);
+                            updateOption(groupIndex, optionIndex, {
+                              ...option,
+                              priceDeltaInput: value,
+                              priceDeltaPence: poundsToPence(value),
+                            });
+                          }}
+                          placeholder="Price diff"
+                        />
+                        <span>{optionPriceLabel(option.priceDeltaPence)}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateGroup(groupIndex, {
+                              ...group,
+                              options: group.options.filter((_, index) => index !== optionIndex),
+                            })
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateGroup(groupIndex, {
+                          ...group,
+                          options: [...group.options, { label: '', priceDeltaPence: null }],
+                        })
+                      }
+                    >
+                      + Add option
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </section>
             <div className="dialog-actions">
               <button type="button" onClick={() => setItemDialog(null)}>
                 Cancel

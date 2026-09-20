@@ -16,8 +16,56 @@ const sql = postgres(process.env.DATABASE_URL, {
       ? false
       : process.env.DATABASE_SSL === 'require' || !local
         ? 'require'
-        : false,
+    : false,
 });
+await sql`alter table menu_item_options add column if not exists price_delta_pence integer`;
+await sql`create table if not exists allergen_tags(id text primary key, parent_id text not null default 'menu', position integer not null default 0, map_key text not null unique, label text not null)`;
+await sql`create table if not exists allergen_tag_styles(id text primary key, parent_id text not null default 'menu', position integer not null default 0, map_key text not null unique, color text not null default '', icon text not null default '')`;
+await sql`create table if not exists menu_item_allergen_labels(id text primary key, parent_id text not null default 'menu', position integer not null default 0, map_key text not null unique)`;
+await sql`create table if not exists menu_item_allergens(id text primary key, parent_id text not null references menu_item_allergen_labels(id) on delete cascade, position integer not null default 0, allergen_code text not null)`;
+const allergenDefaults = [
+  ['g', 'Gluten'],
+  ['cr', 'Crustaceans'],
+  ['e', 'Eggs'],
+  ['f', 'Fish'],
+  ['p', 'Peanuts'],
+  ['s', 'Soybeans'],
+  ['m', 'Milk'],
+  ['n', 'Nuts'],
+  ['c', 'Celery'],
+  ['md', 'Mustard'],
+  ['se', 'Sesame'],
+  ['sd', 'Sulphites'],
+  ['l', 'Lupin'],
+  ['mo', 'Molluscs'],
+];
+const allergenPresentation = {
+  g: { color: '#e4c45b', icon: 'fa-wheat-awn' },
+  cr: { color: '#f38a31', icon: 'fa-shrimp' },
+  e: { color: '#7ccfd0', icon: 'fa-egg' },
+  f: { color: '#55bd80', icon: 'fa-fish' },
+  p: { color: '#f47b2c', icon: 'fa-seedling' },
+  s: { color: '#b975d3', icon: 'fa-leaf' },
+  m: { color: '#82cfd2', icon: 'fa-bottle-water' },
+  n: { color: '#d8585d', icon: 'fa-cookie-bite' },
+  c: { color: '#82cfd2', icon: 'fa-carrot' },
+  md: { color: '#d2a63a', icon: 'fa-bottle-droplet' },
+  se: { color: '#f49a2d', icon: 'fa-jar-wheat' },
+  sd: { color: '#82cfd2', icon: 'fa-bottle-droplet' },
+  l: { color: '#83b75c', icon: 'fa-seedling' },
+  mo: { color: '#d64d50', icon: 'fa-fan' },
+};
+for (const [position, [code, label]] of allergenDefaults.entries())
+  await sql`insert into allergen_tags(id,parent_id,position,map_key,label) values(${randomUUID()},'menu',${position},${code},${label}) on conflict(map_key) do update set label=excluded.label, position=excluded.position`;
+for (const [position, [code]] of allergenDefaults.entries()) {
+  const presentation = allergenPresentation[code];
+  await sql`update allergen_tag_styles set color=coalesce(nullif(color,''),${presentation.color}), icon=coalesce(nullif(icon,''),${presentation.icon}), position=${position} where map_key=${code}`;
+  await sql`insert into allergen_tag_styles(id,parent_id,position,map_key,color,icon) select ${randomUUID()},'menu',${position},${code},${presentation.color},${presentation.icon} where not exists(select 1 from allergen_tag_styles where map_key=${code})`;
+}
+const bumpMenuContentRevision = async (transaction = sql) => {
+  await transaction`update content_revisions set version=version+1,updated_at=clock_timestamp() where dataset_key='menu'`;
+  await transaction`update content_generation set version=version+1,updated_at=clock_timestamp() where id=true`;
+};
 async function readJson(req, limit = 16384) {
   let raw = '';
   for await (const chunk of req) {
@@ -43,6 +91,105 @@ const itemFields = (body) => {
   if (priceLabel.length > 40)
     throw Object.assign(new Error('Price label must be 40 characters or fewer.'), { status: 400 });
   return { name, description, priceLabel };
+};
+const itemDietaryTags = (body) => {
+  if (!Array.isArray(body.dietaryTags)) return [];
+  const tags = [...new Set(body.dietaryTags.map((tag) => String(tag).trim()).filter(Boolean))];
+  if (tags.length > 12 || tags.some((tag) => tag.length > 20))
+    throw Object.assign(new Error('Dietary tags are invalid.'), { status: 400 });
+  return tags;
+};
+const itemAllergens = (body) => {
+  if (!Array.isArray(body.allergens)) return [];
+  const allergens = [...new Set(body.allergens.map((allergen) => String(allergen).trim()).filter(Boolean))];
+  if (allergens.length > 20 || allergens.some((allergen) => allergen.length > 20))
+    throw Object.assign(new Error('Allergen keys are invalid.'), { status: 400 });
+  return allergens;
+};
+const tagDefinitions = (body, key) => {
+  if (!Array.isArray(body?.[key])) return [];
+  if (body[key].length > 40)
+    throw Object.assign(new Error('Use 40 symbols or fewer.'), { status: 400 });
+  const seen = new Set();
+  return body[key].map((entry) => {
+    const code = typeof entry.code === 'string' ? entry.code.trim() : '';
+    const label = typeof entry.label === 'string' ? entry.label.trim() : '';
+    const color = typeof entry.color === 'string' ? entry.color.trim() : '';
+    const icon = typeof entry.icon === 'string' ? entry.icon.trim() : '';
+    if (!code || code.length > 20 || !/^[a-z0-9]+$/i.test(code))
+      throw Object.assign(new Error('Symbol codes must use letters and numbers only.'), { status: 400 });
+    if (seen.has(code.toLowerCase()))
+      throw Object.assign(new Error(`Duplicate symbol code: ${code}.`), { status: 400 });
+    seen.add(code.toLowerCase());
+    if (!label || label.length > 80)
+      throw Object.assign(new Error('Every symbol needs a label of up to 80 characters.'), { status: 400 });
+    if (color && !/^#[0-9a-f]{6}$/i.test(color))
+      throw Object.assign(new Error('Allergen colours must be hex values like #e4c45b.'), { status: 400 });
+    if (icon && !/^fa-[a-z0-9-]+$/i.test(icon))
+      throw Object.assign(new Error('Font Awesome icon names must look like fa-wheat-awn.'), { status: 400 });
+    return { code, label, color, icon };
+  });
+};
+const itemOptionGroups = (body) => {
+  if (!Array.isArray(body.optionGroups)) return [];
+  if (body.optionGroups.length > 12)
+    throw Object.assign(new Error('Use 12 option groups or fewer.'), { status: 400 });
+  return body.optionGroups.map((group) => {
+    const label = typeof group.label === 'string' ? group.label.trim() : '';
+    const minSelections = Number(group.minSelections);
+    const maxSelections = Number(group.maxSelections);
+    const options = Array.isArray(group.options) ? group.options : [];
+    if (!label || label.length > 80)
+      throw Object.assign(new Error('Every option group needs a label.'), { status: 400 });
+    if (!Number.isSafeInteger(minSelections) || !Number.isSafeInteger(maxSelections) || minSelections < 0 || maxSelections < 1 || minSelections > maxSelections)
+      throw Object.assign(new Error('Option group selection limits are invalid.'), { status: 400 });
+    if (!options.length || options.length > 40)
+      throw Object.assign(new Error('Every option group needs between 1 and 40 options.'), { status: 400 });
+    return {
+      label,
+      minSelections,
+      maxSelections,
+      options: options.map((option) => {
+        const optionLabel = typeof option.label === 'string' ? option.label.trim() : '';
+        const priceDeltaPence = option.priceDeltaPence === null || option.priceDeltaPence === undefined || option.priceDeltaPence === ''
+          ? null
+          : Number(option.priceDeltaPence);
+        if (!optionLabel || optionLabel.length > 80)
+          throw Object.assign(new Error('Every option needs a label.'), { status: 400 });
+        if (priceDeltaPence !== null && !Number.isSafeInteger(priceDeltaPence))
+          throw Object.assign(new Error('Option price differences must be whole pence.'), { status: 400 });
+        return { label: optionLabel, priceDeltaPence };
+      }),
+    };
+  });
+};
+const saveItemDietaryTags = async (transaction, itemName, tags) => {
+  await transaction`delete from menu_item_dietary_labels where parent_id='menu' and map_key=${itemName}`;
+  if (!tags.length) return;
+  const labelId = randomUUID();
+  await transaction`insert into menu_item_dietary_labels(id,parent_id,position,map_key) values(${labelId},'menu',0,${itemName})`;
+  for (const [position, tag] of tags.entries())
+    await transaction`insert into menu_item_dietary_tags(id,parent_id,position,tag_code) values(${randomUUID()},${labelId},${position},${tag})`;
+};
+const saveItemAllergens = async (transaction, itemName, allergens) => {
+  await transaction`delete from menu_item_allergen_labels where parent_id='menu' and map_key=${itemName}`;
+  if (!allergens.length) return;
+  const labelId = randomUUID();
+  await transaction`insert into menu_item_allergen_labels(id,parent_id,position,map_key) values(${labelId},'menu',0,${itemName})`;
+  for (const [position, allergen] of allergens.entries())
+    await transaction`insert into menu_item_allergens(id,parent_id,position,allergen_code) values(${randomUUID()},${labelId},${position},${allergen})`;
+};
+const saveItemOptions = async (transaction, itemName, groups) => {
+  await transaction`delete from menu_item_option_sets where parent_id='menu' and map_key=${itemName}`;
+  if (!groups.length) return;
+  const setId = randomUUID();
+  await transaction`insert into menu_item_option_sets(id,parent_id,position,map_key) values(${setId},'menu',0,${itemName})`;
+  for (const [groupPosition, group] of groups.entries()) {
+    const groupId = randomUUID();
+    await transaction`insert into menu_item_option_groups(id,parent_id,position,label,min_selections,max_selections) values(${groupId},${setId},${groupPosition},${group.label},${group.minSelections},${group.maxSelections})`;
+    for (const [optionPosition, option] of group.options.entries())
+      await transaction`insert into menu_item_options(id,parent_id,position,label,price_delta_pence) values(${randomUUID()},${groupId},${optionPosition},${option.label},${option.priceDeltaPence})`;
+  }
 };
 const londonDateTime = () => {
   const values = Object.fromEntries(
@@ -617,8 +764,30 @@ const server = http.createServer(async (req, res) => {
         await sql`select id,parent_id as "sectionId",name,description,price_label as "priceLabel",position from menu_items order by parent_id,position`;
       const dietaryTags =
         await sql`select labels.map_key as "itemName",tags.tag_code as "tagCode",definitions.label from menu_item_dietary_labels labels join menu_item_dietary_tags tags on tags.parent_id=labels.id left join dietary_tags definitions on definitions.map_key=tags.tag_code order by labels.position,tags.position`;
+      const dietaryTagDefinitions =
+        await sql`select map_key as code,label from dietary_tags order by position,map_key`;
+      const allergenTags =
+        (await sql`select labels.map_key as "itemName",allergens.allergen_code as code,definitions.label from menu_item_allergen_labels labels join menu_item_allergens allergens on allergens.parent_id=labels.id left join allergen_tags definitions on definitions.map_key=allergens.allergen_code order by labels.position,allergens.position`).map(
+          (tag) => ({ ...tag, ...allergenPresentation[tag.code] }),
+        );
+      const allergenDefinitions =
+        (await sql`select map_key as code,label from allergen_tags order by position,map_key`).map(
+          (definition) => ({ ...definition, ...allergenPresentation[definition.code] }),
+        );
       const unavailableItems =
         await sql`select item_name as "itemName" from menu_unavailable_items order by position`;
+      const optionRows =
+        await sql`select sets.map_key as "itemName",groups.id as "groupId",groups.label as "groupLabel",groups.min_selections as "minSelections",groups.max_selections as "maxSelections",groups.position as "groupPosition",options.label as "optionLabel",options.price_delta_pence as "priceDeltaPence",options.position as "optionPosition" from menu_item_option_sets sets join menu_item_option_groups groups on groups.parent_id=sets.id join menu_item_options options on options.parent_id=groups.id order by sets.map_key,groups.position,options.position`;
+      const itemOptions = Object.values(optionRows.reduce((sets, row) => {
+        const set = (sets[row.itemName] ??= { itemName: row.itemName, groups: [] });
+        let group = set.groups.find((entry) => entry.id === row.groupId);
+        if (!group) {
+          group = { id: row.groupId, label: row.groupLabel, minSelections: row.minSelections, maxSelections: row.maxSelections, options: [] };
+          set.groups.push(group);
+        }
+        group.options.push({ label: row.optionLabel, priceDeltaPence: row.priceDeltaPence });
+        return sets;
+      }, {}));
       const categories =
         await sql`select id,label,menu_name as "menuName",service_name as "serviceName",sections_present as "sectionsPresent",position from menu_categories order by position`;
       const categorySections =
@@ -628,10 +797,53 @@ const server = http.createServer(async (req, res) => {
         sections,
         items,
         dietaryTags,
+        dietaryTagDefinitions,
+        allergenTags,
+        allergenDefinitions,
         unavailableItems,
+        itemOptions,
         categories,
         categorySections,
       });
+    }
+    if (url.pathname === '/api/menu-tags' && req.method === 'GET') {
+      const dietaryTags =
+        await sql`select tags.map_key as code,tags.label,coalesce(usage.count,0)::int as "usageCount" from dietary_tags tags left join (select tag_code,count(*)::int from menu_item_dietary_tags group by tag_code) usage on usage.tag_code=tags.map_key order by tags.position,tags.map_key`;
+      const allergenTags =
+        await sql`select tags.map_key as code,tags.label,coalesce(styles.color,'') as color,coalesce(styles.icon,'') as icon,coalesce(usage.count,0)::int as "usageCount" from allergen_tags tags left join allergen_tag_styles styles on styles.map_key=tags.map_key left join (select allergen_code,count(*)::int from menu_item_allergens group by allergen_code) usage on usage.allergen_code=tags.map_key order by tags.position,tags.map_key`;
+      return json(200, { dietaryTags, allergenTags });
+    }
+    if (url.pathname === '/api/menu-tags' && req.method === 'PUT') {
+      if (req.headers['content-type'] !== 'application/json')
+        return json(415, { message: 'JSON required.' });
+      const body = await readJson(req, 32768);
+      const dietaryTags = tagDefinitions(body, 'dietaryTags');
+      const allergenTags = tagDefinitions(body, 'allergenTags');
+      const currentDietaryUsage =
+        await sql`select tag_code as code,count(*)::int as count from menu_item_dietary_tags group by tag_code`;
+      const currentAllergenUsage =
+        await sql`select allergen_code as code,count(*)::int as count from menu_item_allergens group by allergen_code`;
+      const nextDietaryCodes = new Set(dietaryTags.map((tag) => tag.code));
+      const nextAllergenCodes = new Set(allergenTags.map((tag) => tag.code));
+      const blockedDietary = currentDietaryUsage.filter((tag) => tag.count > 0 && !nextDietaryCodes.has(tag.code));
+      const blockedAllergens = currentAllergenUsage.filter((tag) => tag.count > 0 && !nextAllergenCodes.has(tag.code));
+      if (blockedDietary.length || blockedAllergens.length)
+        return json(400, {
+          message: `Cannot remove symbols assigned to dishes: ${[...blockedDietary, ...blockedAllergens].map((tag) => tag.code).join(', ')}.`,
+        });
+      await sql.begin(async (transaction) => {
+        await transaction`delete from dietary_tags where parent_id='menu'`;
+        for (const [position, tag] of dietaryTags.entries())
+          await transaction`insert into dietary_tags(id,parent_id,position,map_key,label) values(${randomUUID()},'menu',${position},${tag.code},${tag.label})`;
+        await transaction`delete from allergen_tags where parent_id='menu'`;
+        await transaction`delete from allergen_tag_styles where parent_id='menu'`;
+        for (const [position, tag] of allergenTags.entries()) {
+          await transaction`insert into allergen_tags(id,parent_id,position,map_key,label) values(${randomUUID()},'menu',${position},${tag.code},${tag.label})`;
+          await transaction`insert into allergen_tag_styles(id,parent_id,position,map_key,color,icon) values(${randomUUID()},'menu',${position},${tag.code},${tag.color || '#d8585d'},${tag.icon || 'fa-circle-info'})`;
+        }
+        await bumpMenuContentRevision(transaction);
+      });
+      return json(200, { ok: true });
     }
     const availabilityMatch = url.pathname.match(/^\/api\/menu\/items\/([^/]+)\/out-of-stock$/);
     if (availabilityMatch && req.method === 'PUT') {
@@ -816,6 +1028,9 @@ const server = http.createServer(async (req, res) => {
       const body = await readJson(req);
       const sectionId = typeof body.sectionId === 'string' ? body.sectionId : '';
       const fields = itemFields(body);
+      const dietaryTags = itemDietaryTags(body);
+      const allergens = itemAllergens(body);
+      const optionGroups = itemOptionGroups(body);
       const item = await sql.begin(async (transaction) => {
         const [section] = await transaction`select id from menu_sections where id=${sectionId}`;
         if (!section)
@@ -829,6 +1044,9 @@ const server = http.createServer(async (req, res) => {
           await transaction`select coalesce(max(position),-1)::integer as position from menu_items where parent_id=${sectionId}`;
         const id = randomUUID();
         await transaction`insert into menu_items(id,parent_id,position,name,description,price_label) values(${id},${sectionId},${last.position + 1},${fields.name},${fields.description},${fields.priceLabel})`;
+        await saveItemDietaryTags(transaction, fields.name, dietaryTags);
+        await saveItemAllergens(transaction, fields.name, allergens);
+        await saveItemOptions(transaction, fields.name, optionGroups);
         return { id, sectionId, position: last.position + 1, ...fields };
       });
       return json(201, item);
@@ -838,7 +1056,11 @@ const server = http.createServer(async (req, res) => {
       if (req.headers['content-type'] !== 'application/json')
         return json(415, { message: 'JSON required.' });
       const itemId = decodeURIComponent(itemMatch[1]);
-      const fields = itemFields(await readJson(req));
+      const body = await readJson(req);
+      const fields = itemFields(body);
+      const dietaryTags = itemDietaryTags(body);
+      const allergens = itemAllergens(body);
+      const optionGroups = itemOptionGroups(body);
       const item = await sql.begin(async (transaction) => {
         const [current] =
           await transaction`select id,name from menu_items where id=${itemId} for update`;
@@ -851,12 +1073,16 @@ const server = http.createServer(async (req, res) => {
           });
         if (current.name !== fields.name) {
           await transaction`update menu_item_dietary_labels set map_key=${fields.name} where map_key=${current.name}`;
+          await transaction`update menu_item_allergen_labels set map_key=${fields.name} where map_key=${current.name}`;
           await transaction`update menu_item_availability set map_key=${fields.name} where map_key=${current.name}`;
           await transaction`update menu_unavailable_items set item_name=${fields.name} where item_name=${current.name}`;
           await transaction`update menu_item_option_sets set map_key=${fields.name} where map_key=${current.name}`;
         }
         const [updated] =
           await transaction`update menu_items set name=${fields.name},description=${fields.description},price_label=${fields.priceLabel} where id=${itemId} returning id,parent_id as "sectionId",position,name,description,price_label as "priceLabel"`;
+        await saveItemDietaryTags(transaction, fields.name, dietaryTags);
+        await saveItemAllergens(transaction, fields.name, allergens);
+        await saveItemOptions(transaction, fields.name, optionGroups);
         return updated;
       });
       return json(200, item);
@@ -868,6 +1094,7 @@ const server = http.createServer(async (req, res) => {
           await transaction`select id,name from menu_items where id=${itemId} for update`;
         if (!item) throw Object.assign(new Error('Menu item not found.'), { status: 404 });
         await transaction`delete from menu_item_dietary_labels where map_key=${item.name}`;
+        await transaction`delete from menu_item_allergen_labels where map_key=${item.name}`;
         await transaction`delete from menu_item_availability where map_key=${item.name}`;
         await transaction`delete from menu_unavailable_items where item_name=${item.name}`;
         await transaction`delete from menu_item_option_sets where map_key=${item.name}`;

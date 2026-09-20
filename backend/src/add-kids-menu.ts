@@ -24,6 +24,17 @@ const sections=[
   ['Mini Pancakes','Nutella, whipped cream and fresh strawberries','']
  ]}
 ];
+const kidsSideOptions=['Beans','Peas','Salad Sticks'];
+const kidsSideChoiceItems=new Set(['Cheeseburger','Fish Goujons','Chicken Bites','Mac ’n’ Cheese','Sausage & Mash','Kids Roast']);
+async function replaceItemOptions(transaction:any,itemName:string){
+ const [setPosition]=await transaction`select coalesce(max(position),-1)::integer as position from menu_item_option_sets where parent_id='menu'`;
+ await transaction`delete from menu_item_option_sets where parent_id='menu' and map_key=${itemName}`;
+ const setId=randomUUID();
+ await transaction`insert into menu_item_option_sets(id,parent_id,position,map_key) values(${setId},'menu',${setPosition.position+1},${itemName})`;
+ const groupId=randomUUID();
+ await transaction`insert into menu_item_option_groups(id,parent_id,position,label,min_selections,max_selections) values(${groupId},${setId},0,${'Choose a side'},1,1)`;
+ for(const [position,label] of kidsSideOptions.entries())await transaction`insert into menu_item_options(id,parent_id,position,label,price_delta_pence) values(${randomUUID()},${groupId},${position},${label},0)`;
+}
 
 try {
  const result=await sql.begin(async transaction=>{
@@ -44,9 +55,9 @@ try {
    let [section]=await transaction`select id from menu_sections where parent_id=${menu.id} and title=${definition.title}`;
    if(!section){section={id:randomUUID()};await transaction`insert into menu_sections(id,parent_id,position,title) values(${section.id},${menu.id},${sectionPosition},${definition.title})`;}
    for(const [itemPosition,[name,description,price]] of definition.items.entries()){
-    const [existing]=await transaction`select id from menu_items where parent_id=${section.id} and name=${name}`;
-    if(existing)continue;
-    await transaction`insert into menu_items(id,parent_id,position,name,description,price_label) values(${randomUUID()},${section.id},${itemPosition},${name},${description},${price})`;added+=1;
+   const [existing]=await transaction`select id from menu_items where parent_id=${section.id} and name=${name}`;
+    if(!existing){await transaction`insert into menu_items(id,parent_id,position,name,description,price_label) values(${randomUUID()},${section.id},${itemPosition},${name},${description},${price})`;added+=1;}
+    if(kidsSideChoiceItems.has(name))await replaceItemOptions(transaction,name);
    }
   }
   const [existingAvailability]=await transaction`select id from menu_item_availability where parent_id=${'menu'} and map_key=${'Kids Roast'}`;

@@ -93,7 +93,7 @@ export default function BookingDiaryPage() {
     const parameters = new URLSearchParams(window.location.search);
     const requestedArea = parameters.get('area');
     const requestedView = parameters.get('settings');
-    const views: SettingsView[] = ['home', 'tables', 'duration', 'hours', 'database', 'menu'];
+    const views: SettingsView[] = ['home', 'tables', 'duration', 'hours', 'database', 'menu', 'menu-symbols'];
     return {
       area: requestedArea === 'settings' || requestedArea === 'rewards' ? requestedArea : 'diary',
       settingsView: views.includes(requestedView as SettingsView)

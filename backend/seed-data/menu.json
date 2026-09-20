@@ -12,31 +12,420 @@
       "label": "Breakfast menu",
       "start": "07:30",
       "end": "12:00",
-      "categories": ["Breakfasts"]
+      "categories": [
+        "Breakfasts"
+      ]
     },
     {
       "id": "sunday-lunch",
       "label": "Sunday lunch menu",
       "start": "12:00",
       "end": "17:00",
-      "days": [0],
-      "categories": ["Sunday", "Drinks"]
+      "days": [
+        0
+      ],
+      "categories": [
+        "Sunday",
+        "Drinks"
+      ]
     },
     {
       "id": "day",
       "label": "Day menu",
       "start": "12:00",
       "end": "17:00",
-      "categories": ["Appetisers", "Nibbles", "Starters", "Mains", "Burgers", "Sides", "Desserts", "Drinks"]
+      "categories": [
+        "Appetisers",
+        "Nibbles",
+        "Starters",
+        "Mains",
+        "Burgers",
+        "Sides",
+        "Desserts",
+        "Drinks"
+      ]
     },
     {
       "id": "evening",
       "label": "Evening menu",
       "start": "17:00",
       "end": "20:30",
-      "categories": ["Appetisers", "Nibbles", "Starters", "Mains", "Burgers", "Sides", "Desserts", "Drinks"]
+      "categories": [
+        "Appetisers",
+        "Nibbles",
+        "Starters",
+        "Mains",
+        "Burgers",
+        "Sides",
+        "Desserts",
+        "Drinks"
+      ]
     }
   ],
+  "itemOptions": {
+    "Chicken Wings or Cauli Wings": {
+      "groups": [
+        {
+          "label": "Choose a size",
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "Small",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Large",
+              "priceDeltaPence": 600
+            }
+          ]
+        },
+        {
+          "label": "Choose a flavour",
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "BBQ",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Hot",
+              "priceDeltaPence": 0
+            }
+          ]
+        }
+      ]
+    },
+    "Homemade Pie of the Week": {
+      "groups": [
+        {
+          "label": "Choose a side",
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "Fries",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Chips",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Mash",
+              "priceDeltaPence": 0
+            }
+          ]
+        }
+      ]
+    },
+    "Pie of the Day": {
+      "groups": [
+        {
+          "label": "Choose a side",
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "Fries",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Chips",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Mash",
+              "priceDeltaPence": 0
+            }
+          ]
+        }
+      ]
+    },
+    "One Filling": {
+      "groups": [
+        {
+          "label": "Choose your bread",
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "White bread",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Brown bread",
+              "priceDeltaPence": 0
+            }
+          ]
+        },
+        {
+          "label": "Choose your fillings",
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "Sausage",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Bacon",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Egg",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Tomato",
+              "priceDeltaPence": 0
+            }
+          ]
+        }
+      ]
+    },
+    "Two Fillings": {
+      "groups": [
+        {
+          "label": "Choose your bread",
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "White bread",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Brown bread",
+              "priceDeltaPence": 0
+            }
+          ]
+        },
+        {
+          "label": "Choose your fillings",
+          "minSelections": 2,
+          "maxSelections": 2,
+          "options": [
+            {
+              "label": "Sausage",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Bacon",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Egg",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Tomato",
+              "priceDeltaPence": 0
+            }
+          ]
+        }
+      ]
+    },
+    "Three Fillings": {
+      "groups": [
+        {
+          "label": "Choose your bread",
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "White bread",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Brown bread",
+              "priceDeltaPence": 0
+            }
+          ]
+        },
+        {
+          "label": "Choose your fillings",
+          "minSelections": 3,
+          "maxSelections": 3,
+          "options": [
+            {
+              "label": "Sausage",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Bacon",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Egg",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Tomato",
+              "priceDeltaPence": 0
+            }
+          ]
+        }
+      ]
+    },
+    "Chicken Bites & Fries": {
+      "groups": [
+        {
+          "label": "Choose a side",
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "Beans",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Peas",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Salad Sticks",
+              "priceDeltaPence": 0
+            }
+          ]
+        }
+      ]
+    },
+    "Fish & Chips": {
+      "groups": [
+        {
+          "label": "Choose a size",
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "Small",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Large",
+              "priceDeltaPence": 410
+            }
+          ]
+        },
+        {
+          "label": "Choose peas",
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "Mushy peas",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Garden peas",
+              "priceDeltaPence": 0
+            }
+          ]
+        }
+      ]
+    },
+    "Iced Latte": {
+      "groups": [
+        {
+          "label": "Choose a sauce",
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "Chocolate sauce",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Toffee sauce",
+              "priceDeltaPence": 0
+            }
+          ]
+        }
+      ]
+    },
+    "Iced Black Coffee": {
+      "groups": [
+        {
+          "label": "Choose a sauce",
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "Chocolate sauce",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Toffee sauce",
+              "priceDeltaPence": 0
+            }
+          ]
+        }
+      ]
+    },
+    "Hot Chocolate": {
+      "groups": [
+        {
+          "label": "Add extras",
+          "minSelections": 0,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "Cream and marshmallows",
+              "priceDeltaPence": 100
+            }
+          ]
+        }
+      ]
+    },
+    "Apple, Orange, Pineapple or Cranberry Juice": {
+      "groups": [
+        {
+          "label": "Choose a juice",
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "Apple",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Orange",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Pineapple",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Cranberry",
+              "priceDeltaPence": 0
+            }
+          ]
+        }
+      ]
+    },
+    "Spaghetti & Tomato Sauce": {
+      "groups": [
+        {
+          "label": "Choose cheese",
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "label": "With cheese",
+              "priceDeltaPence": 0
+            },
+            {
+              "label": "Without cheese",
+              "priceDeltaPence": 0
+            }
+          ]
+        }
+      ]
+    }
+  },
   "dietaryTagNames": {
     "V": "Vegetarian",
     "VG": "Vegan",
@@ -45,6 +434,149 @@
     "VO": "Vegetarian Option",
     "VGO": "Vegan Option Available",
     "GFO": "Gluten Free Option Available"
+  },
+  "allergenTagNames": {
+    "g": "Gluten",
+    "cr": "Crustaceans",
+    "e": "Eggs",
+    "f": "Fish",
+    "p": "Peanuts",
+    "s": "Soybeans",
+    "m": "Milk",
+    "n": "Nuts",
+    "c": "Celery",
+    "md": "Mustard",
+    "se": "Sesame",
+    "sd": "Sulphites",
+    "l": "Lupin",
+    "mo": "Molluscs"
+  },
+  "allergenTagStyles": {
+    "g": {
+      "color": "#e4c45b",
+      "icon": "fa-wheat-awn"
+    },
+    "cr": {
+      "color": "#f38a31",
+      "icon": "fa-shrimp"
+    },
+    "e": {
+      "color": "#7ccfd0",
+      "icon": "fa-egg"
+    },
+    "f": {
+      "color": "#55bd80",
+      "icon": "fa-fish"
+    },
+    "p": {
+      "color": "#f47b2c",
+      "icon": "fa-seedling"
+    },
+    "s": {
+      "color": "#b975d3",
+      "icon": "fa-leaf"
+    },
+    "m": {
+      "color": "#82cfd2",
+      "icon": "fa-bottle-water"
+    },
+    "n": {
+      "color": "#d8585d",
+      "icon": "fa-cookie-bite"
+    },
+    "c": {
+      "color": "#82cfd2",
+      "icon": "fa-carrot"
+    },
+    "md": {
+      "color": "#d2a63a",
+      "icon": "fa-bottle-droplet"
+    },
+    "se": {
+      "color": "#f49a2d",
+      "icon": "fa-jar-wheat"
+    },
+    "sd": {
+      "color": "#82cfd2",
+      "icon": "fa-bottle-droplet"
+    },
+    "l": {
+      "color": "#83b75c",
+      "icon": "fa-seedling"
+    },
+    "mo": {
+      "color": "#d64d50",
+      "icon": "fa-fan"
+    }
+  },
+  "allergenTags": {
+    "Baked Camembert": [
+      "g",
+      "m",
+      "c"
+    ],
+    "Pan-Roasted Chicken Supreme": [
+      "m",
+      "md"
+    ],
+    "Aubergine Schnitzel": [
+      "g",
+      "m"
+    ],
+    "Falafel & Spinach Burger": [
+      "g"
+    ],
+    "Slow-Cooked Lamb Shank": [
+      "m"
+    ],
+    "Peppercorn": [
+      "m"
+    ],
+    "Stilton": [
+      "m"
+    ],
+    "Diane": [
+      "m",
+      "md"
+    ],
+    "Spaghetti & Tomato Sauce": [
+      "g"
+    ],
+    "Chicken Bites & Fries": [
+      "g"
+    ],
+    "Children’s Roast": [
+      "g",
+      "m",
+      "e"
+    ],
+    "Mixed Ice Cream": [
+      "m"
+    ],
+    "Brownie & Ice Cream": [
+      "g",
+      "m",
+      "e"
+    ],
+    "Crispy Whitebait": [
+      "g",
+      "e",
+      "f"
+    ],
+    "Chicken Liver Parfait": [
+      "g",
+      "m",
+      "e",
+      "sd",
+      "md",
+      "s",
+      "n"
+    ],
+    "Fish & Chips": [
+      "g",
+      "sd",
+      "f"
+    ]
   },
   "dietaryTags": {
     "The Veggie": [
@@ -384,8 +916,8 @@
           ],
           [
             "Fish & Chips",
-            "Beer-battered fish, triple cooked chips and a choice of mushy or garden peas, tartare and lemon",
-            "S £12.90 · L £17.00"
+            "Beer-battered fish, triple cooked chips, tartare and lemon",
+            "£12.90"
           ],
           [
             "Vegetarian or Beef Lasagne",
@@ -641,7 +1173,7 @@
         "items": [
           [
             "Spaghetti & Tomato Sauce",
-            "Vegan available without cheese",
+            "Tomato sauce spaghetti",
             "£6.00"
           ],
           [
@@ -798,12 +1330,12 @@
           ],
           [
             "Hot Chocolate",
-            "Add cream and marshmallows for £1.00",
+            "Rich hot chocolate",
             "£4.00"
           ],
           [
             "Apple, Orange, Pineapple or Cranberry Juice",
-            "Choose your favourite",
+            "Chilled fruit juice",
             "£4.00"
           ]
         ]

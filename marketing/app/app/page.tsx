@@ -8,7 +8,7 @@ export const generateMetadata = (): Metadata => metadata('The Pace Guest App | P
 
 const appFeatures = [
   ['Book a visit', 'Let guests choose an experience, date, time and party size, then carry their details and preferences into the booking flow.'],
-  ['Browse what is on', 'Give guests a clear view of menus, service periods, dishes, dietary information and availability before they arrive.'],
+  ['Browse what is on', 'Give guests a clear view of menus, service periods, dish choices, price ranges, dietary symbols, allergens and availability before they arrive.'],
   ['Keep the visit in view', 'Show upcoming bookings, booking details and guest preferences in one place, so the next visit is easy to find.'],
   ['Make loyalty feel useful', 'Connect the guest experience to points, tiers, promotions and rewards, giving regulars a reason to return.'],
 ];

@@ -7,10 +7,11 @@ import { DatabaseAccessDialog, DatabaseManagement } from './DatabaseManagement';
 import { OpeningHoursSettings, type OpeningHour } from './OpeningHoursSettings';
 import { RestaurantTablesSettings } from './RestaurantTablesSettings';
 import { SettingsHome } from './SettingsHome';
+import { MenuSymbolSettings } from './MenuSymbolSettings';
 import { MenuMaintenance } from '../menu-maintenance/MenuMaintenance';
 import { Breadcrumbs } from '../ui/Breadcrumbs';
 
-export type SettingsView = 'home' | 'tables' | 'duration' | 'hours' | 'database' | 'menu';
+export type SettingsView = 'home' | 'tables' | 'duration' | 'hours' | 'database' | 'menu' | 'menu-symbols';
 export function SettingsPage({
   view,
   onViewChange,
@@ -83,6 +84,7 @@ export function SettingsPage({
     );
   if (view === 'database') return <DatabaseManagement onBack={() => onViewChange('home')} />;
   if (view === 'menu') return <MenuMaintenance onBack={() => onViewChange('home')} />;
+  if (view === 'menu-symbols') return <MenuSymbolSettings onBack={() => onViewChange('home')} />;
   const title =
     view === 'tables'
       ? 'Restaurant tables'
