@@ -263,6 +263,7 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
     const signOut = async () => {
         await logout();
         setMemberToken('');
+        localStorage.removeItem('access_token');
         setProfilePanel(null);
         setView('home');
         setSession(null);
@@ -317,15 +318,41 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
         };
     }, []);
     useEffect(() => {
-        refreshSession().then(response => {
-            setMemberToken(response.accessToken);
-            setSession({
-                accessToken: response.accessToken,
-                email: response.member.email,
-                name: response.member.name,
-                createdAt: new Date().toISOString()
+        const storedToken = localStorage.getItem('access_token');
+
+        refreshSession()
+            .then(response => {
+                setMemberToken(response.accessToken);
+
+                setSession({
+                    accessToken: response.accessToken,
+                    email: response.member.email,
+                    name: response.member.name,
+                    createdAt: new Date().toISOString()
+                });
+            })
+            .catch(() => {
+                if (!storedToken) {
+                    setSession(null);
+                    return;
+                }
+
+                setMemberToken(storedToken);
+
+                memberRequest<ApiProfile>('/me/profile')
+                    .then(profile => {
+                        setSession({
+                            accessToken: storedToken,
+                            email: profile.email,
+                            name: profile.displayName,
+                            createdAt: new Date().toISOString()
+                        });
+                    })
+                    .catch(() => {
+                        setMemberToken('');
+                        setSession(null);
+                    });
             });
-        }).catch(() => setSession(null));
     }, []);
     const times = availableSlots(bookingDate);
     const bookingTimes = bookingExperience === 'Bottomless Brunch' ? (fromInputDate(bookingDate).getDay() === 0 ? [] : times.filter(slot => slot >= '12:00' && slot <= '19:30')) : bookingExperience === 'Afternoon Tea' ? times.filter(slot => slot >= '12:00' && slot <= '17:00') : times;
@@ -415,7 +442,29 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
                 setDietaryNeeds(profile.dietaryNeeds ?? []);
                 setMemberTier(profile.tier);
                 setMemberPoints(loyalty.points);
-                const visibleBookings = liveBookings.filter(booking => booking.status !== 'cancelled');
+                const now = new Date();
+
+                const visibleBookings = liveBookings
+                    .filter(booking => {
+                        if (booking.status === 'cancelled') return false;
+
+                        const bookingDateTime = new Date(
+                            `${booking.date.slice(0, 10)}T${booking.time.slice(0, 5)}`
+                        );
+
+                        return bookingDateTime >= now;
+                    })
+                    .sort((a, b) => {
+                        const aTime = new Date(
+                            `${a.date.slice(0, 10)}T${a.time.slice(0, 5)}`
+                        ).getTime();
+
+                        const bTime = new Date(
+                            `${b.date.slice(0, 10)}T${b.time.slice(0, 5)}`
+                        ).getTime();
+
+                        return aTime - bTime;
+                    });
                 setBookings(visibleBookings.map(toBooking));
                 const loadedOrders = await Promise.all(visibleBookings.map(async booking => {
                     try {
