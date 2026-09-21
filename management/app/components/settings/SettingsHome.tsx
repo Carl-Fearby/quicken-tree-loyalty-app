@@ -1,4 +1,5 @@
 import type { SettingsView } from './SettingsPage';
+import { Breadcrumbs } from '../ui/Breadcrumbs';
 
 type Props = { onOpen: (view: SettingsView) => void };
 
@@ -19,7 +20,7 @@ const options = [
     'hours',
     'Opening & kitchen hours',
     'Configure venue hours and daily kitchen closing times.',
-    'Configure opening hours',
+    'Configure venue & kitchen hours',
   ],
   [
     'menu',
@@ -44,6 +45,7 @@ const options = [
 export function SettingsHome({ onOpen }: Props) {
   return (
     <section className="settings-home">
+      <Breadcrumbs current="System settings" />
       <p className="eyebrow">BACK-OFFICE SETTINGS</p>
       <h1>System settings</h1>
       <p className="settings-intro">

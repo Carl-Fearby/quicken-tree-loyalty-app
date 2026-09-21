@@ -1181,6 +1181,7 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
                 </>}{profilePanel === 'dietary' && <><p className="eyebrow">Dietary profile</p><h1>Good food,<br/>for
                     you.</h1><p className="profileIntro">Save dietary requirements and allergies so we can make menu
                     information easier to find. Always tell your server about an allergy before ordering.</p>
+                    <div className="dietaryProfileContainer">
                     <section className="dietaryProfileSection"><b>Dietary requirements</b>
                         <div className="tasteChoices">{profileData.dietaryRequirementOptions.map(option => <button
                             key={option} className={dietaryNeeds.includes(option) ? 'selected' : ''}
@@ -1196,6 +1197,7 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
                             <Icon name={dietaryNeeds.includes(option) ? 'fa-check' : 'fa-plus'}/> {option}
                         </button>)}</div>
                     </section>
+                    </div>
                 </>}{profilePanel === 'gifts' && <><p className="eyebrow">Gift cards & credit</p><h1>A
                     little extra<br/>for your table.</h1>
                     <section className="creditCard"><small>QUICKEN TREE CREDIT</small><b>£0.00</b><span>No credit available</span>

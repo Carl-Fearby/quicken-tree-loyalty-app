@@ -588,7 +588,15 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
                             ⠿
                           </span>
                           <div className="menu-item-copy">
-                            <b>{item.name}</b>
+                            <div className="menu-item-title-row">
+                              <b>{item.name}</b>
+                              {optionsFor(item.name).length > 0 && (
+                                <small className="menu-item-options">
+                                  {optionsFor(item.name).length} option group
+                                  {optionsFor(item.name).length === 1 ? '' : 's'}
+                                </small>
+                              )}
+                            </div>
                             {(tags.length > 0 || allergens.length > 0) && (
                               <div className="menu-item-badges">
                                 {tags.length > 0 && (
@@ -624,12 +632,6 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
                             <p>{item.description}</p>
                           </div>
                           <em>{item.priceLabel}</em>
-                          {optionsFor(item.name).length > 0 && (
-                            <small className="menu-item-options">
-                              {optionsFor(item.name).length} option group
-                              {optionsFor(item.name).length === 1 ? '' : 's'}
-                            </small>
-                          )}
                           <button
                             className={
                               unavailable
@@ -764,42 +766,44 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
                 />
               </span>
             </label>
-            <fieldset className="dietary-tag-editor">
-              <legend>Dietary symbols</legend>
-              <div>
-                {dietaryTagDefinitions.map((tag) => (
-                  <button
-                    aria-pressed={draft.dietaryTags.includes(tag.code)}
-                    key={tag.code}
-                    title={tag.label}
-                    type="button"
-                    onClick={() => toggleDietaryTag(tag.code)}
-                  >
-                    <span>{tag.code}</span>
-                    <small>{tag.label}</small>
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-            <fieldset className="dietary-tag-editor allergen-tag-editor">
-              <legend>Allergens</legend>
-              <div>
-                {allergenDefinitions.map((tag) => (
-                  <button
-                    aria-pressed={draft.allergens.includes(tag.code)}
-                    key={tag.code}
-                    title={tag.label}
-                    type="button"
-                    onClick={() => toggleAllergen(tag.code)}
-                  >
-                    <span style={allergenBadgeStyle(tag.code, tag.color)}>
-                      <i aria-hidden="true" className={`fa-solid ${allergenIcon(tag.code, tag.icon)}`} />
-                    </span>
-                    <small>{tag.label}</small>
-                  </button>
-                ))}
-              </div>
-            </fieldset>
+            <div className="dietary-allergen-container">
+              <fieldset className="dietary-tag-editor">
+                <legend>Dietary symbols</legend>
+                <div>
+                  {dietaryTagDefinitions.map((tag) => (
+                    <button
+                      aria-pressed={draft.dietaryTags.includes(tag.code)}
+                      key={tag.code}
+                      title={tag.label}
+                      type="button"
+                      onClick={() => toggleDietaryTag(tag.code)}
+                    >
+                      <span>{tag.code}</span>
+                      <small>{tag.label}</small>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset className="dietary-tag-editor allergen-tag-editor">
+                <legend>Allergens</legend>
+                <div>
+                  {allergenDefinitions.map((tag) => (
+                    <button
+                      aria-pressed={draft.allergens.includes(tag.code)}
+                      key={tag.code}
+                      title={tag.label}
+                      type="button"
+                      onClick={() => toggleAllergen(tag.code)}
+                    >
+                      <span style={allergenBadgeStyle(tag.code, tag.color)}>
+                        <i aria-hidden="true" className={`fa-solid ${allergenIcon(tag.code, tag.icon)}`} />
+                      </span>
+                      <small>{tag.label}</small>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
             <section className="menu-option-editor">
               <div>
                 <button

@@ -1,5 +1,7 @@
 'use client';
 import { FormEvent, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Breadcrumbs } from '../ui/Breadcrumbs';
 type Reward = {
   id: string;
   code: string;
@@ -56,6 +58,7 @@ const displayDate = (date: string) =>
     year: 'numeric',
   });
 export function RewardsPage() {
+  const router = useRouter();
   const [tokens, setTokens] = useState<Reward[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const previewDialog = useRef<HTMLDialogElement>(null);
@@ -165,6 +168,7 @@ export function RewardsPage() {
   };
   return (
     <section className="settings-page rewards-page">
+      <Breadcrumbs current="Rewards" onSettings={() => router.push('/configuration')} />
       <p className="eyebrow">CUSTOMER LOYALTY</p>
       <h1>Rewards</h1>
       <p className="settings-intro">

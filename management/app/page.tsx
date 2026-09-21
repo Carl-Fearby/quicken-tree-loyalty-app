@@ -1,5 +1,5 @@
-import BookingDiaryPage from './components/booking-diary/BookingDiaryPage';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return <BookingDiaryPage />;
+  redirect('/diary');
 }

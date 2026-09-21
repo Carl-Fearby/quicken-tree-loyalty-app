@@ -6,6 +6,7 @@ type Props = {
   date: string;
   slots: string[];
   kitchenClose?: number;
+  kitchenOpen?: number;
   tables: Table[];
   onSelect: (booking: Booking) => void;
 };
@@ -32,7 +33,7 @@ const londonMinutes = (value: Date) => {
 const tableColumnWidth = 150;
 const slotWidth = 56;
 
-export function DiaryGrid({ bookings, date, slots, kitchenClose, tables, onSelect }: Props) {
+export function DiaryGrid({ bookings, date, slots, kitchenClose, kitchenOpen, tables, onSelect }: Props) {
   const [now, setNow] = useState(() => new Date());
   const scrollRef = useRef<HTMLElement>(null);
   const currentTimeRef = useRef<HTMLDivElement>(null);
@@ -51,7 +52,7 @@ export function DiaryGrid({ bookings, date, slots, kitchenClose, tables, onSelec
     (groups, slot, index) => {
       const minutes = Number(slot.slice(0, 2)) * 60 + Number(slot.slice(3));
       const label =
-        minutes >= (kitchenClose ?? 24) * 60
+        minutes < (kitchenOpen ?? 0) * 60 || minutes >= (kitchenClose ?? 24) * 60
           ? 'Kitchen closed'
           : minutes < 720
             ? 'Breakfast'
@@ -98,8 +99,18 @@ export function DiaryGrid({ bookings, date, slots, kitchenClose, tables, onSelec
     <section className="diary-scroll" ref={scrollRef}>
       {kitchenClose !== undefined && (
         <p className="diary-kitchen-notice">
-          Kitchen closes at {String(Math.floor(kitchenClose)).padStart(2, '0')}:
-          {kitchenClose % 1 ? '30' : '00'} · No new bookings from this time
+          {kitchenOpen !== undefined ? (
+            <>
+              Kitchen open {String(Math.floor(kitchenOpen)).padStart(2, '0')}:
+              {kitchenOpen % 1 ? '30' : '00'} – {String(Math.floor(kitchenClose)).padStart(2, '0')}:
+              {kitchenClose % 1 ? '30' : '00'}
+            </>
+          ) : (
+            <>
+              Kitchen closes at {String(Math.floor(kitchenClose)).padStart(2, '0')}:
+              {kitchenClose % 1 ? '30' : '00'} · No new bookings from this time
+            </>
+          )}
         </p>
       )}
       <div
@@ -122,11 +133,11 @@ export function DiaryGrid({ bookings, date, slots, kitchenClose, tables, onSelec
         >
           Table
         </div>
-        {zones.map((zone) => (
+        {zones.map((zone, zoneIndex) => (
           <div
             className="diary-service-zone"
             data-zone={zone.label.toLowerCase()}
-            key={zone.label}
+            key={`${zone.label}-${zoneIndex}`}
             style={{ gridColumn: `${zone.start + 2} / ${zone.end + 2}`, gridRow: 1 }}
           >
             <span>{zone.label}</span>
@@ -153,13 +164,17 @@ export function DiaryGrid({ bookings, date, slots, kitchenClose, tables, onSelec
           </div>
         ))}
         {tables.flatMap((table, index) =>
-          slots.map((slot, slotIndex) => (
-            <div
-              className={`diary-grid-cell${Number(slot.slice(0, 2)) + Number(slot.slice(3)) / 60 >= (kitchenClose ?? 24) ? ' kitchen-closed-cell' : ''}`}
-              key={`${table.id}-${slot}`}
-              style={{ gridColumn: slotIndex + 2, gridRow: index + 3 }}
-            />
-          )),
+          slots.map((slot, slotIndex) => {
+            const slotMinutes = Number(slot.slice(0, 2)) * 60 + Number(slot.slice(3));
+            const isClosed = slotMinutes < (kitchenOpen ?? 0) * 60 || slotMinutes >= (kitchenClose ?? 24) * 60;
+            return (
+              <div
+                className={`diary-grid-cell${isClosed ? ' kitchen-closed-cell' : ''}`}
+                key={`${table.id}-${slot}`}
+                style={{ gridColumn: slotIndex + 2, gridRow: index + 3 }}
+              />
+            );
+          }),
         )}
         {bookings.flatMap((booking) =>
           (booking.assignedTableIds || []).map((tableId) => {

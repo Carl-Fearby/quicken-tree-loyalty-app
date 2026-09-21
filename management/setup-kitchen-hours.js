@@ -20,8 +20,14 @@ try {
         'utf8',
       ),
     );
+    await tx.unsafe(
+      await readFile(
+        new URL('../backend/migrations/015_kitchen_opening_hours.sql', import.meta.url),
+        'utf8',
+      ),
+    );
   });
-  console.log('Kitchen closing times configured. Existing settings preserved.');
+  console.log('Kitchen service hours configured. Existing settings preserved.');
 } finally {
   await sql.end();
 }

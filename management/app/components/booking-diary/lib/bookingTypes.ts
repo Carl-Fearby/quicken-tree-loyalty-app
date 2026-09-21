@@ -35,7 +35,7 @@ export type Diary = {
   date: string;
   tables: Table[];
   bookings: Booking[];
-  openingHours: { open: number; close: number; kitchenClose: number } | null;
+  openingHours: { open: number; close: number; kitchenOpen: number; kitchenClose: number } | null;
   bookingSettings: { defaultDurationMinutes: number };
 };
 

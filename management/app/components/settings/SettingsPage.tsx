@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { Table } from '../booking-diary/lib/bookingTypes';
 import { today } from '../booking-diary/lib/bookingTimes';
 import { BookingDurationSettings } from './BookingDurationSettings';
@@ -14,16 +15,24 @@ import { Breadcrumbs } from '../ui/Breadcrumbs';
 export type SettingsView = 'home' | 'tables' | 'duration' | 'hours' | 'database' | 'menu' | 'menu-symbols';
 export function SettingsPage({
   view,
-  onViewChange,
 }: {
   view: SettingsView;
-  onViewChange: (view: SettingsView) => void;
 }) {
+  const router = useRouter();
   const [tables, setTables] = useState<Table[]>([]),
     [duration, setDuration] = useState(90),
     [hours, setHours] = useState<OpeningHour[]>([]),
     [databaseGateOpen, setDatabaseGateOpen] = useState(false),
     [message, setMessage] = useState('');
+
+  const navigate = (nextView: SettingsView) => {
+    // Always use Next.js router for file-based routing
+    if (nextView === 'home') {
+      router.push('/configuration');
+    } else {
+      router.push(`/configuration/${nextView}`);
+    }
+  };
   useEffect(() => {
     void fetch(`/api/diary?date=${today()}`)
       .then((response) => response.json())
@@ -68,7 +77,7 @@ export function SettingsPage({
       <>
         <SettingsHome
           onOpen={(nextView) =>
-            nextView === 'database' ? setDatabaseGateOpen(true) : onViewChange(nextView)
+            nextView === 'database' ? setDatabaseGateOpen(true) : navigate(nextView)
           }
         />
         {databaseGateOpen && (
@@ -76,15 +85,15 @@ export function SettingsPage({
             onClose={() => setDatabaseGateOpen(false)}
             onUnlock={() => {
               setDatabaseGateOpen(false);
-              onViewChange('database');
+              navigate('database');
             }}
           />
         )}
       </>
     );
-  if (view === 'database') return <DatabaseManagement onBack={() => onViewChange('home')} />;
-  if (view === 'menu') return <MenuMaintenance onBack={() => onViewChange('home')} />;
-  if (view === 'menu-symbols') return <MenuSymbolSettings onBack={() => onViewChange('home')} />;
+  if (view === 'database') return <DatabaseManagement onBack={() => navigate('home')} />;
+  if (view === 'menu') return <MenuMaintenance onBack={() => navigate('home')} />;
+  if (view === 'menu-symbols') return <MenuSymbolSettings onBack={() => navigate('home')} />;
   const title =
     view === 'tables'
       ? 'Restaurant tables'
@@ -93,7 +102,7 @@ export function SettingsPage({
         : 'Opening & kitchen hours';
   return (
     <section className="settings-page">
-      <Breadcrumbs current={title} onSettings={() => onViewChange('home')} />
+      <Breadcrumbs current={title} onSettings={() => navigate('home')} />
       <p className="eyebrow">SYSTEM SETTINGS</p>
       <h1>{title}</h1>
       <p className="settings-intro">

@@ -23,6 +23,8 @@ await sql`create table if not exists allergen_tags(id text primary key, parent_i
 await sql`create table if not exists allergen_tag_styles(id text primary key, parent_id text not null default 'menu', position integer not null default 0, map_key text not null unique, color text not null default '', icon text not null default '')`;
 await sql`create table if not exists menu_item_allergen_labels(id text primary key, parent_id text not null default 'menu', position integer not null default 0, map_key text not null unique)`;
 await sql`create table if not exists menu_item_allergens(id text primary key, parent_id text not null references menu_item_allergen_labels(id) on delete cascade, position integer not null default 0, allergen_code text not null)`;
+await sql`alter table kitchen_hours add column if not exists opens_at numeric`;
+await sql`update kitchen_hours k set opens_at=o.opens_at from opening_hours o where o.parent_id='appointments' and o.map_key=k.day and k.opens_at is null`;
 const allergenDefaults = [
   ['g', 'Gluten'],
   ['cr', 'Crustaceans'],
@@ -279,7 +281,7 @@ const server = http.createServer(async (req, res) => {
         'saturday',
       ][day];
       const [hours] =
-        await sql`select o.opens_at,o.closes_at,k.closes_at as kitchen_close from opening_hours o join kitchen_hours k on k.day=o.map_key where o.parent_id='appointments' and o.map_key=${hourKey} limit 1`;
+        await sql`select o.opens_at,o.closes_at,coalesce(k.opens_at,o.opens_at) as kitchen_open,k.closes_at as kitchen_close from opening_hours o join kitchen_hours k on k.day=o.map_key where o.parent_id='appointments' and o.map_key=${hourKey} limit 1`;
       const tables =
         await sql`select id,name,table_number as number,seat_count as seats from booking_tables order by table_number`;
       const [setting] =
@@ -290,6 +292,7 @@ const server = http.createServer(async (req, res) => {
           ? {
               open: Number(hours.opens_at),
               close: Number(hours.closes_at),
+              kitchenOpen: Number(hours.kitchen_open),
               kitchenClose: Number(hours.kitchen_close),
             }
           : null,
@@ -522,12 +525,13 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/opening-hours' && req.method === 'GET') {
       const hours =
-        await sql`select o.map_key as "day",o.opens_at as open,o.closes_at as close,k.closes_at as "kitchenClose" from opening_hours o join kitchen_hours k on k.day=o.map_key where o.parent_id='appointments' order by o.position`;
+        await sql`select o.map_key as "day",o.opens_at as open,o.closes_at as close,coalesce(k.opens_at,o.opens_at) as "kitchenOpen",k.closes_at as "kitchenClose" from opening_hours o join kitchen_hours k on k.day=o.map_key where o.parent_id='appointments' order by o.position`;
       return json(200, {
         hours: hours.map((hour) => ({
           ...hour,
           open: Number(hour.open),
           close: Number(hour.close),
+          kitchenOpen: Number(hour.kitchenOpen),
           kitchenClose: Number(hour.kitchenClose),
         })),
       });
@@ -544,28 +548,32 @@ const server = http.createServer(async (req, res) => {
             !days.includes(hour?.day) ||
             !Number.isFinite(hour?.open) ||
             !Number.isFinite(hour?.close) ||
+            !Number.isFinite(hour?.kitchenOpen) ||
             hour.open < 0 ||
             hour.open > 24 ||
             hour.close <= hour.open ||
             hour.close > 24 ||
+            hour.kitchenOpen < hour.open ||
+            hour.kitchenOpen >= hour.kitchenClose ||
             !Number.isFinite(hour.kitchenClose) ||
-            hour.kitchenClose <= hour.open ||
+            hour.kitchenClose <= hour.kitchenOpen ||
             hour.kitchenClose > hour.close ||
             !Number.isInteger(hour.open * 2) ||
             !Number.isInteger(hour.close * 2) ||
+            !Number.isInteger(hour.kitchenOpen * 2) ||
             !Number.isInteger(hour.kitchenClose * 2),
         )
       )
         return json(400, {
           message:
-            'Provide valid opening and kitchen hours for every day. Kitchen closing must be after opening and no later than venue closing.',
+            'Provide valid opening and kitchen hours for every day. Kitchen hours must be within venue hours, and kitchen close must be after kitchen open.',
         });
       if (new Set(hours.map((hour) => hour.day)).size !== 7)
         return json(400, { message: 'Each day needs one opening-hours record.' });
       await sql.begin(async (transaction) => {
         for (const [position, day] of days.entries()) {
           const hour = hours.find((value) => value.day === day);
-          await transaction`update kitchen_hours set closes_at=${hour.kitchenClose} where day=${day}`;
+          await transaction`update kitchen_hours set opens_at=${hour.kitchenOpen},closes_at=${hour.kitchenClose} where day=${day}`;
           await transaction`update opening_hours set position=${position},opens_at=${hour.open},closes_at=${hour.close} where parent_id='appointments' and map_key=${day}`;
         }
       });

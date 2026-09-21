@@ -1,5 +1,6 @@
 'use client';
 import { FormEvent, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { BookingList } from './BookingList';
 import { DiaryGrid } from './DiaryGrid';
 import { AddBookingModal } from './modals/AddBookingModal';
@@ -7,9 +8,8 @@ import { AssignTableModal } from './modals/AssignTableModal';
 import { EditBookingModal } from './modals/EditBookingModal';
 import { OrderDetailsModal } from './modals/OrderDetailsModal';
 import { CancelBookingDialog } from './modals/CancelBookingDialog';
-import { SettingsPage, type SettingsView } from '../settings/SettingsPage';
-import { RewardsPage } from '../rewards/RewardsPage';
 import { DatePicker } from '../ui/DatePicker';
+import { Breadcrumbs } from '../ui/Breadcrumbs';
 import { useBookingAvailability } from './hooks/useBookingAvailability';
 import { useBookingDiary } from './hooks/useBookingDiary';
 type Table = { id: number; name: string; seats: number };
@@ -56,7 +56,6 @@ type Draft = {
   notes: string;
   tableIds: number[];
 };
-type Area = 'diary' | 'rewards' | 'settings';
 const today = () =>
   new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/London',
@@ -65,68 +64,20 @@ const today = () =>
     day: '2-digit',
   }).format(new Date());
 export default function BookingDiaryPage() {
+  const router = useRouter();
   const [date, setDate] = useState(today),
     [draft, setDraft] = useState<Draft | null>(null),
     [editing, setEditing] = useState<Booking | null>(null),
     [assigning, setAssigning] = useState<Booking | null>(null),
     [orderDetails, setOrderDetails] = useState<Booking | null>(null),
     [cancelling, setCancelling] = useState<Booking | null>(null),
-    [darkMode, setDarkMode] = useState(false),
-    [area, setArea] = useState<Area>('diary'),
-    [settingsView, setSettingsView] = useState<SettingsView>('home'),
     [saving, setSaving] = useState(false);
-  useEffect(() => {
-    const key = 'qt-back-office-theme';
-    const saved = window.localStorage.getItem(key);
-    const enabled = saved
-      ? saved === 'dark'
-      : window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setDarkMode(enabled);
-    document.documentElement.dataset.theme = enabled ? 'dark' : 'light';
-  }, []);
-  const changeTheme = (enabled: boolean) => {
-    setDarkMode(enabled);
-    document.documentElement.dataset.theme = enabled ? 'dark' : 'light';
-    window.localStorage.setItem('qt-back-office-theme', enabled ? 'dark' : 'light');
-  };
-  const readNavigation = (): { area: Area; settingsView: SettingsView } => {
-    const parameters = new URLSearchParams(window.location.search);
-    const requestedArea = parameters.get('area');
-    const requestedView = parameters.get('settings');
-    const views: SettingsView[] = ['home', 'tables', 'duration', 'hours', 'database', 'menu', 'menu-symbols'];
-    return {
-      area: requestedArea === 'settings' || requestedArea === 'rewards' ? requestedArea : 'diary',
-      settingsView: views.includes(requestedView as SettingsView)
-        ? (requestedView as SettingsView)
-        : 'home',
-    };
-  };
-  const navigate = (nextArea: Area, nextSettingsView: SettingsView = 'home') => {
-    setArea(nextArea);
-    setSettingsView(nextSettingsView);
-    const query =
-      nextArea === 'settings'
-        ? `?area=settings${nextSettingsView === 'home' ? '' : `&settings=${nextSettingsView}`}`
-        : nextArea === 'rewards'
-          ? '?area=rewards'
-          : '';
-    window.history.pushState({ area: nextArea, settingsView: nextSettingsView }, '', `/${query}`);
-  };
-  useEffect(() => {
-    const syncNavigation = () => {
-      const next = readNavigation();
-      setArea(next.area);
-      setSettingsView(next.settingsView);
-    };
-    syncNavigation();
-    window.history.replaceState({ ...readNavigation() }, '', window.location.href);
-    window.addEventListener('popstate', syncNavigation);
-    return () => window.removeEventListener('popstate', syncNavigation);
-  }, []);
+
   const { bookings: active, diary, error, load, setError, slots } = useBookingDiary(date);
+
   useEffect(() => {
-    if (area === 'diary') void load();
-  }, [area, load]);
+    void load();
+  }, [load]);
   const candidates = useBookingAvailability({
     date,
     draft,
@@ -260,127 +211,54 @@ export default function BookingDiaryPage() {
       : [];
   return (
     <>
-      <header>
-        <a
-          className="brand pace-brand"
-          href="/"
-          aria-label="Pace — Service in Sync, back-office home"
-        >
-          <img
-            className="pace-logo pace-logo-light"
-            src="/branding/pace-light.png"
-            alt="Pace — Service in Sync"
-            width="1448"
-            height="1086"
+      <Breadcrumbs current="Booking diary" onSettings={() => router.push('/configuration')} />
+      <div className="diary-toolbar">
+        <div>
+          <p className="eyebrow">BOOKING MANAGEMENT</p>
+          <h1>Booking diary</h1>
+        </div>
+      </div>
+      <div className="diary-summary-row">
+        <p id="diary-summary">
+          {diary
+            ? `${diary.tables.length} tables · ${active.length} active bookings · ${active.reduce((total, booking) => total + booking.guests, 0)} guests`
+            : 'Loading diary…'}
+        </p>
+        <div className="diary-controls">
+          <button onClick={() => shift(-1)}>←</button>
+          <DatePicker
+            allowPast
+            ariaLabel="Diary date"
+            date={date}
+            onChange={setDate}
+            prefix="Date"
           />
-          <img
-            className="pace-logo pace-logo-dark"
-            src="/branding/pace-dark.png"
-            alt=""
-            aria-hidden="true"
-            width="1448"
-            height="1086"
-          />
-        </a>
-        <nav className="global-tabs">
-          <button
-            className="global-tab"
-            aria-selected={area === 'diary'}
-            onClick={() => navigate('diary')}
-          >
-            Booking diary
+          <button onClick={() => shift(1)}>→</button>
+          <button onClick={() => setDate(today())}>Today</button>
+          <button onClick={() => void load()}>Refresh</button>
+          <button className="danger" onClick={begin}>
+            + Add booking
           </button>
-          <button
-            className="global-tab"
-            aria-selected={area === 'rewards'}
-            onClick={() => navigate('rewards')}
-          >
-            Rewards
-          </button>
-          <button
-            className="global-tab"
-            aria-selected={area === 'settings'}
-            onClick={() => {
-              navigate('settings');
-            }}
-          >
-            Settings
-          </button>
-        </nav>
-        <label className="theme-switch" title={darkMode ? 'Light mode' : 'Dark mode'}>
-          <span>{darkMode ? 'Light mode' : 'Dark mode'}</span>
-          <input
-            type="checkbox"
-            checked={darkMode}
-            onChange={(event) => changeTheme(event.target.checked)}
-            aria-label={`Switch to ${darkMode ? 'light' : 'dark'} mode`}
-          />
-          <span className="theme-switch-track" aria-hidden="true">
-            <span className="theme-switch-thumb" />
-          </span>
-        </label>
-      </header>
-      {area === 'rewards' ? (
-        <main id="booking-workspace">
-          <RewardsPage />
-        </main>
-      ) : area === 'settings' ? (
-        <main id="booking-workspace">
-          <SettingsPage
-            view={settingsView}
-            onViewChange={(nextSettingsView) => navigate('settings', nextSettingsView)}
-          />
-        </main>
-      ) : (
-        <main id="booking-workspace">
-          <div className="diary-toolbar">
-            <div>
-              <p className="eyebrow">BOOKING MANAGEMENT</p>
-              <h1>Booking diary</h1>
-            </div>
-          </div>
-          <div className="diary-summary-row">
-            <p id="diary-summary">
-              {diary
-                ? `${diary.tables.length} tables · ${active.length} active bookings · ${active.reduce((total, booking) => total + booking.guests, 0)} guests`
-                : 'Loading diary…'}
-            </p>
-            <div className="diary-controls">
-              <button onClick={() => shift(-1)}>←</button>
-              <DatePicker
-                allowPast
-                ariaLabel="Diary date"
-                date={date}
-                onChange={setDate}
-                prefix="Date"
-              />
-              <button onClick={() => shift(1)}>→</button>
-              <button onClick={() => setDate(today())}>Today</button>
-              <button onClick={() => void load()}>Refresh</button>
-              <button className="danger" onClick={begin}>
-                + Add booking
-              </button>
-            </div>
-          </div>
-          {error && <p className="error-message">{error}</p>}
-          <div className="diary-layout">
-            <BookingList
-              bookings={active}
-              onSelect={setEditing}
-              onAssign={setAssigning}
-              onViewOrder={setOrderDetails}
-            />
-            <DiaryGrid
-              bookings={active}
-              date={date}
-              slots={slots}
-              kitchenClose={diary?.openingHours?.kitchenClose}
-              tables={diary?.tables ?? []}
-              onSelect={setEditing}
-            />
-          </div>
-        </main>
-      )}
+        </div>
+      </div>
+      {error && <p className="error-message">{error}</p>}
+      <div className="diary-layout">
+        <BookingList
+          bookings={active}
+          onSelect={setEditing}
+          onAssign={setAssigning}
+          onViewOrder={setOrderDetails}
+        />
+        <DiaryGrid
+          bookings={active}
+          date={date}
+          slots={slots}
+          kitchenClose={diary?.openingHours?.kitchenClose}
+          kitchenOpen={diary?.openingHours?.kitchenOpen}
+          tables={diary?.tables ?? []}
+          onSelect={setEditing}
+        />
+      </div>
       {draft && (
         <AddBookingModal
           date={date}

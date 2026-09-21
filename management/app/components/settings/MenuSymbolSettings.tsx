@@ -65,10 +65,12 @@ export function MenuSymbolSettings({ onBack }: { onBack: () => void }) {
           </button>
         </header>
         <div className="menu-symbol-grid dietary-symbol-grid">
-          <b>Code</b>
-          <b>Label</b>
-          <b>Used</b>
-          <b />
+            <div className="menu-symbol-column-headings">
+              <span>Code</span>
+              <span>Label</span>
+              <span>Used</span>
+              <span>Actions</span>
+            </div>
           {dietaryTags.map((tag, index) => (
             <div className="menu-symbol-row" key={`${tag.code}-${index}`}>
               <input
@@ -116,12 +118,14 @@ export function MenuSymbolSettings({ onBack }: { onBack: () => void }) {
           </button>
         </header>
         <div className="menu-symbol-grid allergen-symbol-grid">
-          <b>Code</b>
-          <b>Label</b>
-          <b>Colour</b>
-          <b>Icon</b>
-          <b>Used</b>
-          <b />
+            <div className="menu-symbol-column-headings">
+              <span>Code</span>
+              <span>Label</span>
+              <span>Colour</span>
+              <span>Icon</span>
+              <span>Used</span>
+              <span>Actions</span>
+            </div>
           {allergenTags.map((tag, index) => (
             <div className="menu-symbol-row" key={`${tag.code}-${index}`}>
               <input

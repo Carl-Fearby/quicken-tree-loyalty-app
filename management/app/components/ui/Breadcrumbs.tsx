@@ -1,6 +1,6 @@
 type Props = {
   current: string;
-  onSettings: () => void;
+  onSettings?: () => void;
   parent?: string;
   onParent?: () => void;
 };
@@ -8,9 +8,13 @@ type Props = {
 export function Breadcrumbs({ current, onSettings, parent, onParent }: Props) {
   return (
     <nav aria-label="Breadcrumb" className="breadcrumbs">
-      <button type="button" onClick={onSettings}>
-        Settings
-      </button>
+      {onSettings ? (
+        <button type="button" onClick={onSettings}>
+          Settings
+        </button>
+      ) : (
+        <span>Settings</span>
+      )}
       <span aria-hidden="true">/</span>
       {parent && onParent ? (
         <>
