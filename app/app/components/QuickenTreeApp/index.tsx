@@ -22,7 +22,17 @@ import {logout, refreshSession} from '../../lib/auth';
 import {checkForContentUpdate, readCachedContent} from '../../lib/content-sync';
 import {memberRead, memberRequest, setMemberToken} from '../../lib/member-api';
 
-type View = 'home' | 'book' | 'details' | 'checkout' | 'bookings' | 'menu' | 'cart' | 'order-summary' | 'rewards' | 'profile';
+type View =
+    'home'
+    | 'book'
+    | 'details'
+    | 'checkout'
+    | 'bookings'
+    | 'menu'
+    | 'cart'
+    | 'order-summary'
+    | 'rewards'
+    | 'profile';
 type Booking = {
     id: string;
     date: string;
@@ -41,11 +51,29 @@ type Booking = {
 };
 type OrderSummary = { itemCount: number; total: number };
 type PlacedOrder = { lines: CartLine[]; total: number; paidAt: string; guestDetails?: OrderGuestDetails };
-type CustomOrderLine = {description: string; price: number};
-type ApiBooking = {id: string; date: string; time: string; guestCount: number; experience: string; status: string; totalPence: number; contactName: string; dietaryNeeds: string[]};
-type ApiProfile = {displayName: string; email: string; tier: string; tastes: string[]; dietaryNeeds: string[]};
-type ApiLoyalty = {points: number};
-type ApiOrder = {status: string; total_pence: number; totalPence?: number; paid_at?: string; paidAt?: string; lines: {id: string; itemName: string; itemDescription?: string; unitPricePence: number; quantity: number}[]; assignments: {orderLineId: string; bookingGuestId: string | null; servingNumber: number; isShared: boolean}[]};
+type CustomOrderLine = { description: string; price: number };
+type ApiBooking = {
+    id: string;
+    date: string;
+    time: string;
+    guestCount: number;
+    experience: string;
+    status: string;
+    totalPence: number;
+    contactName: string;
+    dietaryNeeds: string[]
+};
+type ApiProfile = { displayName: string; email: string; tier: string; tastes: string[]; dietaryNeeds: string[] };
+type ApiLoyalty = { points: number };
+type ApiOrder = {
+    status: string;
+    total_pence: number;
+    totalPence?: number;
+    paid_at?: string;
+    paidAt?: string;
+    lines: { id: string; itemName: string; itemDescription?: string; unitPricePence: number; quantity: number }[];
+    assignments: { orderLineId: string; bookingGuestId: string | null; servingNumber: number; isShared: boolean }[]
+};
 
 const toBooking = (booking: ApiBooking): Booking => ({
     id: booking.id,
@@ -62,92 +90,123 @@ const toBooking = (booking: ApiBooking): Booking => ({
     notes: ''
 });
 
-export function PaceApp({dark: controlledDark, onShowNotification}: {dark?: boolean; onShowNotification?: () => void}) {
-    const {appointments: appointmentsData, menu: menuData, points: pointsData, profile: profileData, rewards: rewardsData} = useContent();
-const experiencePrices = Object.fromEntries(appointmentsData.experiences.map(experience => [experience.name, experience.price])) as Record<'Table' | 'Afternoon Tea' | 'Bottomless Brunch', number>;
-const dietaryTags: Record<string, string[]> = menuData.dietaryTags;
-const dietaryTagNames: Record<string, string> = menuData.dietaryTagNames;
-const allergenTags: Record<string, string[]> = menuData.allergenTags ?? {};
-const allergenTagNames: Record<string, string> = menuData.allergenTagNames ?? {};
-const allergenTagStyles: Record<string, {color: string; icon: string}> = menuData.allergenTagStyles ?? {};
-const defaultOutOfStockItems = new Set(menuData.outOfStockItems);
-type MenuSection = { title: string; items: ReadonlyArray<readonly [string, string, string]> };
-type MenuServicePeriod = {id: string; label: string; start: string; end: string; days?: number[]; categories: string[]};
-type CourseOffer = {heading: string; description: string; options: {label: string; courses: number; pricePence: number}[]; courses: {section: string; minSelections: number; maxSelections: number}[]};
-const menuItems = menuData.menuItems as unknown as Record<'Breakfast' | 'Main Menu' | 'Sunday Lunch' | 'Drinks' | 'Bottomless Brunch', MenuSection[]>;
-const bottomlessBrunchMeals = (menuData.menuItems['Bottomless Brunch']?.[1]?.items ?? []).map(([name, description]) => ({name, description}));
-const menuCategories = menuData.categories.filter(category => category.label !== 'Brunch').map(category => {
-    const source = menuItems[category.source as keyof typeof menuItems];
-    return {
-        label: category.label,
-        source: category.source,
-        sections: category.sections ? category.sections.map(index => source?.[index]).filter(Boolean) : (source ?? []),
-        service: menuData.serviceMessages[category.service as keyof typeof menuData.serviceMessages],
-        orderAheadOnly: Boolean((category as {orderAheadOnly?: boolean}).orderAheadOnly)
+export function PaceApp({dark: controlledDark, onShowNotification}: {
+    dark?: boolean;
+    onShowNotification?: () => void
+}) {
+    const {
+        appointments: appointmentsData,
+        menu: menuData,
+        points: pointsData,
+        profile: profileData,
+        rewards: rewardsData
+    } = useContent();
+    const experiencePrices = Object.fromEntries(appointmentsData.experiences.map(experience => [experience.name, experience.price])) as Record<'Table' | 'Afternoon Tea' | 'Bottomless Brunch', number>;
+    const dietaryTags: Record<string, string[]> = menuData.dietaryTags;
+    const dietaryTagNames: Record<string, string> = menuData.dietaryTagNames;
+    const allergenTags: Record<string, string[]> = menuData.allergenTags ?? {};
+    const allergenTagNames: Record<string, string> = menuData.allergenTagNames ?? {};
+    const allergenTagStyles: Record<string, { color: string; icon: string }> = menuData.allergenTagStyles ?? {};
+    const defaultOutOfStockItems = new Set(menuData.outOfStockItems);
+    type MenuSection = { title: string; items: ReadonlyArray<readonly [string, string, string]> };
+    type MenuServicePeriod = {
+        id: string;
+        label: string;
+        start: string;
+        end: string;
+        days?: number[];
+        categories: string[]
     };
-});
-const allMenuSections = Object.values(menuItems).flat() as MenuSection[];
+    type CourseOffer = {
+        heading: string;
+        description: string;
+        options: { label: string; courses: number; pricePence: number }[];
+        courses: { section: string; minSelections: number; maxSelections: number }[]
+    };
+    const menuItems = menuData.menuItems as unknown as Record<'Breakfast' | 'Main Menu' | 'Sunday Lunch' | 'Drinks' | 'Bottomless Brunch', MenuSection[]>;
+    const bottomlessBrunchMeals = (menuData.menuItems['Bottomless Brunch']?.[1]?.items ?? []).map(([name, description]) => ({
+        name,
+        description
+    }));
+    const menuCategories = menuData.categories.filter(category => category.label !== 'Brunch').map(category => {
+        const source = menuItems[category.source as keyof typeof menuItems];
+        return {
+            label: category.label,
+            source: category.source,
+            sections: category.sections ? category.sections.map(index => source?.[index]).filter(Boolean) : (source ?? []),
+            service: menuData.serviceMessages[category.service as keyof typeof menuData.serviceMessages],
+            orderAheadOnly: Boolean((category as { orderAheadOnly?: boolean }).orderAheadOnly)
+        };
+    });
+    const allMenuSections = Object.values(menuItems).flat() as MenuSection[];
 
-const openingHours = (date: Date) => {
-    const day = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][date.getDay()];
-    return appointmentsData.openingHours[day] ?? (date.getDay() === 0 ? appointmentsData.openingHours.sunday : appointmentsData.openingHours.weekday) ?? {open: 24, close: 0};
-};
-const toInputDate = (date: Date) => date.toISOString().slice(0, 10);
-const formatDate = (date: Date) => date.toLocaleDateString('en-GB', {weekday: 'long', day: 'numeric', month: 'long'});
-const fromInputDate = (value: string) => new Date(`${value}T12:00:00`);
-const timeInMinutes = (value: string) => {
-    const [hours, minutes] = value.split(':').map(Number);
-    return hours * 60 + minutes;
-};
-const menuServicePeriods = menuData.menuServicePeriods as MenuServicePeriod[];
-const menuServiceFor = (booking: Pick<Booking, 'date' | 'time'>) => {
-    const minutes = timeInMinutes(booking.time);
-    const day = fromInputDate(booking.date).getDay();
-    return menuServicePeriods.find(period =>
-        (!period.days || period.days.includes(day)) && minutes >= timeInMinutes(period.start) && minutes < timeInMinutes(period.end));
-};
-const isTimeInWindow = (time: string, start: string, end: string) =>
-    timeInMinutes(time) >= timeInMinutes(start) && timeInMinutes(time) < timeInMinutes(end);
-const availableSlots = (value: string, now = new Date()) => {
-    const date = fromInputDate(value);
-    const {open, close} = openingHours(date);
-    const sameDay = toInputDate(date) === toInputDate(now);
-    const earliest = sameDay ? Math.max(open, Math.ceil((now.getHours() + now.getMinutes() / 60 + 0.01) * 2) / 2) : open;
-    const slots: string[] = [];
-    for (let hour = earliest; hour <= close; hour += .5) {
-        const h = Math.floor(hour);
-        slots.push(`${String(h).padStart(2, '0')}:${hour % 1 ? '30' : '00'}`);
-    }
-    return slots;
-};
-const nextBookableDate = (now = new Date()) => {
-    const date = new Date(now);
-    for (let i = 0; i < 8; i += 1) {
-        if (availableSlots(toInputDate(date), now).length) return date;
-        date.setDate(date.getDate() + 1);
-        date.setHours(12, 0, 0, 0);
-    }
-    return date;
-};
-const priceValue = (price: string) => Number(price.match(/£([\d.]+)/)?.[1] ?? 0);
-const orderDraftStorageKey = (bookingId: string) => `quicken-tree-order-ahead-${bookingId}`;
-const orderGuestDetailsStorageKey = (bookingId: string) => `quicken-tree-order-guests-${bookingId}`;
-const courseOrderLinesStorageKey = (bookingId: string) => `quicken-tree-order-course-lines-${bookingId}`;
-const placedOrderStorageKey = (bookingId: string) => `quicken-tree-placed-order-${bookingId}`;
-const iCalendarEscape = (value: string) => value.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
-const iCalendarTimestamp = (date: Date) => `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}00`;
-const iCalendarUtcTimestamp = (date: Date) => `${date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`;
-const orderItemPrice = (name: string) => {
-    const item = allMenuSections.flatMap(section => section.items).find(([itemName]) => name.startsWith(itemName));
-    return item ? priceValue(item[2]) : 0;
-};
-const summariseOrder = (items: Record<string, number>, customLines: Record<string, CustomOrderLine> = {}): OrderSummary => Object.entries(items).reduce(
-    (summary, [name, quantity]) => ({
-        itemCount: summary.itemCount + quantity,
-        total: summary.total + (customLines[name]?.price ?? orderItemPrice(name)) * quantity
-    }),
-    {itemCount: 0, total: 0}
-);
+    const openingHours = (date: Date) => {
+        const day = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][date.getDay()];
+        return appointmentsData.openingHours[day] ?? (date.getDay() === 0 ? appointmentsData.openingHours.sunday : appointmentsData.openingHours.weekday) ?? {
+            open: 24,
+            close: 0
+        };
+    };
+    const toInputDate = (date: Date) => date.toISOString().slice(0, 10);
+    const formatDate = (date: Date) => date.toLocaleDateString('en-GB', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+    });
+    const fromInputDate = (value: string) => new Date(`${value}T12:00:00`);
+    const timeInMinutes = (value: string) => {
+        const [hours, minutes] = value.split(':').map(Number);
+        return hours * 60 + minutes;
+    };
+    const menuServicePeriods = menuData.menuServicePeriods as MenuServicePeriod[];
+    const menuServiceFor = (booking: Pick<Booking, 'date' | 'time'>) => {
+        const minutes = timeInMinutes(booking.time);
+        const day = fromInputDate(booking.date).getDay();
+        return menuServicePeriods.find(period =>
+            (!period.days || period.days.includes(day)) && minutes >= timeInMinutes(period.start) && minutes < timeInMinutes(period.end));
+    };
+    const isTimeInWindow = (time: string, start: string, end: string) =>
+        timeInMinutes(time) >= timeInMinutes(start) && timeInMinutes(time) < timeInMinutes(end);
+    const availableSlots = (value: string, now = new Date()) => {
+        const date = fromInputDate(value);
+        const {open, close} = openingHours(date);
+        const sameDay = toInputDate(date) === toInputDate(now);
+        const earliest = sameDay ? Math.max(open, Math.ceil((now.getHours() + now.getMinutes() / 60 + 0.01) * 2) / 2) : open;
+        const slots: string[] = [];
+        for (let hour = earliest; hour <= close; hour += .5) {
+            const h = Math.floor(hour);
+            slots.push(`${String(h).padStart(2, '0')}:${hour % 1 ? '30' : '00'}`);
+        }
+        return slots;
+    };
+    const nextBookableDate = (now = new Date()) => {
+        const date = new Date(now);
+        for (let i = 0; i < 8; i += 1) {
+            if (availableSlots(toInputDate(date), now).length) return date;
+            date.setDate(date.getDate() + 1);
+            date.setHours(12, 0, 0, 0);
+        }
+        return date;
+    };
+    const priceValue = (price: string) => Number(price.match(/£([\d.]+)/)?.[1] ?? 0);
+    const orderDraftStorageKey = (bookingId: string) => `quicken-tree-order-ahead-${bookingId}`;
+    const orderGuestDetailsStorageKey = (bookingId: string) => `quicken-tree-order-guests-${bookingId}`;
+    const courseOrderLinesStorageKey = (bookingId: string) => `quicken-tree-order-course-lines-${bookingId}`;
+    const placedOrderStorageKey = (bookingId: string) => `quicken-tree-placed-order-${bookingId}`;
+    const iCalendarEscape = (value: string) => value.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+    const iCalendarTimestamp = (date: Date) => `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}00`;
+    const iCalendarUtcTimestamp = (date: Date) => `${date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`;
+    const orderItemPrice = (name: string) => {
+        const item = allMenuSections.flatMap(section => section.items).find(([itemName]) => name.startsWith(itemName));
+        return item ? priceValue(item[2]) : 0;
+    };
+    const summariseOrder = (items: Record<string, number>, customLines: Record<string, CustomOrderLine> = {}): OrderSummary => Object.entries(items).reduce(
+        (summary, [name, quantity]) => ({
+            itemCount: summary.itemCount + quantity,
+            total: summary.total + (customLines[name]?.price ?? orderItemPrice(name)) * quantity
+        }),
+        {itemCount: 0, total: 0}
+    );
 
 
     const {cards, setCards, ready: cardsReady} = usePaymentCards();
@@ -229,7 +288,7 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
     useEffect(() => {
         let mounted = true;
         const applyCachedAvailability = async () => {
-            const cached = await readCachedContent<{outOfStockItems?: string[]}>('menuAvailability');
+            const cached = await readCachedContent<{ outOfStockItems?: string[] }>('menuAvailability');
             if (mounted && cached?.outOfStockItems) setOutOfStockItems(new Set(cached.outOfStockItems));
         };
         const syncAvailability = async () => {
@@ -244,9 +303,13 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
             }
         };
         void syncAvailability();
-        const onOnline = () => { void syncAvailability(); };
+        const onOnline = () => {
+            void syncAvailability();
+        };
         window.addEventListener('online', onOnline);
-        const interval = window.setInterval(() => { void syncAvailability(); }, 60_000);
+        const interval = window.setInterval(() => {
+            void syncAvailability();
+        }, 60_000);
         return () => {
             mounted = false;
             window.removeEventListener('online', onOnline);
@@ -256,7 +319,12 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
     useEffect(() => {
         refreshSession().then(response => {
             setMemberToken(response.accessToken);
-            setSession({accessToken: response.accessToken, email: response.member.email, name: response.member.name, createdAt: new Date().toISOString()});
+            setSession({
+                accessToken: response.accessToken,
+                email: response.member.email,
+                name: response.member.name,
+                createdAt: new Date().toISOString()
+            });
         }).catch(() => setSession(null));
     }, []);
     const times = availableSlots(bookingDate);
@@ -278,7 +346,14 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
     const selectedBookingService = time ? menuServiceFor({date: bookingDate, time}) : null;
     const bookingDay = fromInputDate(bookingDate).getDay();
     const doublePointsPromotion = pointsData.promotions.doublePoints.find(promotion => promotion.days.includes(bookingDay));
-    const defaultDoublePointsPromotion = pointsData.promotions.doublePoints[0] ?? {label:'',start:'00:00',end:'00:00',displayHours:'',displayDays:'',days:[]};
+    const defaultDoublePointsPromotion = pointsData.promotions.doublePoints[0] ?? {
+        label: '',
+        start: '00:00',
+        end: '00:00',
+        displayHours: '',
+        displayDays: '',
+        days: []
+    };
     const bookingEarnsDoublePoints = Boolean(time) && doublePointsPromotion
         ? isTimeInWindow(time, doublePointsPromotion.start, doublePointsPromotion.end)
         : false;
@@ -286,11 +361,17 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
         ? menuCategories.filter(category => activeMenuService.categories.includes(category.label))
         : menuCategories).filter(category => orderAheadBooking || !category.orderAheadOnly);
     const selectedMenuCategory = availableMenuCategories.find(category => category.label === menuCategory) ?? availableMenuCategories[0];
-    const courseOffers = (menuData as typeof menuData & {courseOffers?: Record<string, CourseOffer>}).courseOffers ?? {};
-    const itemOptions = (menuData as typeof menuData & {itemOptions?: Record<string, ItemOptionSet>}).itemOptions ?? {};
+    const courseOffers = (menuData as typeof menuData & {
+        courseOffers?: Record<string, CourseOffer>
+    }).courseOffers ?? {};
+    const itemOptions = (menuData as typeof menuData & {
+        itemOptions?: Record<string, ItemOptionSet>
+    }).itemOptions ?? {};
     const selectedCourseOffer = courseOffers[selectedMenuCategory.source];
-    const availability=(menuData as typeof menuData & {itemAvailability?:Record<string,{days:number[]}>}).itemAvailability??{};
-    const menuDay=orderAheadBooking?fromInputDate(orderAheadBooking.date).getDay():new Date().getDay();
+    const availability = (menuData as typeof menuData & {
+        itemAvailability?: Record<string, { days: number[] }>
+    }).itemAvailability ?? {};
+    const menuDay = orderAheadBooking ? fromInputDate(orderAheadBooking.date).getDay() : new Date().getDay();
     const menuSearchTerm = menuSearch.trim().toLowerCase();
     const menuCategoriesToSearch = menuSearchTerm ? availableMenuCategories : [selectedMenuCategory];
     const filteredMenuSections = menuCategoriesToSearch.flatMap(category => category.sections.map(section => ({
@@ -340,11 +421,16 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
                     try {
                         const [order, detail] = await Promise.all([
                             memberRequest<ApiOrder>(`/bookings/${booking.id}/order`),
-                            memberRequest<{guests: {id: string; displayName: string}[]}>(`/bookings/${booking.id}`)
+                            memberRequest<{ guests: { id: string; displayName: string }[] }>(`/bookings/${booking.id}`)
                         ]);
                         if (order.status !== 'paid') return null;
                         const names = new Map(detail.guests.map(guest => [guest.id, guest.displayName]));
-                        const lines = order.lines.map(line => ({name: line.itemName, description: line.itemDescription ?? '', price: line.unitPricePence / 100, quantity: line.quantity}));
+                        const lines = order.lines.map(line => ({
+                            name: line.itemName,
+                            description: line.itemDescription ?? '',
+                            price: line.unitPricePence / 100,
+                            quantity: line.quantity
+                        }));
                         const guestDetails: OrderGuestDetails = {
                             names: detail.guests.map(guest => guest.displayName),
                             assignments: Object.fromEntries(order.lines.map(line => [line.itemName, Array.from({length: line.quantity}, (_, index) => {
@@ -352,8 +438,15 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
                                 return assignment?.bookingGuestId ? names.get(assignment.bookingGuestId) ?? 'To share' : 'To share';
                             })]))
                         };
-                        return [booking.id, {lines, total: (order.totalPence ?? order.total_pence) / 100, paidAt: order.paidAt ?? order.paid_at ?? '', guestDetails}] as const;
-                    } catch { return null; }
+                        return [booking.id, {
+                            lines,
+                            total: (order.totalPence ?? order.total_pence) / 100,
+                            paidAt: order.paidAt ?? order.paid_at ?? '',
+                            guestDetails
+                        }] as const;
+                    } catch {
+                        return null;
+                    }
                 }));
                 if (active) setPlacedOrders(Object.fromEntries(loadedOrders.filter((order): order is NonNullable<typeof order> => Boolean(order))));
             } finally {
@@ -369,7 +462,9 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
                 setBookingsLoaded(true);
             }
         });
-        return () => { active = false; };
+        return () => {
+            active = false;
+        };
     }, [session]);
     useEffect(() => {
         if (!bookingsLoaded) return;
@@ -514,7 +609,7 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
             guests: [bookingName.trim() || 'Guest']
         };
         try {
-            const created = await memberRequest<{id: string}>('/bookings', 'POST', bookingPayload);
+            const created = await memberRequest<{ id: string }>('/bookings', 'POST', bookingPayload);
             const booking: Booking = {
                 id: created.id,
                 date: bookingDate,
@@ -551,16 +646,23 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
     const completeOrder = async () => {
         if (orderAheadBooking && preOrderLines.length) {
             try {
-                const order = await memberRequest<{id: string}>(`/bookings/${orderAheadBooking.id}/order`, 'POST');
-                const bookingDetail = await memberRequest<{guests: {id: string; displayName: string}[]}>(`/bookings/${orderAheadBooking.id}`);
+                const order = await memberRequest<{ id: string }>(`/bookings/${orderAheadBooking.id}/order`, 'POST');
+                const bookingDetail = await memberRequest<{
+                    guests: { id: string; displayName: string }[]
+                }>(`/bookings/${orderAheadBooking.id}`);
                 const guestsByName = new Map(bookingDetail.guests.map(guest => [guest.displayName, guest.id]));
                 for (const name of orderGuestDetails.names) {
                     if (!name || guestsByName.has(name)) continue;
-                    const guest = await memberRequest<{id: string; displayName: string}>(`/bookings/${orderAheadBooking.id}/guests`, 'POST', {displayName: name});
+                    const guest = await memberRequest<{
+                        id: string;
+                        displayName: string
+                    }>(`/bookings/${orderAheadBooking.id}/guests`, 'POST', {displayName: name});
                     guestsByName.set(guest.displayName, guest.id);
                 }
                 for (const line of preOrderLines) {
-                    const createdLine = await memberRequest<{id: string}>(`/bookings/${orderAheadBooking.id}/order/lines`, 'POST', {
+                    const createdLine = await memberRequest<{
+                        id: string
+                    }>(`/bookings/${orderAheadBooking.id}/order/lines`, 'POST', {
                         itemName: line.name,
                         itemDescription: line.description,
                         unitPricePence: Math.round(line.price * 100),
@@ -579,7 +681,12 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
                 setOrderToast('Could not submit order');
                 return;
             }
-            const placedOrder: PlacedOrder = {lines: preOrderLines, total: preOrderTotal, paidAt: new Date().toISOString(), guestDetails: orderGuestDetails};
+            const placedOrder: PlacedOrder = {
+                lines: preOrderLines,
+                total: preOrderTotal,
+                paidAt: new Date().toISOString(),
+                guestDetails: orderGuestDetails
+            };
             window.localStorage.setItem(placedOrderStorageKey(orderAheadBooking.id), JSON.stringify(placedOrder));
             window.localStorage.removeItem(orderDraftStorageKey(orderAheadBooking.id));
             window.localStorage.removeItem(orderGuestDetailsStorageKey(orderAheadBooking.id));
@@ -686,7 +793,10 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
         setSelectedPlacedOrderBooking(current => current?.id === booking.id ? null : current);
         setOrderToast(hasOrder ? 'Booking and order cancelled' : 'Booking cancelled');
         setOrderToastClosing(false);
-        window.setTimeout(() => { setOrderToastClosing(true); window.setTimeout(() => setOrderToast(''), 260); }, 2200);
+        window.setTimeout(() => {
+            setOrderToastClosing(true);
+            window.setTimeout(() => setOrderToast(''), 260);
+        }, 2200);
     };
     const requestBookingCancellation = (booking: Booking) => {
         setBookingPendingCancellation(booking);
@@ -695,9 +805,12 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
         setPreOrderItems(current => ({...current, [name]: (current[name] ?? 0) + quantity}));
         setOrderToast(`${name} added to your order`);
         setOrderToastClosing(false);
-        window.setTimeout(() => { setOrderToastClosing(true); window.setTimeout(() => setOrderToast(''), 260); }, 2200);
+        window.setTimeout(() => {
+            setOrderToastClosing(true);
+            window.setTimeout(() => setOrderToast(''), 260);
+        }, 2200);
     };
-    const addCourseMenuToOrder = (line: {name: string; description: string; price: number}) => {
+    const addCourseMenuToOrder = (line: { name: string; description: string; price: number }) => {
         setCustomOrderLines(current => ({...current, [line.name]: {description: line.description, price: line.price}}));
         addToOrder(line.name);
         setCourseMenuPrompt(false);
@@ -725,7 +838,9 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
     }
 
     if (session === undefined) {
-        return <LoyaltyApp motion="idle" dark={isDarkMode} embedded={controlledDark !== undefined}><div/></LoyaltyApp>;
+        return <LoyaltyApp motion="idle" dark={isDarkMode} embedded={controlledDark !== undefined}>
+            <div/>
+        </LoyaltyApp>;
     }
 
     return <AppNavigationProvider value={{
@@ -734,269 +849,372 @@ const summariseOrder = (items: Record<string, number>, customLines: Record<strin
             navigate('bookings');
         }
     }}>
-            <LoyaltyApp motion="idle" dark={isDarkMode} embedded={controlledDark !== undefined}>
-                        <div className="appSafeArea" aria-hidden="true"/>
-                        <div className="content appScreenTransition" key={`${view}-${profilePanel ?? 'root'}`}>
-                            {view === 'home' && <HomeScreen bookings={bookings} memberName={profileName} points={memberPoints} nextRewardAt={pointsData.nextRewardAt} onBookEvent={bookEvent} onLogoClick={onShowNotification}/>}
-                            {view === 'book' && <BookingScreen experience={bookingExperience} prices={experiencePrices}
-                                                               price={bookingPricePerGuest} total={bookingTotal}
-                                                               afternoonTeaUpgrade={afternoonTeaUpgrade}
-                                                               onAfternoonTeaUpgradeChange={setAfternoonTeaUpgrade}
-                                                               bottomlessBrunchUpgrade={bottomlessBrunchUpgrade}
-                                                               onBottomlessBrunchUpgradeChange={setBottomlessBrunchUpgrade}
-                                                               bottomlessBrunchMeal={bottomlessBrunchMeal}
-                                                               bottomlessBrunchMeals={bottomlessBrunchMeals}
-                                                               onBottomlessBrunchMealChange={setBottomlessBrunchMeal}
-                                                               dietaryNeeds={dietaryNeeds}
-                                                               availableMenuService={selectedBookingService?.label}
-                                                               availableMenuCategories={selectedBookingService?.categories ?? []}
-                                                               doublePointsPromotion={doublePointsPromotion ?? defaultDoublePointsPromotion}
-                                                               doublePointsAvailableOnBookingDay={Boolean(doublePointsPromotion)}
-                                                               bookingEarnsDoublePoints={bookingEarnsDoublePoints}
-                                                               guestCount={guestCount} date={bookingDate}
-                                                               formatDate={value => formatDate(fromInputDate(value))}
-                                                               showDatePicker={showDatePicker}
-                                                               onToggleDatePicker={() => {
-                                                                   setVisibleMonth(new Date(fromInputDate(bookingDate).getFullYear(), fromInputDate(bookingDate).getMonth(), 1, 12));
-                                                                   setShowDatePicker(value => !value);
-                                                               }} visibleMonth={visibleMonth}
-                                                               onPreviousMonth={() => setVisibleMonth(value => new Date(value.getFullYear(), value.getMonth() - 1, 1, 12))}
-                                                               onNextMonth={() => setVisibleMonth(value => new Date(value.getFullYear(), value.getMonth() + 1, 1, 12))}
-                                                               calendarDays={calendarDays} today={todayValue}
-                                                               onSelectDate={value => {
-                                                                   setBookingDate(value);
-                                                                   setShowAllTimes(false);
-                                                                   setShowDatePicker(false);
-                                                               }} guests={guests} onGuestsChange={setGuests}
-                                                               times={bookingTimes} selectedTime={time}
-                                                               onTimeChange={setTime} showAllTimes={showAllTimes}
-                                                               onToggleTimes={() => setShowAllTimes(value => !value)}
-                                                               onExperienceChange={value => {
-                                                                   setBookingExperience(value);
-                                                                   if (value !== 'Afternoon Tea') setAfternoonTeaUpgrade(false);
-                                                                   if (value !== 'Bottomless Brunch') { setBottomlessBrunchUpgrade(false); setBottomlessBrunchMeal(''); }
-                                                                   setShowAllTimes(false);
-                                                               }} onContinue={() => navigate('details')}/>}
-                            {view === 'details' && <>
-                                <button className="topBack" onClick={() => navigate('book')}><Icon
-                                    name="fa-chevron-left"/> Back to booking
+        <LoyaltyApp motion="idle" dark={isDarkMode} embedded={controlledDark !== undefined}>
+            <div className="appSafeArea" aria-hidden="true"/>
+            <div className="content appScreenTransition" key={`${view}-${profilePanel ?? 'root'}`}>
+                {view === 'home' && <HomeScreen bookings={bookings} memberName={profileName} points={memberPoints}
+                                                nextRewardAt={pointsData.nextRewardAt} onBookEvent={bookEvent}
+                                                onLogoClick={onShowNotification}/>}
+                {view === 'book' && <BookingScreen experience={bookingExperience} prices={experiencePrices}
+                                                   price={bookingPricePerGuest} total={bookingTotal}
+                                                   afternoonTeaUpgrade={afternoonTeaUpgrade}
+                                                   onAfternoonTeaUpgradeChange={setAfternoonTeaUpgrade}
+                                                   bottomlessBrunchUpgrade={bottomlessBrunchUpgrade}
+                                                   onBottomlessBrunchUpgradeChange={setBottomlessBrunchUpgrade}
+                                                   bottomlessBrunchMeal={bottomlessBrunchMeal}
+                                                   bottomlessBrunchMeals={bottomlessBrunchMeals}
+                                                   onBottomlessBrunchMealChange={setBottomlessBrunchMeal}
+                                                   dietaryNeeds={dietaryNeeds}
+                                                   availableMenuService={selectedBookingService?.label}
+                                                   availableMenuCategories={selectedBookingService?.categories ?? []}
+                                                   doublePointsPromotion={doublePointsPromotion ?? defaultDoublePointsPromotion}
+                                                   doublePointsAvailableOnBookingDay={Boolean(doublePointsPromotion)}
+                                                   bookingEarnsDoublePoints={bookingEarnsDoublePoints}
+                                                   guestCount={guestCount} date={bookingDate}
+                                                   formatDate={value => formatDate(fromInputDate(value))}
+                                                   showDatePicker={showDatePicker}
+                                                   onToggleDatePicker={() => {
+                                                       setVisibleMonth(new Date(fromInputDate(bookingDate).getFullYear(), fromInputDate(bookingDate).getMonth(), 1, 12));
+                                                       setShowDatePicker(value => !value);
+                                                   }} visibleMonth={visibleMonth}
+                                                   onPreviousMonth={() => setVisibleMonth(value => new Date(value.getFullYear(), value.getMonth() - 1, 1, 12))}
+                                                   onNextMonth={() => setVisibleMonth(value => new Date(value.getFullYear(), value.getMonth() + 1, 1, 12))}
+                                                   calendarDays={calendarDays} today={todayValue}
+                                                   onSelectDate={value => {
+                                                       setBookingDate(value);
+                                                       setShowAllTimes(false);
+                                                       setShowDatePicker(false);
+                                                   }} guests={guests} onGuestsChange={setGuests}
+                                                   times={bookingTimes} selectedTime={time}
+                                                   onTimeChange={setTime} showAllTimes={showAllTimes}
+                                                   onToggleTimes={() => setShowAllTimes(value => !value)}
+                                                   onExperienceChange={value => {
+                                                       setBookingExperience(value);
+                                                       if (value !== 'Afternoon Tea') setAfternoonTeaUpgrade(false);
+                                                       if (value !== 'Bottomless Brunch') {
+                                                           setBottomlessBrunchUpgrade(false);
+                                                           setBottomlessBrunchMeal('');
+                                                       }
+                                                       setShowAllTimes(false);
+                                                   }} onContinue={() => navigate('details')}/>}
+                {view === 'details' && <>
+                    <button className="topBack" onClick={() => navigate('book')}><Icon
+                        name="fa-chevron-left"/> Back to booking
+                    </button>
+                    <p className="eyebrow">Review your booking</p><h1>You are almost<br/>there.</h1>
+                    <section className="bookingSummary"><p>The Quicken Tree</p>
+                        <b>{formatDate(fromInputDate(bookingDate))}</b><span>{bookingExperience}{afternoonTeaUpgrade || bottomlessBrunchUpgrade ? ' + Prosecco/Pimms' : ''}{bookingExperience === 'Bottomless Brunch' && bottomlessBrunchMeal ? ` · ${bottomlessBrunchMeal}` : ''} · {time} · {guests}</span>{experiencePrice > 0 &&
+                            <strong className="bookingPrice">£{bookingPricePerGuest.toFixed(2)} per guest ·
+                                £{bookingTotal.toFixed(2)} total</strong>}<small>Heart of England Conference
+                            Centre</small></section>
+                    <section className="bookingDietary"><b>Dietary needs for this booking</b>{dietaryNeeds.length ?
+                        <p>{dietaryNeeds.join(' · ')}</p> : <p>No dietary needs saved in your profile.</p>}<small>Always
+                        tell your server about an allergy when you arrive.</small></section>
+                    <label className="detailLabel">Booking name<input value={bookingName}
+                                                                      onChange={event => setBookingName(event.target.value)}
+                                                                      placeholder="Your name"/></label><label
+                    className="detailLabel">Email address<input value={bookingEmail}
+                                                                onChange={event => setBookingEmail(event.target.value)}
+                                                                type="email"
+                                                                placeholder="you@example.com"/></label><label
+                    className="detailLabel">Anything we should know<textarea value={bookingNotes}
+                                                                             onChange={event => setBookingNotes(event.target.value)}
+                                                                             placeholder="Dietary requirements or occasion"/></label>
+                    <button className="cta"
+                            onClick={continueFromDetails}>{experiencePrice ? `Continue to payment · £${bookingTotal.toFixed(2)}` : 'Request reservation'}</button>
+                </>}
+                {view === 'checkout' && <>
+                    <button className="topBack"
+                            onClick={() => navigate(checkoutMode === 'order' ? 'cart' : 'details')}
+                            disabled={paymentState === 'processing'}><Icon
+                        name="fa-chevron-left"/> {checkoutMode === 'order' ? 'Cart' : 'Back to details'}
+                    </button>
+                    <p className="eyebrow">Secure checkout</p><h1>{checkoutMode === 'order' ? <>Confirm your<br/>order
+                    ahead.</> : <>One last step<br/>to reserve.</>}</h1>
+                    <section className="checkoutCard">
+                        <div><span>THE QUICKEN TREE</span><Icon name="fa-wine-glass"/></div>
+                        <b>{checkoutMode === 'order' ? 'Order ahead' : bookingExperience}</b><small>{selectedCard ? `${selectedCard.brand} · •••• ${selectedCard.last4}` : 'Apple Pay'}</small>
+                    </section>
+                    <section className="checkoutSummary">
+                        <p>{checkoutMode === 'order' ? 'Your order' : bookingExperience}</p>
+                        <span>{checkoutMode === 'order' ? `${preOrderCount} ${preOrderCount === 1 ? 'item' : 'items'}` : `${guestCount} guests × £${bookingPricePerGuest.toFixed(2)}${afternoonTeaUpgrade || bottomlessBrunchUpgrade ? ' incl. Prosecco/Pimms' : ''}${bookingExperience === 'Bottomless Brunch' && bottomlessBrunchMeal ? ` · ${bottomlessBrunchMeal}` : ''}`}</span><b>Total
+                        due
+                        today <strong>£{(checkoutMode === 'order' ? preOrderTotal : bookingTotal).toFixed(2)}</strong></b><small>{checkoutMode === 'order' ? 'Your order is sent to the kitchen after payment.' : 'Your reservation is confirmed as soon as payment is complete.'}</small>
+                    </section>
+                    <PaymentMethodPicker cards={cards} value={effectivePaymentMethod} onChange={setPaymentMethod}
+                                         disabled={!cardsReady || paymentState === 'processing'}/>
+                    <button className={`applePay${paymentState === 'processing' ? ' processing' : ''}`}
+                            onClick={payWithApplePay}
+                            disabled={!cardsReady || paymentState === 'processing'}>{paymentState === 'processing' ? <>
+                        <i
+                            className="appleSpinner"/> Processing payment…</> : <>
+                        {selectedCard ? <span>{selectedCard.brand}</span> :
+                            <span></span>} Pay <b>£{(checkoutMode === 'order' ? preOrderTotal : bookingTotal).toFixed(2)}</b></>}</button>
+                    <p className="checkoutFine">Demo payment · no payment is taken.</p></>}
+                {view === 'bookings' && <>
+                    <button className="topBack" onClick={() => navigate(bookingsOrigin)}><Icon
+                        name="fa-chevron-left"/> {bookingsOrigin === 'profile' ? 'Profile' : 'Home'}
+                    </button>
+                    <p className="eyebrow">Your reservations</p><h1>Upcoming<br/>bookings.
+                </h1>{bookings.length ?
+                    <div className="bookingList">{bookings.map(booking => {
+                        const orderSummary = bookingOrderSummaries[booking.id];
+                        const placedOrder = placedOrders[booking.id];
+                        const placedOrderItemCount = placedOrder?.lines.reduce((count, line) => count + line.quantity, 0) ?? 0;
+                        return <article className="savedBooking" key={booking.id}><p>The
+                            Quicken Tree</p>
+                            <b>{formatDate(fromInputDate(booking.date))}</b><span>{booking.experience ?? 'Table'}{booking.bottomlessBrunchMeal ? ` · ${booking.bottomlessBrunchMeal}` : ''}{booking.bottomlessBrunchUpgrade ? ' · Drinks upgrade' : ''} · {booking.time} · {booking.guests}</span>{booking.dietaryNeeds?.length ?
+                                <small
+                                    className="bookingDietarySummary">Dietary: {booking.dietaryNeeds.join(' · ')}</small> : null}{booking.total ?
+                                <strong className="paidBooking"><Icon name="fa-circle-check"/> Paid ·
+                                    £{booking.total.toFixed(2)}
+                                </strong> : null}<small>{booking.name}</small>{parseInt(booking.guests, 10) >= 4 && !booking.total &&
+                                (placedOrder ? <button className="savedOrder" onClick={() => openPlacedOrder(booking)}>
+                                    <Icon
+                                        name="fa-receipt"/><span><b>{placedOrderItemCount} {placedOrderItemCount === 1 ? 'item' : 'items'} ordered</b><small>£{placedOrder.total.toFixed(2)} · View order</small></span><Icon
+                                    name="fa-chevron-right"/>
+                                </button> : orderSummary ?
+                                    <button className="savedOrder" onClick={() => startOrderAhead(booking)}>
+                                        <Icon
+                                            name="fa-cart-shopping"/><span><b>{orderSummary.itemCount} {orderSummary.itemCount === 1 ? 'item' : 'items'} in your order</b><small>£{orderSummary.total.toFixed(2)} · Continue ordering</small></span><Icon
+                                        name="fa-chevron-right"/>
+                                    </button> :
+                                    <button className="orderAhead" onClick={() => startOrderAhead(booking)}><Icon
+                                        name="fa-utensils"/> Order ahead</button>)}
+                            <div className="bookingActions">
+                                <button type="button" onClick={() => addBookingToCalendar(booking)}><Icon
+                                    name="fa-calendar-plus"/> Add to calendar
                                 </button>
-                                <p className="eyebrow">Review your booking</p><h1>You are almost<br/>there.</h1>
-                                <section className="bookingSummary"><p>The Quicken Tree</p>
-                                    <b>{formatDate(fromInputDate(bookingDate))}</b><span>{bookingExperience}{afternoonTeaUpgrade || bottomlessBrunchUpgrade ? ' + Prosecco/Pimms' : ''}{bookingExperience === 'Bottomless Brunch' && bottomlessBrunchMeal ? ` · ${bottomlessBrunchMeal}` : ''} · {time} · {guests}</span>{experiencePrice > 0 &&
-                                        <strong className="bookingPrice">£{bookingPricePerGuest.toFixed(2)} per guest ·
-                                            £{bookingTotal.toFixed(2)} total</strong>}<small>Heart of England Conference
-                                        Centre</small></section><section className="bookingDietary"><b>Dietary needs for this booking</b>{dietaryNeeds.length ? <p>{dietaryNeeds.join(' · ')}</p> : <p>No dietary needs saved in your profile.</p>}<small>Always tell your server about an allergy when you arrive.</small></section>
-                                <label className="detailLabel">Booking name<input value={bookingName}
-                                                                                  onChange={event => setBookingName(event.target.value)}
-                                                                                  placeholder="Your name"/></label><label
-                                className="detailLabel">Email address<input value={bookingEmail}
-                                                                            onChange={event => setBookingEmail(event.target.value)}
-                                                                            type="email" placeholder="you@example.com"/></label><label
-                                className="detailLabel">Anything we should know<textarea value={bookingNotes}
-                                                                                         onChange={event => setBookingNotes(event.target.value)}
-                                                                                         placeholder="Dietary requirements or occasion"/></label>
-                                <button className="cta"
-                                        onClick={continueFromDetails}>{experiencePrice ? `Continue to payment · £${bookingTotal.toFixed(2)}` : 'Request reservation'}</button>
-                            </>}
-                            {view === 'checkout' && <>
-                                <button className="topBack"
-                                        onClick={() => navigate(checkoutMode === 'order' ? 'cart' : 'details')}
-                                        disabled={paymentState === 'processing'}><Icon
-                                    name="fa-chevron-left"/> {checkoutMode === 'order' ? 'Cart' : 'Back to details'}
+                                <button type="button" className="cancelBooking"
+                                        onClick={() => requestBookingCancellation(booking)}><Icon
+                                    name="fa-calendar-xmark"/> Cancel booking
                                 </button>
-                                <p className="eyebrow">Secure checkout</p><h1>{checkoutMode === 'order' ? <>Confirm your<br/>order
-                                ahead.</> : <>One last step<br/>to reserve.</>}</h1>
-                                <section className="checkoutCard">
-                                    <div><span>THE QUICKEN TREE</span><Icon name="fa-wine-glass"/></div>
-                                    <b>{checkoutMode === 'order' ? 'Order ahead' : bookingExperience}</b><small>{selectedCard ? `${selectedCard.brand} · •••• ${selectedCard.last4}` : 'Apple Pay'}</small></section>
-                                <section className="checkoutSummary">
-                                    <p>{checkoutMode === 'order' ? 'Your order' : bookingExperience}</p>
-                                    <span>{checkoutMode === 'order' ? `${preOrderCount} ${preOrderCount === 1 ? 'item' : 'items'}` : `${guestCount} guests × £${bookingPricePerGuest.toFixed(2)}${afternoonTeaUpgrade || bottomlessBrunchUpgrade ? ' incl. Prosecco/Pimms' : ''}${bookingExperience === 'Bottomless Brunch' && bottomlessBrunchMeal ? ` · ${bottomlessBrunchMeal}` : ''}`}</span><b>Total
-                                    due
-                                    today <strong>£{(checkoutMode === 'order' ? preOrderTotal : bookingTotal).toFixed(2)}</strong></b><small>{checkoutMode === 'order' ? 'Your order is sent to the kitchen after payment.' : 'Your reservation is confirmed as soon as payment is complete.'}</small>
-                                </section>
-                                <PaymentMethodPicker cards={cards} value={effectivePaymentMethod} onChange={setPaymentMethod} disabled={!cardsReady || paymentState === 'processing'}/>
-                                <button className={`applePay${paymentState === 'processing' ? ' processing' : ''}`}
-                                        onClick={payWithApplePay}
-                                        disabled={!cardsReady || paymentState === 'processing'}>{paymentState === 'processing' ? <><i
-                                    className="appleSpinner"/> Processing payment…</> : <>
-                                    {selectedCard ? <span>{selectedCard.brand}</span> : <span></span>} Pay <b>£{(checkoutMode === 'order' ? preOrderTotal : bookingTotal).toFixed(2)}</b></>}</button>
-                                <p className="checkoutFine">Demo payment · no payment is taken.</p></>}
-                            {view === 'bookings' && <>
-                                <button className="topBack" onClick={() => navigate(bookingsOrigin)}><Icon
-                                    name="fa-chevron-left"/> {bookingsOrigin === 'profile' ? 'Profile' : 'Home'}
-                                </button>
-                                <p className="eyebrow">Your reservations</p><h1>Upcoming<br/>bookings.
-                            </h1>{bookings.length ?
-                                <div className="bookingList">{bookings.map(booking => {
-                                    const orderSummary = bookingOrderSummaries[booking.id];
-                                    const placedOrder = placedOrders[booking.id];
-                                    const placedOrderItemCount = placedOrder?.lines.reduce((count, line) => count + line.quantity, 0) ?? 0;
-                                    return <article className="savedBooking" key={booking.id}><p>The
-                                    Quicken Tree</p>
-                                    <b>{formatDate(fromInputDate(booking.date))}</b><span>{booking.experience ?? 'Table'}{booking.bottomlessBrunchMeal ? ` · ${booking.bottomlessBrunchMeal}` : ''}{booking.bottomlessBrunchUpgrade ? ' · Drinks upgrade' : ''} · {booking.time} · {booking.guests}</span>{booking.dietaryNeeds?.length ? <small className="bookingDietarySummary">Dietary: {booking.dietaryNeeds.join(' · ')}</small> : null}{booking.total ?
-                                        <strong className="paidBooking"><Icon name="fa-circle-check"/> Paid ·
-                                            £{booking.total.toFixed(2)}
-                                        </strong> : null}<small>{booking.name}</small>{parseInt(booking.guests, 10) >= 4 && !booking.total &&
-                                        (placedOrder ? <button className="savedOrder" onClick={() => openPlacedOrder(booking)}>
-                                            <Icon name="fa-receipt"/><span><b>{placedOrderItemCount} {placedOrderItemCount === 1 ? 'item' : 'items'} ordered</b><small>£{placedOrder.total.toFixed(2)} · View order</small></span><Icon name="fa-chevron-right"/>
-                                        </button> : orderSummary ? <button className="savedOrder" onClick={() => startOrderAhead(booking)}>
-                                            <Icon name="fa-cart-shopping"/><span><b>{orderSummary.itemCount} {orderSummary.itemCount === 1 ? 'item' : 'items'} in your order</b><small>£{orderSummary.total.toFixed(2)} · Continue ordering</small></span><Icon name="fa-chevron-right"/>
-                                        </button> : <button className="orderAhead" onClick={() => startOrderAhead(booking)}><Icon
-                                            name="fa-utensils"/> Order ahead</button>)}<div className="bookingActions"><button type="button" onClick={() => addBookingToCalendar(booking)}><Icon name="fa-calendar-plus"/> Add to calendar</button><button type="button" className="cancelBooking" onClick={() => requestBookingCancellation(booking)}><Icon name="fa-calendar-xmark"/> Cancel booking</button></div></article>;
-                                })}</div> :
-                                <section className="emptyBookings"><Icon name="fa-calendar-plus"/><b>No bookings yet</b>
-                                    <p>Your confirmed reservations will appear here.</p>
-                                    <button className="cta" onClick={() => navigate('book')}>Book a table</button>
-                                </section>}</>}
-                            {view === 'order-summary' && selectedPlacedOrderBooking && placedOrders[selectedPlacedOrderBooking.id] &&
-                                <OrderSummaryScreen booking={selectedPlacedOrderBooking} lines={placedOrders[selectedPlacedOrderBooking.id].lines}
-                                                    guestDetails={placedOrders[selectedPlacedOrderBooking.id].guestDetails}
-                                                    total={placedOrders[selectedPlacedOrderBooking.id].total}
-                                                    onBack={() => navigate('bookings')}/>}
-                            {view === 'menu' && <MenuScreen categories={availableMenuCategories} selectedCategory={selectedMenuCategory.label}
-                                                            onCategoryChange={setMenuCategory} search={menuSearch}
-                                                            onSearchChange={setMenuSearch}
-                                                            sections={filteredMenuSections} dietaryTags={dietaryTags}
-                                                            dietaryTagNames={dietaryTagNames}
-                                                            allergenTags={allergenTags}
-                                                            allergenTagNames={allergenTagNames}
-                                                            allergenTagStyles={allergenTagStyles}
-                                                            outOfStockItems={outOfStockItems}
-                                                            courseOffer={menuSearchTerm ? undefined : selectedCourseOffer}
-                                                            onBuildCourseMenu={() => setCourseMenuPrompt(true)}
-                                                            itemOptions={itemOptions}
-                                                            onPromptItemOptions={setItemOptionsPrompt}
-                                                            serviceLabel={activeMenuService?.label}
-                                                            orderAheadBooking={orderAheadBooking}
-                                                            onAdd={addToOrder}
-                                                            onBook={() => navigate('book')}/>}
-                            {view === 'cart' &&
-                                <CartScreen lines={preOrderLines} total={preOrderTotal} booking={orderAheadBooking} guestDetails={orderGuestDetails} onGuestDetailsChange={setOrderGuestDetails}
-                                            onBack={() => navigate('menu', true)} onAdd={addToOrder}
-                                            onRemove={name => setPreOrderItems(current=>{const next={...current};const quantity=next[name]??0;if(name.startsWith('Wings Wednesday ·')&&quantity<=5)return next;if(quantity<=1)delete next[name];else next[name]=quantity-1;return next;})} onDelete={name => setPreOrderItems(current => {
+                            </div>
+                        </article>;
+                    })}</div> :
+                    <section className="emptyBookings"><Icon name="fa-calendar-plus"/><b>No bookings yet</b>
+                        <p>Your confirmed reservations will appear here.</p>
+                        <button className="cta" onClick={() => navigate('book')}>Book a table</button>
+                    </section>}</>}
+                {view === 'order-summary' && selectedPlacedOrderBooking && placedOrders[selectedPlacedOrderBooking.id] &&
+                    <OrderSummaryScreen booking={selectedPlacedOrderBooking}
+                                        lines={placedOrders[selectedPlacedOrderBooking.id].lines}
+                                        guestDetails={placedOrders[selectedPlacedOrderBooking.id].guestDetails}
+                                        total={placedOrders[selectedPlacedOrderBooking.id].total}
+                                        onBack={() => navigate('bookings')}/>}
+                {view === 'menu' &&
+                    <MenuScreen categories={availableMenuCategories} selectedCategory={selectedMenuCategory.label}
+                                onCategoryChange={setMenuCategory} search={menuSearch}
+                                onSearchChange={setMenuSearch}
+                                sections={filteredMenuSections} dietaryTags={dietaryTags}
+                                dietaryTagNames={dietaryTagNames}
+                                allergenTags={allergenTags}
+                                allergenTagNames={allergenTagNames}
+                                allergenTagStyles={allergenTagStyles}
+                                outOfStockItems={outOfStockItems}
+                                courseOffer={menuSearchTerm ? undefined : selectedCourseOffer}
+                                onBuildCourseMenu={() => setCourseMenuPrompt(true)}
+                                itemOptions={itemOptions}
+                                onPromptItemOptions={setItemOptionsPrompt}
+                                serviceLabel={activeMenuService?.label}
+                                orderAheadBooking={orderAheadBooking}
+                                onAdd={addToOrder}
+                                onBook={() => navigate('book')}/>}
+                {view === 'cart' &&
+                    <CartScreen lines={preOrderLines} total={preOrderTotal} booking={orderAheadBooking}
+                                guestDetails={orderGuestDetails} onGuestDetailsChange={setOrderGuestDetails}
+                                onBack={() => navigate('menu', true)} onAdd={addToOrder}
+                                onRemove={name => setPreOrderItems(current => {
                                     const next = {...current};
-                                    delete next[name];
+                                    const quantity = next[name] ?? 0;
+                                    if (name.startsWith('Wings Wednesday ·') && quantity <= 5) return next;
+                                    if (quantity <= 1) delete next[name]; else next[name] = quantity - 1;
                                     return next;
-                                })} onEmpty={() => {setPreOrderItems({});setCustomOrderLines({});}} onCheckout={() => {
-                                    setCheckoutMode('order');
-                                    navigate('checkout', true);
-                                }}/>}
-                            {view === 'rewards' && <><p className="eyebrow">Member rewards</p><h1>A little thank
-                                you,<br/>every time you visit.</h1>
-                                <section className="tier"><img src="/brand/quicken-tree-white.png"
-                                                               alt="The Quicken Tree"/><small>Current tier</small>
-                                    <h2>{memberTier}</h2><p>{pointsData.benefits}</p>
-                                    <div className="progress" aria-label={`${Math.round(rewardProgress)}% of points to Quicken Gold`}><i style={{width: `${rewardProgress}%`}}/></div>
-                                    <footer>{memberPoints.toLocaleString()} / {pointsData.nextRewardAt.toLocaleString()} points
-                                        to Quicken Gold
-                                    </footer>
-                                </section>
-                                <Header title="Ready for you"/>{rewardsData.rewards.map(({icon, title, meta, code}) => {
-                                    const cost = Number(meta.match(/^([\d,]+) points/)?.[1].replace(/,/g, '') ?? 0);
-                                    const canRedeem = cost > 0 && memberPoints >= cost;
-                                    return <article className="reward" key={title}><i><Icon name={icon}/></i>
-                                        <div><b>{title}</b><p>{meta}</p></div>
-                                        <button disabled={!canRedeem} title={canRedeem ? undefined : `You need ${(cost - memberPoints).toLocaleString()} more points`} onClick={async () => {
-                                            try {
-                                                const voucher = await memberRequest<{code: string; title: string; pointsSpent: number}>(`/me/rewards/${code}/redeem`, 'POST');
-                                                setMemberPoints(current => Math.max(0, current - voucher.pointsSpent));
-                                                setIsClosingRedemption(false);
-                                                setRedemption({title: voucher.title, code: voucher.code});
-                                            } catch {
-                                                showOrderToast('Could not redeem reward');
-                                            }
-                                        }}>{canRedeem ? 'Redeem' : `${(cost - memberPoints).toLocaleString()} more points`}
-                                        </button>
-                                    </article>})}</>}
-                            {view === 'profile' && !profilePanel && <><p className="eyebrow">Your Quicken Tree</p>
-                                <button className="account accountButton" onClick={() => setProfilePanel('details')}>
-                                    <i>{profileName.slice(0, 1).toUpperCase()}</i>
-                                    <div><b>{profileName}</b><small>Quicken Member · since 2024</small></div>
-                                    <Icon name="fa-chevron-right"/></button>
-                                <button className="setting" onClick={() => {
-                                    setBookingsOrigin('profile');
-                                    navigate('bookings');
-                                }}>Upcoming bookings<span><Icon name="fa-chevron-right"/></span></button>
-                                <button className="setting" onClick={() => setProfilePanel('cards')}>Payment cards<span><Icon name="fa-chevron-right"/></span></button>
-                                <button className="setting" onClick={() => setProfilePanel('taste')}>Taste profile<span><Icon
-                                    name="fa-chevron-right"/></span></button>
-                                <button className="setting" onClick={() => setProfilePanel('dietary')}>Dietary needs & allergens<span><Icon
-                                    name="fa-chevron-right"/></span></button>
-                                <button className="setting" onClick={() => setProfilePanel('gifts')}>Gift cards & credit<span><Icon
-                                    name="fa-chevron-right"/></span></button>
-                                <button className="setting" onClick={() => setProfilePanel('help')}>Help & contact<span><Icon
-                                    name="fa-chevron-right"/></span></button>
-                                <button className="setting logout" onClick={() => { void signOut(); }}>Log out<span><Icon
-                                    name="fa-right-from-bracket"/></span></button>
-                                <button className="setting resetApp" onClick={() => setProfilePanel('reset')}>Reset app to default<span><Icon
-                                    name="fa-arrow-rotate-left"/></span></button>
-                            </>}
-                            {view === 'profile' && profilePanel && <>
-                                <button className="topBack" onClick={() => setProfilePanel(null)}><Icon
-                                    name="fa-chevron-left"/> Profile
-                                </button>
-                                {profilePanel === 'cards' && (cardsReady ? <PaymentCards cards={cards} onChange={setCards}/> : <p>Loading cards…</p>)}
-                                {profilePanel === 'details' && <><p className="eyebrow">Account details</p><h1>Make
-                                    it<br/>yours.</h1><label className="detailLabel">Your name<input value={profileName}
-                                                                                                     onChange={event => setProfileName(event.target.value)}/></label><label
-                                    className="detailLabel">Email address<input type="email" value={profileEmail}
-                                                                                onChange={event => setProfileEmail(event.target.value)}
-                                                                                placeholder="you@example.com"/></label>
-                                    <button className="cta" onClick={() => { void saveProfile(); }}><Icon name="fa-check"/> {profileSaved ? 'Saved' : 'Save changes'}</button>
-                                </>}{profilePanel === 'taste' && <><p className="eyebrow">Taste profile</p><h1>Your
-                                table,<br/>your taste.</h1><p className="profileIntro">Choose what you enjoy and we’ll
-                                make your member offers more relevant.</p>
-                                <div
-                                    className="tasteChoices">{profileData.tasteOptions.map(taste =>
-                                    <button key={taste} className={tasteProfile.includes(taste) ? 'selected' : ''}
-                                            onClick={() => setTasteProfile(current => current.includes(taste) ? current.filter(item => item !== taste) : [...current, taste])}>
-                                        <Icon name={tasteProfile.includes(taste) ? 'fa-check' : 'fa-plus'}/> {taste}
-                                    </button>)}</div>
-                            </>}{profilePanel === 'dietary' && <><p className="eyebrow">Dietary profile</p><h1>Good food,<br/>for you.</h1><p className="profileIntro">Save dietary requirements and allergies so we can make menu information easier to find. Always tell your server about an allergy before ordering.</p><section className="dietaryProfileSection"><b>Dietary requirements</b><div className="tasteChoices">{profileData.dietaryRequirementOptions.map(option => <button key={option} className={dietaryNeeds.includes(option) ? 'selected' : ''} onClick={() => setDietaryNeeds(current => current.includes(option) ? current.filter(item => item !== option) : [...current, option])}><Icon name={dietaryNeeds.includes(option) ? 'fa-check' : 'fa-plus'}/> {option}</button>)}</div></section><section className="dietaryProfileSection"><b>Allergies & intolerances</b><p>Select anything you need us to know about.</p><div className="tasteChoices allergenChoices">{profileData.allergenOptions.map(option => <button key={option} className={dietaryNeeds.includes(option) ? 'selected' : ''} onClick={() => setDietaryNeeds(current => current.includes(option) ? current.filter(item => item !== option) : [...current, option])}><Icon name={dietaryNeeds.includes(option) ? 'fa-check' : 'fa-plus'}/> {option}</button>)}</div></section>
-                            </>}{profilePanel === 'gifts' && <><p className="eyebrow">Gift cards & credit</p><h1>A
-                                little extra<br/>for your table.</h1>
-                                <section className="creditCard"><small>QUICKEN TREE CREDIT</small><b>£0.00</b><span>No credit available</span>
-                                </section>
-                                <label className="detailLabel">Add a gift card or credit code<input value={giftCode}
-                                                                                                    onChange={event => setGiftCode(event.target.value.toUpperCase())}
-                                                                                                    placeholder="QT-XXXX-XXXX"/></label>
-                                <button className="cta" disabled={!giftCode} onClick={() => {
-                                    setGiftCode('');
-                                    setProfileSaved(true);
-                                    window.setTimeout(() => setProfileSaved(false), 1800);
-                                }}>{profileSaved ? 'Code added' : 'Add code'}</button>
-                            </>}{profilePanel === 'help' && <><p className="eyebrow">Help & contact</p><h1>We are
-                                here<br/>to help.</h1><p className="profileIntro">For booking changes, dietary
-                                requirements or a quick question, get in touch with the team.</p><a
-                                className="contactAction" href="tel:01676540444"><Icon name="fa-phone"/> Call The
-                                Quicken Tree</a><a className="contactAction" href="mailto:info@quickentree.uk"><Icon
-                                name="fa-envelope"/> Email the team</a></>}{profilePanel === 'reset' && <><p className="eyebrow">Demo controls</p><h1>Reset this<br/>app?</h1><p className="profileIntro">This clears this device’s demo bookings, orders, payment cards, profile choices and theme, then restores the original app state.</p><button className="cta resetAppCta" onClick={resetAppToDefault}><Icon name="fa-arrow-rotate-left"/> Reset app to default</button></>}</>}
-                        </div>
-                        <nav>{([['home', 'fa-house', 'Home'], ['book', 'fa-calendar-plus', 'Book'], ['menu', 'fa-utensils', 'Menu'], ['rewards', 'fa-star', 'Rewards'], ['profile', 'fa-circle-user', 'Profile']] as const).map(([id, icon, label]) =>
-                            <button key={id} onClick={() => navigate(id)}
-                                    className={view === id || ((view === 'details' || view === 'checkout') && id === 'book') || (view === 'bookings' && id === 'profile') ? 'active' : ''}>
-                                <Icon name={icon}/>{label}</button>)}</nav>
-                        {view === 'menu' && orderAheadBooking && <button className={`orderCart${preOrderCount ? '' : ' empty'}`} disabled={!preOrderCount}
-                                                                         onClick={() => navigate('cart', true)}>
+                                })} onDelete={name => setPreOrderItems(current => {
+                        const next = {...current};
+                        delete next[name];
+                        return next;
+                    })} onEmpty={() => {
+                        setPreOrderItems({});
+                        setCustomOrderLines({});
+                    }} onCheckout={() => {
+                        setCheckoutMode('order');
+                        navigate('checkout', true);
+                    }}/>}
+                {view === 'rewards' && <><p className="eyebrow">Member rewards</p><h1>A little thank
+                    you,<br/>every time you visit.</h1>
+                    <section className="tier"><img src="/brand/quicken-tree-white.png"
+                                                   alt="The Quicken Tree"/><small>Current tier</small>
+                        <h2>{memberTier}</h2><p>{pointsData.benefits}</p>
+                        <div className="progress"
+                             aria-label={`${Math.round(rewardProgress)}% of points to Quicken Gold`}><i
+                            style={{width: `${rewardProgress}%`}}/></div>
+                        <footer>{memberPoints.toLocaleString()} / {pointsData.nextRewardAt.toLocaleString()} points
+                            to Quicken Gold
+                        </footer>
+                    </section>
+                    <Header title="Ready for you"/>{rewardsData.rewards.map(({icon, title, meta, code}) => {
+                        const cost = Number(meta.match(/^([\d,]+) points/)?.[1].replace(/,/g, '') ?? 0);
+                        const canRedeem = cost > 0 && memberPoints >= cost;
+                        return <article className="reward" key={title}><i><Icon name={icon}/></i>
+                            <div><b>{title}</b><p>{meta}</p></div>
+                            <button disabled={!canRedeem}
+                                    title={canRedeem ? undefined : `You need ${(cost - memberPoints).toLocaleString()} more points`}
+                                    onClick={async () => {
+                                        try {
+                                            const voucher = await memberRequest<{
+                                                code: string;
+                                                title: string;
+                                                pointsSpent: number
+                                            }>(`/me/rewards/${code}/redeem`, 'POST');
+                                            setMemberPoints(current => Math.max(0, current - voucher.pointsSpent));
+                                            setIsClosingRedemption(false);
+                                            setRedemption({title: voucher.title, code: voucher.code});
+                                        } catch {
+                                            showOrderToast('Could not redeem reward');
+                                        }
+                                    }}>{canRedeem ? 'Redeem' : `${(cost - memberPoints).toLocaleString()} more points`}
+                            </button>
+                        </article>
+                    })}</>}
+                {view === 'profile' && !profilePanel && <><p className="eyebrow">Your Quicken Tree</p>
+                    <button className="account accountButton" onClick={() => setProfilePanel('details')}>
+                        <i>{profileName.slice(0, 1).toUpperCase()}</i>
+                        <div><b>{profileName}</b><small>Quicken Member · since 2024</small></div>
+                        <Icon name="fa-chevron-right"/></button>
+                    <button className="setting" onClick={() => {
+                        setBookingsOrigin('profile');
+                        navigate('bookings');
+                    }}>Upcoming bookings<span><Icon name="fa-chevron-right"/></span></button>
+                    <button className="setting" onClick={() => setProfilePanel('cards')}>Payment cards<span><Icon
+                        name="fa-chevron-right"/></span></button>
+                    <button className="setting" onClick={() => setProfilePanel('taste')}>Taste profile<span><Icon
+                        name="fa-chevron-right"/></span></button>
+                    <button className="setting" onClick={() => setProfilePanel('dietary')}>Dietary needs &
+                        allergens<span><Icon
+                            name="fa-chevron-right"/></span></button>
+                    <button className="setting" onClick={() => setProfilePanel('gifts')}>Gift cards & credit<span><Icon
+                        name="fa-chevron-right"/></span></button>
+                    <button className="setting" onClick={() => setProfilePanel('help')}>Help & contact<span><Icon
+                        name="fa-chevron-right"/></span></button>
+                    <button className="setting logout" onClick={() => {
+                        void signOut();
+                    }}>Log out<span><Icon
+                        name="fa-right-from-bracket"/></span></button>
+                    <button className="setting resetApp" onClick={() => setProfilePanel('reset')}>Reset app to
+                        default<span><Icon
+                            name="fa-arrow-rotate-left"/></span></button>
+                </>}
+                {view === 'profile' && profilePanel && <>
+                    <button className="topBack" onClick={() => setProfilePanel(null)}><Icon
+                        name="fa-chevron-left"/> Profile
+                    </button>
+                    {profilePanel === 'cards' && (cardsReady ? <PaymentCards cards={cards} onChange={setCards}/> :
+                        <p>Loading cards…</p>)}
+                    {profilePanel === 'details' && <><p className="eyebrow">Account details</p><h1>Make
+                        it<br/>yours.</h1><label className="detailLabel">Your name<input value={profileName}
+                                                                                         onChange={event => setProfileName(event.target.value)}/></label><label
+                        className="detailLabel">Email address<input type="email" value={profileEmail}
+                                                                    onChange={event => setProfileEmail(event.target.value)}
+                                                                    placeholder="you@example.com"/></label>
+                        <button className="cta" onClick={() => {
+                            void saveProfile();
+                        }}><Icon name="fa-check"/> {profileSaved ? 'Saved' : 'Save changes'}</button>
+                    </>}{profilePanel === 'taste' && <><p className="eyebrow">Taste profile</p><h1>Your
+                    table,<br/>your taste.</h1><p className="profileIntro">Choose what you enjoy and we’ll
+                    make your member offers more relevant.</p>
+                    <div
+                        className="tasteChoices">{profileData.tasteOptions.map(taste =>
+                        <button key={taste} className={tasteProfile.includes(taste) ? 'selected' : ''}
+                                onClick={() => setTasteProfile(current => current.includes(taste) ? current.filter(item => item !== taste) : [...current, taste])}>
+                            <Icon name={tasteProfile.includes(taste) ? 'fa-check' : 'fa-plus'}/> {taste}
+                        </button>)}</div>
+                </>}{profilePanel === 'dietary' && <><p className="eyebrow">Dietary profile</p><h1>Good food,<br/>for
+                    you.</h1><p className="profileIntro">Save dietary requirements and allergies so we can make menu
+                    information easier to find. Always tell your server about an allergy before ordering.</p>
+                    <section className="dietaryProfileSection"><b>Dietary requirements</b>
+                        <div className="tasteChoices">{profileData.dietaryRequirementOptions.map(option => <button
+                            key={option} className={dietaryNeeds.includes(option) ? 'selected' : ''}
+                            onClick={() => setDietaryNeeds(current => current.includes(option) ? current.filter(item => item !== option) : [...current, option])}>
+                            <Icon name={dietaryNeeds.includes(option) ? 'fa-check' : 'fa-plus'}/> {option}
+                        </button>)}</div>
+                    </section>
+                    <section className="dietaryProfileSection"><b>Allergies & intolerances</b><p>Select anything you
+                        need us to know about.</p>
+                        <div className="tasteChoices allergenChoices">{profileData.allergenOptions.map(option => <button
+                            key={option} className={dietaryNeeds.includes(option) ? 'selected' : ''}
+                            onClick={() => setDietaryNeeds(current => current.includes(option) ? current.filter(item => item !== option) : [...current, option])}>
+                            <Icon name={dietaryNeeds.includes(option) ? 'fa-check' : 'fa-plus'}/> {option}
+                        </button>)}</div>
+                    </section>
+                </>}{profilePanel === 'gifts' && <><p className="eyebrow">Gift cards & credit</p><h1>A
+                    little extra<br/>for your table.</h1>
+                    <section className="creditCard"><small>QUICKEN TREE CREDIT</small><b>£0.00</b><span>No credit available</span>
+                    </section>
+                    <label className="detailLabel">Add a gift card or credit code<input value={giftCode}
+                                                                                        onChange={event => setGiftCode(event.target.value.toUpperCase())}
+                                                                                        placeholder="QT-XXXX-XXXX"/></label>
+                    <button className="cta" disabled={!giftCode} onClick={() => {
+                        setGiftCode('');
+                        setProfileSaved(true);
+                        window.setTimeout(() => setProfileSaved(false), 1800);
+                    }}>{profileSaved ? 'Code added' : 'Add code'}</button>
+                </>}{profilePanel === 'help' && <><p className="eyebrow">Help & contact</p><h1>We are
+                    here<br/>to help.</h1><p className="profileIntro">For booking changes, dietary
+                    requirements or a quick question, get in touch with the team.</p><a
+                    className="contactAction" href="tel:01676540444"><Icon name="fa-phone"/> Call The
+                    Quicken Tree</a><a className="contactAction" href="mailto:info@quickentree.uk"><Icon
+                    name="fa-envelope"/> Email the team</a></>}{profilePanel === 'reset' && <><p
+                    className="eyebrow">Demo controls</p><h1>Reset this<br/>app?</h1><p className="profileIntro">This
+                    clears this device’s demo bookings, orders, payment cards, profile choices and theme, then restores
+                    the original app state.</p>
+                    <button className="cta resetAppCta" onClick={resetAppToDefault}><Icon
+                        name="fa-arrow-rotate-left"/> Reset app to default
+                    </button>
+                </>}</>}
+            </div>
+            <nav>{([['home', 'fa-house', 'Home'], ['book', 'fa-calendar-plus', 'Book'], ['menu', 'fa-utensils', 'Menu'], ['rewards', 'fa-star', 'Rewards'], ['profile', 'fa-circle-user', 'Profile']] as const).map(([id, icon, label]) =>
+                <button key={id} onClick={() => navigate(id)}
+                        className={view === id || ((view === 'details' || view === 'checkout') && id === 'book') || (view === 'bookings' && id === 'profile') ? 'active' : ''}>
+                    <Icon name={icon}/>{label}</button>)}</nav>
+            {view === 'menu' && orderAheadBooking &&
+                <button className={`orderCart${preOrderCount ? '' : ' empty'}`} disabled={!preOrderCount}
+                        onClick={() => navigate('cart', true)}>
                             <span><Icon
-                                name="fa-cart-shopping"/></span><strong>{preOrderCount} {preOrderCount === 1 ? 'item' : 'items'}</strong>{preOrderCount > 0 && <em>£{preOrderTotal.toFixed(2)}</em>}
-                        </button>}
-                {redemption &&
-                    <RedemptionPass redemption={redemption} closing={isClosingRedemption} onClose={closeRedemption}/>} 
-                {bookingPendingCancellation && <BookingCancellationDialog hasOrder={Boolean(placedOrders[bookingPendingCancellation.id] || bookingOrderSummaries[bookingPendingCancellation.id])} onCancel={() => setBookingPendingCancellation(null)} onConfirm={() => {
-                    cancelBooking(bookingPendingCancellation, Boolean(placedOrders[bookingPendingCancellation.id] || bookingOrderSummaries[bookingPendingCancellation.id]));
-                    setBookingPendingCancellation(null);
-                }}/>}
-                {orderToast && <p className={`orderToast${orderToast.startsWith('Could not') ? ' error' : ''}${orderToastClosing ? ' closing' : ''}`} role="status"><Icon name={orderToast.startsWith('Could not') ? 'fa-circle-exclamation' : 'fa-check'}/><span><b>{orderToast.startsWith('Could not') ? 'Please try again' : orderToast.includes('Booking') ? 'Canceled' : 'Added!'}</b><small>{orderToast.startsWith('Could not') ? 'We could not redeem that reward. Your points have not changed.' : orderToast === 'Booking and order cancelled' ? 'Your booking and order has been canceled' : orderToast === 'Booking cancelled' ? 'Your booking has been canceled' : `${orderToast.replace(' added to your order', '')} is ready in your order`}</small></span></p>}
-                {itemOptionsPrompt && itemOptions[itemOptionsPrompt] && <ItemOptionsDialog itemName={itemOptionsPrompt} optionSet={itemOptions[itemOptionsPrompt]} onClose={() => setItemOptionsPrompt(null)} onAdd={item => {
+                                name="fa-cart-shopping"/></span><strong>{preOrderCount} {preOrderCount === 1 ? 'item' : 'items'}</strong>{preOrderCount > 0 &&
+                    <em>£{preOrderTotal.toFixed(2)}</em>}
+                </button>}
+            {redemption &&
+                <RedemptionPass redemption={redemption} closing={isClosingRedemption} onClose={closeRedemption}/>}
+            {bookingPendingCancellation && <BookingCancellationDialog
+                hasOrder={Boolean(placedOrders[bookingPendingCancellation.id] || bookingOrderSummaries[bookingPendingCancellation.id])}
+                onCancel={() => setBookingPendingCancellation(null)} onConfirm={() => {
+                cancelBooking(bookingPendingCancellation, Boolean(placedOrders[bookingPendingCancellation.id] || bookingOrderSummaries[bookingPendingCancellation.id]));
+                setBookingPendingCancellation(null);
+            }}/>}
+            {orderToast &&
+                <p className={`orderToast${orderToast.startsWith('Could not') ? ' error' : ''}${orderToastClosing ? ' closing' : ''}`}
+                   role="status"><Icon
+                    name={orderToast.startsWith('Could not') ? 'fa-circle-exclamation' : 'fa-check'}/><span><b>{orderToast.startsWith('Could not') ? 'Please try again' : orderToast.includes('Booking') ? 'Canceled' : 'Added!'}</b><small>{orderToast.startsWith('Could not') ? 'We could not redeem that reward. Your points have not changed.' : orderToast === 'Booking and order cancelled' ? 'Your booking and order has been canceled' : orderToast === 'Booking cancelled' ? 'Your booking has been canceled' : `${orderToast.replace(' added to your order', '')} is ready in your order`}</small></span>
+                </p>}
+            {itemOptionsPrompt && itemOptions[itemOptionsPrompt] &&
+                <ItemOptionsDialog itemName={itemOptionsPrompt} optionSet={itemOptions[itemOptionsPrompt]}
+                                   onClose={() => setItemOptionsPrompt(null)} onAdd={item => {
                     const baseItem = allMenuSections.flatMap(section => section.items).find(([itemName]) => itemOptionsPrompt.startsWith(itemName));
-                    setCustomOrderLines(current => ({...current, [item.name]: {description: item.description || baseItem?.[1] || itemOptionsPrompt, price: orderItemPrice(itemOptionsPrompt) + item.priceDelta}}));
+                    setCustomOrderLines(current => ({
+                        ...current,
+                        [item.name]: {
+                            description: item.description || baseItem?.[1] || itemOptionsPrompt,
+                            price: orderItemPrice(itemOptionsPrompt) + item.priceDelta
+                        }
+                    }));
                     addToOrder(item.name);
                     setItemOptionsPrompt(null);
-                }}/>} 
-                {courseMenuPrompt && selectedCourseOffer && <CourseMenuDialog offer={selectedCourseOffer} sections={filteredMenuSections} outOfStockItems={outOfStockItems} onClose={() => setCourseMenuPrompt(false)} onAdd={addCourseMenuToOrder}/>} 
-            </LoyaltyApp>
+                }}/>}
+            {courseMenuPrompt && selectedCourseOffer &&
+                <CourseMenuDialog offer={selectedCourseOffer} sections={filteredMenuSections}
+                                  outOfStockItems={outOfStockItems} onClose={() => setCourseMenuPrompt(false)}
+                                  onAdd={addCourseMenuToOrder}/>}
+        </LoyaltyApp>
     </AppNavigationProvider>;
 }
