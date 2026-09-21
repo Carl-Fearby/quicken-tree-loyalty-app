@@ -49,6 +49,19 @@ export function parseCookies(header?: string) {
 }
 export function refreshCookie(token: string) {
     const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-    return `qt_refresh=${encodeURIComponent(token)}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}${secure}`;
+    // The customer app can reach the API directly or through a same-origin
+    // `/api` proxy. Scope the session to the whole site so both routes receive
+    // it after a refresh. Also clear the old `/auth`-scoped cookie so it cannot
+    // compete with the replacement during the transition.
+    return [
+        `qt_refresh=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}${secure}`,
+        `qt_refresh=; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=0${secure}`
+    ];
 }
-export function expiredRefreshCookie() { return 'qt_refresh=; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=0'; }
+export function expiredRefreshCookie() {
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    return [
+        `qt_refresh=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`,
+        `qt_refresh=; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=0${secure}`
+    ];
+}

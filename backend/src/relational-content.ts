@@ -49,6 +49,8 @@ export async function createContentSchema(db:DB){
   const fields=Object.values(model.fields).map(f=>`${q(f.column)} ${f.type}${f.optional?'':' NOT NULL'}`);
   for(const [prop,child]of Object.entries(model.children??{}))if(child.optional)fields.push(`${q(`${prop}_present`)} boolean NOT NULL DEFAULT false`);
   await db.unsafe(`CREATE TABLE IF NOT EXISTS ${q(model.table)} (id text PRIMARY KEY, parent_id text ${parent?`NOT NULL REFERENCES ${q(parent.table)}(id) ON DELETE CASCADE`:''}, position integer NOT NULL CHECK(position>=0), map_key text${fields.length?', '+fields.join(', '):''})`);
+  for(const [prop,f]of Object.entries(model.fields))await db.unsafe(`ALTER TABLE ${q(model.table)} ADD COLUMN IF NOT EXISTS ${q(f.column)} ${f.type}${f.optional?'':' NOT NULL DEFAULT '+(f.type==='text'?"''":f.type==='boolean'?'false':'0')}`);
+  for(const [prop,child]of Object.entries(model.children??{}))if(child.optional)await db.unsafe(`ALTER TABLE ${q(model.table)} ADD COLUMN IF NOT EXISTS ${q(`${prop}_present`)} boolean NOT NULL DEFAULT false`);
   if(parent)await db.unsafe(`CREATE INDEX IF NOT EXISTS ${q(model.table+'_parent')} ON ${q(model.table)}(parent_id,position)`);
  }
  // Frequent menu stock/service changes have their own lightweight version.

@@ -1,0 +1,12 @@
+DirectoryIndex index.html
+
+RewriteEngine On
+
+# Serve existing files and generated route folders directly.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Resolve a clean route to its generated index file.
+RewriteCond %{DOCUMENT_ROOT}/$1/index.html -f
+RewriteRule ^(.+?)/?$ $1/index.html [L]

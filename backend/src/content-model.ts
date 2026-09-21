@@ -14,6 +14,9 @@ export const models: Record<string,Model> = {
   itemAvailability:map({table:'menu_item_availability',fields:{orderAheadOnly:field('order_ahead_only','boolean',true)},children:{days:array(leaf('menu_item_availability_days','weekday','integer'))}},true),
   dietaryTags:map({table:'menu_item_dietary_labels',fields:{},scalar:true,children:{value:array(leaf('menu_item_dietary_tags','tag_code'))}}),
   dietaryTagNames:map(leaf('dietary_tags','label')),
+  allergenTags:map({table:'menu_item_allergen_labels',fields:{},scalar:true,children:{value:array(leaf('menu_item_allergens','allergen_code'))}},true),
+  allergenTagNames:map(leaf('allergen_tags','label'),true),
+  allergenTagStyles:map({table:'allergen_tag_styles',fields:{color:field('color'),icon:field('icon')}},true),
   outOfStockItems:array(leaf('menu_unavailable_items','item_name')),
   serviceMessages:map(leaf('menu_service_messages','message')),
   // A menu can be priced per dish or as a configurable set of courses. The
@@ -23,7 +26,7 @@ export const models: Record<string,Model> = {
    courses:array({table:'menu_course_rules',fields:{section:field('section_title'),minSelections:field('min_selections','integer'),maxSelections:field('max_selections','integer')}})
   }}),
   // Reusable configurable choices for any individually-priced menu item.
-  itemOptions:map({table:'menu_item_option_sets',fields:{},children:{groups:array({table:'menu_item_option_groups',fields:{label:field('label'),minSelections:field('min_selections','integer'),maxSelections:field('max_selections','integer')},children:{options:array(leaf('menu_item_options','label'))}})}}),
+  itemOptions:map({table:'menu_item_option_sets',fields:{},children:{groups:array({table:'menu_item_option_groups',fields:{label:field('label'),minSelections:field('min_selections','integer'),maxSelections:field('max_selections','integer')},children:{options:array({table:'menu_item_options',fields:{label:field('label'),priceDeltaPence:field('price_delta_pence','integer',true)}})}})}}),
   menuServicePeriods:array({table:'menu_service_periods',fields:{id:field('code'),label:field('label'),start:field('starts_at'),end:field('ends_at')},children:{days:array(leaf('menu_service_days','weekday','integer'),true),categories:array(leaf('menu_service_categories','category_label'))}})
  }},
  appointments:{table:'booking_configuration',fields:{},children:{

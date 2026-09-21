@@ -1,13 +1,14 @@
 import type { MetadataRoute } from 'next';
 import {designTokens} from './designTokens';
+import {tenantBrand} from './lib/tenant-brand';
 
 export const dynamic = 'force-static';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'The Quicken Tree',
-    short_name: 'Quicken Tree',
-    description: 'Book, earn rewards and order ahead at The Quicken Tree.',
+    name: tenantBrand.name,
+    short_name: tenantBrand.shortName,
+    description: `Book, earn rewards and order ahead at ${tenantBrand.name}.`,
     start_url: '/',
     scope: '/',
     display: 'standalone',

@@ -2,15 +2,16 @@ import type { Metadata, Viewport } from 'next';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import './globals.css';
 import {designTokens} from './designTokens';
+import {tenantBrand} from './lib/tenant-brand';
 
 export const metadata: Metadata = {
-  title: 'The Quicken Tree | Loyalty',
-  description: 'Book, earn and enjoy more at The Quicken Tree.',
-  applicationName: 'The Quicken Tree',
+  title: `${tenantBrand.name} | Loyalty`,
+  description: `Book, earn and enjoy more at ${tenantBrand.name}.`,
+  applicationName: tenantBrand.name,
   manifest: '/manifest.webmanifest',
   // In iOS standalone mode this lets the app surface continue behind the
   // system status area. Content itself is padded with safe-area insets.
-  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'The Quicken Tree' },
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: tenantBrand.name },
   formatDetection: { telephone: false },
   icons: {
     icon: [

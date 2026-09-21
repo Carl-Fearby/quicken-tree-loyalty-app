@@ -1,6 +1,6 @@
-# Quicken Tree API
+# Pace API
 
-Portable Node.js + TypeScript API for the Quicken Tree app. It uses standard PostgreSQL and can run on any container, VM, or Node-compatible platform.
+Portable Node.js + TypeScript API for Pace. It uses standard PostgreSQL and can run on any container, VM, or Node-compatible platform.
 
 ## Local setup
 
@@ -11,7 +11,10 @@ Portable Node.js + TypeScript API for the Quicken Tree app. It uses standard Pos
    DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/postgres?sslmode=require
    API_ADMIN_TOKEN=replace-with-a-long-random-secret-of-at-least-24-characters
    PORT=4000
-   CORS_ORIGIN=http://localhost:3000
+   CORS_ORIGIN=http://localhost:3000,http://localhost:4300
+   MAILTRAP_API_KEY=your-mailtrap-api-token
+   MAIL_FROM_ADDRESS=no-reply@example.com
+   MAIL_TO_ADDRESS=hello@example.com
    ```
 
 3. Install the API dependencies and apply the schemas:
@@ -40,6 +43,8 @@ Portable Node.js + TypeScript API for the Quicken Tree app. It uses standard Pos
 
 Set `NEXT_PUBLIC_CONTENT_API_URL=http://localhost:4000` in the frontend environment when running separately. The full platform-neutral contract is in `../app/api/openapi.yaml`.
 
+The public marketing contact form sends `POST /contact` to this API. Configure `MAILTRAP_API_KEY`, `MAIL_FROM_ADDRESS`, and `MAIL_TO_ADDRESS` to enable delivery, and include the deployed marketing origin in `CORS_ORIGIN`.
+
 ## Endpoints
 
 Browse the live OpenAPI documentation at `http://localhost:4000/docs`. Its contract covers:
@@ -50,6 +55,7 @@ Browse the live OpenAPI documentation at `http://localhost:4000/docs`. Its contr
 - booking CRUD, cancellation and named guests;
 - order-ahead lines, per-serving guest assignment and checkout confirmation; and
 - tokenised payment-method references (never card numbers).
+- public marketing enquiries via `POST /contact`, when email delivery is configured.
 
 Authentication uses a short-lived access JWT in the `Authorization: Bearer` header and a rotating, HttpOnly refresh cookie. The frontend keeps the access token in memory, not browser storage. Set a distinct `AUTH_JWT_SECRET` of at least 32 characters in production; the local development fallback is the existing admin secret.
 

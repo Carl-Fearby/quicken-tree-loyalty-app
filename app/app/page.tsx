@@ -5,12 +5,12 @@ import {AndroidContainer} from './components/AndroidContainer';
 import {Icon} from './components/Icon';
 import {IphoneContainer, type IphoneSurfaceProps, type IphoneNotification} from './components/IphoneContainer';
 import {useContent, ContentProvider} from './lib/use-content';
-import {QuickenTreeApp} from './components/QuickenTreeApp';
+import {PaceApp} from './components/QuickenTreeApp';
 import type {DeviceManufacturer} from './components/device/types';
 import {defaultDeviceId, defaultManufacturerId, getDefaultModelForManufacturer, getModelsForManufacturer, manufacturers} from './components/device/profiles';
 import {computePreviewScale} from './components/device/previewScale';
 
-function QuickenTreeIcon() {
+function PaceAppIcon() {
     return <b style={{fontSize: 31, letterSpacing: -2, textShadow: '0 3px 8px var(--qt-color-overlay-scrim)'}}>QT</b>;
 }
 
@@ -142,9 +142,9 @@ function AppPreview() {
         if (advertIndex.current++ % 2 === 0) setNotification({...appConfig.menuNotification});
         else triggerNotification();
     }, [triggerNotification, appConfig]);
-    const app = useMemo(() => <QuickenTreeApp dark={isDarkMode} onShowNotification={showAppAdvert}/>, [isDarkMode, showAppAdvert]);
+    const app = useMemo(() => <PaceApp dark={isDarkMode} onShowNotification={showAppAdvert}/>, [isDarkMode, showAppAdvert]);
     const previewApps = [
-        {id: 'quicken-tree', label: 'The Quicken Tree', icon: <QuickenTreeIcon/>, app, keepMounted: true}
+        {id: 'venue-app', label: appConfig.venue, icon: <PaceAppIcon/>, app, keepMounted: true}
     ];
     const installedApp = previewApps[0].app;
     const iosDockApps = [<Icon key="phone" name="fa-phone"/>, <Icon key="messages" name="fa-message"/>, <Icon key="safari" name="fa-compass"/>, <Icon key="camera" name="fa-camera"/>];

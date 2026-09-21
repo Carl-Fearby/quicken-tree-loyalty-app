@@ -6,7 +6,9 @@
 !/start.sh
 !/app/
 !/backend/
+!/frontend-management/
 !/management/
+!/marketing/
 node_modules/
 .env
 .env.*
