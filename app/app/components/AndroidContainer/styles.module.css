@@ -34,6 +34,8 @@
 .systemApp:nth-child(5)>span{background:linear-gradient(145deg,var(--qt-color-ffb74d),var(--qt-color-fb8c00))}
 .systemApp:nth-child(6)>span{background:linear-gradient(145deg,var(--qt-color-ba68c8),var(--qt-color-8e24aa))}
 .appButton>span{background:linear-gradient(145deg,var(--qt-color-brand-bright),var(--qt-color-brand-pressed))}
+.appButton>span{background:#fff}
+.appButton>span img{display:block;width:44px;height:44px;object-fit:contain}
 .appButton small,.systemApp small{max-width:72px;overflow:hidden;font-size:10px;font-weight:500;white-space:nowrap;text-overflow:ellipsis}
 .samsung .appButton small,.samsung .systemApp small{text-shadow:0 1px 2px var(--qt-color-00000055)}
 .dock{position:relative;z-index:1;display:flex;justify-content:space-around;margin:0 16px 4px;padding:10px 8px}

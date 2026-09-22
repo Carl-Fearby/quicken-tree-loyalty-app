@@ -11,7 +11,7 @@ import {defaultDeviceId, defaultManufacturerId, getDefaultModelForManufacturer, 
 import {computePreviewScale} from './components/device/previewScale';
 
 function PaceAppIcon() {
-    return <b style={{fontSize: 31, letterSpacing: -2, textShadow: '0 3px 8px var(--qt-color-overlay-scrim)'}}>QT</b>;
+    return <img src="/pwa/pacevenues-launcher.png" alt="" width="44" height="44"/>;
 }
 
 export default function Page() {
@@ -144,7 +144,7 @@ function AppPreview() {
     }, [triggerNotification, appConfig]);
     const app = useMemo(() => <PaceApp dark={isDarkMode} onShowNotification={showAppAdvert}/>, [isDarkMode, showAppAdvert]);
     const previewApps = [
-        {id: 'venue-app', label: appConfig.venue, icon: <PaceAppIcon/>, app, keepMounted: true}
+        {id: 'venue-app', label: 'Pace Venues', icon: <PaceAppIcon/>, app, keepMounted: true}
     ];
     const installedApp = previewApps[0].app;
     const iosDockApps = [<Icon key="phone" name="fa-phone"/>, <Icon key="messages" name="fa-message"/>, <Icon key="safari" name="fa-compass"/>, <Icon key="camera" name="fa-camera"/>];
@@ -258,8 +258,8 @@ function AppPreview() {
         </div>
         <div ref={previewAreaRef} className={`devicePreviewArea${isThreeDChassisMounted ? ' threeDimensional' : ''}`} style={{display: showDevice ? undefined : 'none'}}>
             <div className={`devicePreview${isLandscape ? ' landscape' : ''}${isThreeDChassisMounted ? ' threeDimensional' : ''}${isThreeDimensional ? ' isTilted' : ''}`} style={{width: layoutWidth * previewScale, height: layoutHeight * previewScale, '--three-d-x': `${threeDRotation.x}deg`, '--three-d-y': `${threeDRotation.y}deg`} as CSSProperties} onPointerDown={startThreeDDrag} onPointerMove={moveThreeDDrag} onPointerUp={endThreeDDrag} onPointerCancel={endThreeDDrag}>
-                {device.platform === 'android' ? <AndroidContainer className={orientationClass} isDark={isDarkMode} isLandscape={isLandscape} isThreeD={isThreeDChassisMounted} device={previewDevice} apps={previewApps} dockApps={androidDockApps}/>
-                    : <IphoneContainer className={orientationClass} isDark={isDarkMode} isLandscape={isLandscape} isThreeD={isThreeDChassisMounted} device={previewDevice} caseColor={selectedAppleCase.value} apps={previewApps} dockApps={iosDockApps} notification={notification} onDismissNotification={() => setNotification(null)} onClock={triggerNotification} onAppOpenChange={setIsDeviceAppOpen}/>} 
+                {device.platform === 'android' ? <AndroidContainer className={orientationClass} isDark={isDarkMode} isLandscape={isLandscape} isThreeD={isThreeDChassisMounted} device={previewDevice} apps={previewApps} initialAppId="venue-app" dockApps={androidDockApps}/>
+                    : <IphoneContainer className={orientationClass} isDark={isDarkMode} isLandscape={isLandscape} isThreeD={isThreeDChassisMounted} device={previewDevice} caseColor={selectedAppleCase.value} apps={previewApps} initialAppId="venue-app" dockApps={iosDockApps} notification={notification} onDismissNotification={() => setNotification(null)} onClock={triggerNotification} onAppOpenChange={setIsDeviceAppOpen}/>}
             </div>
         </div>
         {!showDevice && <section style={{gridColumn: 1, gridRow: 2, minHeight: 0, overflow: 'hidden'}}>{app}</section>}
