@@ -2,6 +2,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Breadcrumbs } from '../ui/Breadcrumbs';
+import { readRewardsFeature } from '../../lib/rewards-feature';
 type Reward = {
   id: string;
   code: string;
@@ -102,6 +103,13 @@ export function RewardsPage() {
       .finally(() => setLoading(false));
   }, []);
   useEffect(() => {
+    readRewardsFeature()
+      .then((enabled) => {
+        if (!enabled) router.replace('/configuration');
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : 'Unable to load reward availability.'));
+  }, [router]);
+  useEffect(() => {
     const controller = new AbortController();
     const timer = setTimeout(() => {
       request(`customers?q=${encodeURIComponent(query)}`, undefined, controller.signal)
@@ -168,7 +176,7 @@ export function RewardsPage() {
   };
   return (
     <section className="settings-page rewards-page">
-      <Breadcrumbs current="Rewards" onSettings={() => router.push('/configuration')} />
+      <Breadcrumbs current="Rewards" showSettings={false} />
       <p className="eyebrow">CUSTOMER LOYALTY</p>
       <h1>Rewards</h1>
       <p className="settings-intro">

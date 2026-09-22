@@ -65,6 +65,7 @@ type ApiBooking = {
 };
 type ApiProfile = { displayName: string; email: string; tier: string; tastes: string[]; dietaryNeeds: string[] };
 type ApiLoyalty = { points: number };
+type RewardsFeature = { enabled: boolean };
 type ApiOrder = {
     status: string;
     total_pence: number;
@@ -215,6 +216,7 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
     const selectedCard = cards.find(card => card.id === paymentMethod);
     const effectivePaymentMethod = selectedCard ? selectedCard.id : 'apple-pay';
     const [view, setView] = useState<View>('home');
+    const [rewardsEnabled, setRewardsEnabled] = useState(true);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [themeReady, setThemeReady] = useState(false);
     const [menuCategory, setMenuCategory] = useState('Breakfasts');
@@ -243,6 +245,34 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
     const [selectedPlacedOrderBooking, setSelectedPlacedOrderBooking] = useState<Booking | null>(null);
     const [bookingPendingCancellation, setBookingPendingCancellation] = useState<Booking | null>(null);
     const [orderToast, setOrderToast] = useState('');
+
+    useEffect(() => {
+        const base = (process.env.NEXT_PUBLIC_CONTENT_API_URL ?? '/api').replace(/\/$/, '');
+        const loadRewardsFeature = async () => {
+            try {
+                const response = await fetch(`${base}/features/rewards`, {
+                    credentials: 'include',
+                    cache: 'no-store'
+                });
+                const feature = await response.json() as RewardsFeature;
+                if (!response.ok || typeof feature.enabled !== 'boolean') return;
+                setRewardsEnabled(feature.enabled);
+                if (!feature.enabled) setView(current => current === 'rewards' ? 'home' : current);
+            } catch {
+                // Keep the last known state if the feature service is temporarily unavailable.
+            }
+        };
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') void loadRewardsFeature();
+        };
+        void loadRewardsFeature();
+        window.addEventListener('focus', loadRewardsFeature);
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        return () => {
+            window.removeEventListener('focus', loadRewardsFeature);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+        };
+    }, []);
     const [orderToastClosing, setOrderToastClosing] = useState(false);
     const [courseMenuPrompt, setCourseMenuPrompt] = useState(false);
     const [itemOptionsPrompt, setItemOptionsPrompt] = useState<string | null>(null);
@@ -602,6 +632,7 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
         }
     };
     const navigate = (next: View, preserveOrderAhead = false) => {
+        if (next === 'rewards' && !rewardsEnabled) next = 'home';
         setShowDatePicker(false);
         // Tapping a bottom-nav item always returns that section to its root screen.
         if (next === 'profile') setProfilePanel(null);
@@ -902,7 +933,8 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
             <div className="appSafeArea" aria-hidden="true"/>
             <div className="content appScreenTransition" key={`${view}-${profilePanel ?? 'root'}`}>
                 {view === 'home' && <HomeScreen bookings={bookings} memberName={profileName} points={memberPoints}
-                                                nextRewardAt={pointsData.nextRewardAt} onBookEvent={bookEvent}
+                                                nextRewardAt={pointsData.nextRewardAt} rewardsEnabled={rewardsEnabled}
+                                                onBookEvent={bookEvent}
                                                 onLogoClick={onShowNotification}/>}
                 {view === 'book' && <BookingScreen experience={bookingExperience} prices={experiencePrices}
                                                    price={bookingPricePerGuest} total={bookingTotal}
@@ -1090,7 +1122,7 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
                         setCheckoutMode('order');
                         navigate('checkout', true);
                     }}/>}
-                {view === 'rewards' && <><p className="eyebrow">Member rewards</p><h1>A little thank
+                {rewardsEnabled && view === 'rewards' && <><p className="eyebrow">Member rewards</p><h1>A little thank
                     you,<br/>every time you visit.</h1>
                     <section className="tier"><img src="/brand/quicken-tree-white.png"
                                                    alt="The Quicken Tree"/><small>Current tier</small>
@@ -1224,7 +1256,9 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
                     </button>
                 </>}</>}
             </div>
-            <nav>{([['home', 'fa-house', 'Home'], ['book', 'fa-calendar-plus', 'Book'], ['menu', 'fa-utensils', 'Menu'], ['rewards', 'fa-star', 'Rewards'], ['profile', 'fa-circle-user', 'Profile']] as const).map(([id, icon, label]) =>
+            <nav>{([['home', 'fa-house', 'Home'], ['book', 'fa-calendar-plus', 'Book'], ['menu', 'fa-utensils', 'Menu'], ['rewards', 'fa-star', 'Rewards'], ['profile', 'fa-circle-user', 'Profile']] as const)
+                .filter(([id]) => rewardsEnabled || id !== 'rewards')
+                .map(([id, icon, label]) =>
                 <button key={id} onClick={() => navigate(id)}
                         className={view === id || ((view === 'details' || view === 'checkout') && id === 'book') || (view === 'bookings' && id === 'profile') ? 'active' : ''}>
                     <Icon name={icon}/>{label}</button>)}</nav>

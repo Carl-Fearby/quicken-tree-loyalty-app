@@ -42,6 +42,12 @@ const groups = [
     ['Can guests manage dietary or profile preferences?', 'The app experience is designed to keep profile preferences and dietary needs available to support more relevant bookings and conversations. Venue teams should still confirm specific requirements with the kitchen.'],
     ['Is the app ready to be branded for our venue?', 'The app is designed around venue content and configuration, including menus, events, rewards and venue details. A rollout conversation can establish the appropriate branding and content requirements.'],
   ]],
+  ['Customers and staff access', [
+    ['What does the customer list show?', 'The back office has a searchable list of registered app customers. Staff with customer access can see names, loyalty balances, booking counts and the latest booking date.'],
+    ['Can staff have different permissions?', 'Yes. Booking access can be set to none, read or write. Customer access, rewards and each configuration area can be assigned separately to staff accounts. Administrators have full access.'],
+    ['Can a staff member grant permissions they do not have?', 'No. A user who can manage accounts cannot give another person access to functions beyond their own permissions.'],
+    ['Can rewards be turned off?', 'Yes. A rewards setting hides rewards in both the back office and guest app when disabled, while keeping existing reward data.'],
+  ]],
   ['Getting started, pricing and support', [
     ['How is Pace priced?', 'Pricing is shaped around the venue rather than presented as a misleading one-size-fits-all number. We consider the number of venues, tables and menus, team access, rollout needs and the support required.'],
     ['Which plan should we choose?', 'Pace essentials is a sensible starting point for bookings, tables, hours and menu administration. Pace growth adds customer points and reward management, while Pace group is intended for multi-venue rollouts.'],

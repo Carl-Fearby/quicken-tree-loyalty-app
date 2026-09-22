@@ -13,6 +13,7 @@ type Props = {
   onChange: (value: BookingDraft) => void;
   onDateChange: (date: string) => void;
   onSubmit: (event: FormEvent) => void;
+  readOnly?: boolean;
 };
 
 export function BookingForm({
@@ -24,10 +25,11 @@ export function BookingForm({
   onChange,
   onDateChange,
   onSubmit,
+  readOnly = false,
 }: Props) {
   return (
     <form onSubmit={onSubmit}>
-      <div className="booking-fields">
+      <fieldset className="booking-fields booking-fields-set" disabled={readOnly}>
         <BookingDetailsFields value={value} onChange={onChange} />
         <BookingScheduleFields
           date={date}
@@ -38,7 +40,7 @@ export function BookingForm({
           onDateChange={onDateChange}
         />
         <BookingTableFields tables={tables} value={value} onChange={onChange} />
-      </div>
+      </fieldset>
     </form>
   );
 }

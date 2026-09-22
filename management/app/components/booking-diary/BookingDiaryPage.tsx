@@ -1,6 +1,5 @@
 'use client';
-import { FormEvent, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { FormEvent, useState } from 'react';
 import { BookingList } from './BookingList';
 import { DiaryGrid } from './DiaryGrid';
 import { AddBookingModal } from './modals/AddBookingModal';
@@ -12,6 +11,7 @@ import { DatePicker } from '../ui/DatePicker';
 import { Breadcrumbs } from '../ui/Breadcrumbs';
 import { useBookingAvailability } from './hooks/useBookingAvailability';
 import { useBookingDiary } from './hooks/useBookingDiary';
+import { useManagementUser } from '../../contexts/ManagementAuth';
 type Table = { id: number; name: string; seats: number };
 type Booking = {
   id: string;
@@ -64,8 +64,10 @@ const today = () =>
     day: '2-digit',
   }).format(new Date());
 export default function BookingDiaryPage() {
-  const router = useRouter();
+  const managementUser = useManagementUser();
+  const canWrite = managementUser.bookingAccess === 'write';
   const [date, setDate] = useState(today),
+    [bookingDate, setBookingDate] = useState(today),
     [draft, setDraft] = useState<Draft | null>(null),
     [editing, setEditing] = useState<Booking | null>(null),
     [assigning, setAssigning] = useState<Booking | null>(null),
@@ -74,15 +76,18 @@ export default function BookingDiaryPage() {
     [saving, setSaving] = useState(false);
 
   const { bookings: active, diary, error, load, setError, slots } = useBookingDiary(date);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const modalOpen = draft !== null || editing !== null;
+  const { bookings: bookingDayBookings, diary: bookingDay, slots: bookingSlots } =
+    useBookingDiary(bookingDate, modalOpen && bookingDate !== date);
+  const modalDiary = bookingDate === date ? diary : bookingDay;
+  const modalBookings = bookingDate === date ? active : bookingDayBookings;
+  const modalSlots = bookingDate === date ? slots : bookingSlots;
   const candidates = useBookingAvailability({
-    date,
-    draft,
+    date: bookingDate,
+    draft: modalDiary ? draft : null,
   });
-  const begin = () =>
+  const begin = () => {
+    setBookingDate(date);
     setDraft({
       name: '',
       guests: 2,
@@ -93,6 +98,11 @@ export default function BookingDiaryPage() {
       notes: '',
       tableIds: [],
     });
+  };
+  const beginEdit = (booking: Booking) => {
+    setBookingDate(date);
+    setEditing(booking);
+  };
   const save = async (event: FormEvent, existing?: Booking) => {
     event.preventDefault();
     const value = existing
@@ -116,7 +126,7 @@ export default function BookingDiaryPage() {
             method: existing ? 'PUT' : 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              date,
+              date: bookingDate,
               time: value.time,
               name: value.name,
               guests: value.guests,
@@ -193,13 +203,15 @@ export default function BookingDiaryPage() {
     source: Diary | null,
     bookings: Booking[],
     times: string[],
+    currentBookingId?: string,
   ) =>
-    source
+    source && times.includes(value.time)
       ? source.tables.filter(
           (table) =>
             table.seats >= value.guests &&
             !bookings.some(
               (booking) =>
+                booking.id !== currentBookingId &&
                 (booking.assignedTableIds || []).includes(table.id) &&
                 times.indexOf(value.time) <
                   times.indexOf(booking.time.slice(0, 5)) +
@@ -211,7 +223,10 @@ export default function BookingDiaryPage() {
       : [];
   return (
     <>
-      <Breadcrumbs current="Booking diary" onSettings={() => router.push('/configuration')} />
+      <Breadcrumbs
+        current="Booking diary"
+        showSettings={false}
+      />
       <div className="diary-toolbar">
         <div>
           <p className="eyebrow">BOOKING MANAGEMENT</p>
@@ -236,18 +251,17 @@ export default function BookingDiaryPage() {
           <button onClick={() => shift(1)}>→</button>
           <button onClick={() => setDate(today())}>Today</button>
           <button onClick={() => void load()}>Refresh</button>
-          <button className="danger" onClick={begin}>
-            + Add booking
-          </button>
+          {canWrite && <button className="danger" onClick={begin}>+ Add booking</button>}
         </div>
       </div>
       {error && <p className="error-message">{error}</p>}
       <div className="diary-layout">
         <BookingList
           bookings={active}
-          onSelect={setEditing}
+          onSelect={beginEdit}
           onAssign={setAssigning}
           onViewOrder={setOrderDetails}
+          canWrite={canWrite}
         />
         <DiaryGrid
           bookings={active}
@@ -256,20 +270,20 @@ export default function BookingDiaryPage() {
           kitchenClose={diary?.openingHours?.kitchenClose}
           kitchenOpen={diary?.openingHours?.kitchenOpen}
           tables={diary?.tables ?? []}
-          onSelect={setEditing}
+          onSelect={beginEdit}
         />
       </div>
       {draft && (
         <AddBookingModal
-          date={date}
-          slots={slots}
-          kitchenClose={diary?.openingHours?.kitchenClose}
+          date={bookingDate}
+          slots={modalSlots}
+          kitchenClose={modalDiary?.openingHours?.kitchenClose}
           tables={candidates}
           value={draft}
           saving={saving}
           error={error}
           onChange={setDraft}
-          onDateChange={setDate}
+          onDateChange={setBookingDate}
           onClose={() => setDraft(null)}
           onSubmit={(event) => void save(event)}
         />
@@ -277,9 +291,9 @@ export default function BookingDiaryPage() {
       {editing && (
         <EditBookingModal
           booking={editing}
-          date={date}
-          slots={slots}
-          kitchenClose={diary?.openingHours?.kitchenClose}
+          date={bookingDate}
+          slots={modalSlots}
+          kitchenClose={modalDiary?.openingHours?.kitchenClose}
           tables={existingCandidates(
             {
               name: editing.name,
@@ -291,9 +305,10 @@ export default function BookingDiaryPage() {
               notes: editing.notes || '',
               tableIds: editing.assignedTableIds || [],
             },
-            diary,
-            active,
-            slots,
+            modalDiary,
+            modalBookings,
+            modalSlots,
+            editing.id,
           )}
           value={{
             name: editing.name,
@@ -306,6 +321,7 @@ export default function BookingDiaryPage() {
             tableIds: editing.assignedTableIds || [],
           }}
           saving={saving}
+          readOnly={!canWrite}
           onChange={(value) =>
             setEditing({
               ...editing,
@@ -319,9 +335,10 @@ export default function BookingDiaryPage() {
               assignedTableIds: value.tableIds,
             })
           }
-          onDateChange={setDate}
+          onDateChange={setBookingDate}
           onClose={() => setEditing(null)}
           onRequestCancel={() => {
+            if (!canWrite) return;
             setCancelling(editing);
             setEditing(null);
           }}
@@ -329,10 +346,10 @@ export default function BookingDiaryPage() {
             setOrderDetails(editing);
             setEditing(null);
           }}
-          onSubmit={(event) => void save(event, editing)}
+          onSubmit={(event) => canWrite && void save(event, editing)}
         />
       )}
-      {assigning && (
+      {canWrite && assigning && (
         <AssignTableModal
           booking={assigning}
           tables={diary?.tables ?? []}

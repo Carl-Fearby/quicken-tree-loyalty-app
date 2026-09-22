@@ -6,9 +6,10 @@ type Props = {
   onSelect: (booking: Booking) => void;
   onAssign: (booking: Booking) => void;
   onViewOrder: (booking: Booking) => void;
+  canWrite: boolean;
 };
 
-export function BookingList({ bookings, onSelect, onAssign, onViewOrder }: Props) {
+export function BookingList({ bookings, onSelect, onAssign, onViewOrder, canWrite }: Props) {
   return (
     <aside className="diary-bookings">
       <h2>Bookings for the day</h2>
@@ -21,6 +22,7 @@ export function BookingList({ bookings, onSelect, onAssign, onViewOrder }: Props
             onSelect={onSelect}
             onAssign={onAssign}
             onViewOrder={onViewOrder}
+            canWrite={canWrite}
           />
         ))
       ) : (

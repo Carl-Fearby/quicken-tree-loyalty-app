@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Table } from '../booking-diary/lib/bookingTypes';
-import { today } from '../booking-diary/lib/bookingTimes';
 import { BookingDurationSettings } from './BookingDurationSettings';
 import { DatabaseAccessDialog, DatabaseManagement } from './DatabaseManagement';
 import { OpeningHoursSettings, type OpeningHour } from './OpeningHoursSettings';
@@ -11,8 +10,19 @@ import { SettingsHome } from './SettingsHome';
 import { MenuSymbolSettings } from './MenuSymbolSettings';
 import { MenuMaintenance } from '../menu-maintenance/MenuMaintenance';
 import { Breadcrumbs } from '../ui/Breadcrumbs';
+import { RewardsFeatureSetting } from './RewardsFeatureSetting';
+import { UserManagement } from './UserManagement';
 
-export type SettingsView = 'home' | 'tables' | 'duration' | 'hours' | 'database' | 'menu' | 'menu-symbols';
+export type SettingsView =
+  | 'home'
+  | 'tables'
+  | 'duration'
+  | 'hours'
+  | 'database'
+  | 'menu'
+  | 'menu-symbols'
+  | 'rewards'
+  | 'users';
 export function SettingsPage({
   view,
 }: {
@@ -34,13 +44,14 @@ export function SettingsPage({
     }
   };
   useEffect(() => {
-    void fetch(`/api/diary?date=${today()}`)
+    if (view !== 'tables' && view !== 'duration') return;
+    void fetch('/api/booking-settings')
       .then((response) => response.json())
       .then((data) => {
         setTables(data.tables || []);
-        setDuration(data.bookingSettings?.defaultDurationMinutes || 90);
+        setDuration(data.defaultDurationMinutes || 90);
       });
-  }, []);
+  }, [view]);
   useEffect(() => {
     if (view === 'hours')
       void fetch('/api/opening-hours')
@@ -94,6 +105,19 @@ export function SettingsPage({
   if (view === 'database') return <DatabaseManagement onBack={() => navigate('home')} />;
   if (view === 'menu') return <MenuMaintenance onBack={() => navigate('home')} />;
   if (view === 'menu-symbols') return <MenuSymbolSettings onBack={() => navigate('home')} />;
+  if (view === 'users') return <UserManagement onBack={() => navigate('home')} />;
+  if (view === 'rewards')
+    return (
+      <section className="settings-page">
+        <Breadcrumbs current="Rewards settings" onSettings={() => navigate('home')} />
+        <p className="eyebrow">SYSTEM SETTINGS</p>
+        <h1>Rewards settings</h1>
+        <p className="settings-intro">
+          Manage how rewards are made available across Pace and the customer loyalty app.
+        </p>
+        <RewardsFeatureSetting />
+      </section>
+    );
   const title =
     view === 'tables'
       ? 'Restaurant tables'

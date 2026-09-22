@@ -4,13 +4,15 @@ import { SiteFooter, SiteHeader } from '../SiteChrome';
 import { ArrowIcon } from '../WhatsAppLink';
 import { metadata } from '../../lib/seo';
 
-export const generateMetadata = (): Metadata => metadata('Capabilities | Pace', 'See what Pace restaurant management software does for bookings, menus, service hours and customer loyalty.', '/capabilities');
+export const generateMetadata = (): Metadata => metadata('Capabilities | Pace', 'See Pace bookings, menus, service hours, customer lists, loyalty and staff permissions.', '/capabilities');
 
 const capabilities = [
   ['01', 'Plan every service', 'Manage reservations in a visual diary, see guest numbers at a glance, configure table capacities and assign tables that fit each booking.'],
   ['02', 'Control the details', 'Set venue and kitchen closing times by day, organise menus into sections, build dish options and price differences, manage availability, and maintain dietary and allergen symbols.'],
   ['03', 'Build customer loyalty', 'Create single-use QR rewards worth 0–1,000 points, choose expiry dates, credit existing customers and keep an auditable reason for every manual points change.'],
-  ['04', 'Keep teams aligned', 'Give staff one place to review bookings, menus and rewards. Changes stay visible in the back office so the team can act on the latest service information.'],
+  ['04', 'Know your customers', 'Search registered app customers by name or email, with loyalty balances, booking counts and latest booking dates together in a customer list.'],
+  ['05', 'Give staff the right access', 'Create back-office users and choose read or write booking access. Set customer, rewards and individual configuration permissions for each account.'],
+  ['06', 'Keep teams aligned', 'Give staff one place to review bookings, menus and rewards. Changes stay visible in the back office so the team can act on the latest service information.'],
 ];
 
 export default function CapabilitiesPage() {

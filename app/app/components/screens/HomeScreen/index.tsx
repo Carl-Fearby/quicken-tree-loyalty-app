@@ -15,11 +15,12 @@ type Event = {
     festive?: boolean
 };
 
-export function HomeScreen({bookings, memberName, points, nextRewardAt, onBookEvent, onLogoClick}: {
+export function HomeScreen({bookings, memberName, points, nextRewardAt, rewardsEnabled, onBookEvent, onLogoClick}: {
     bookings: UpcomingBooking[];
     memberName: string;
     points: number;
     nextRewardAt: number;
+    rewardsEnabled: boolean;
     onBookEvent: (date: string) => void;
     onLogoClick?: () => void
 }) {
@@ -38,14 +39,14 @@ export function HomeScreen({bookings, memberName, points, nextRewardAt, onBookEv
             <div className={styles.heartOfEnglandLogo}><img src="/brand/heart-of-england-white.png"
                                                             alt="Heart of England Conference Centre"/></div>
         </section>
-        <button className="points" onClick={() => navigate('rewards')}>
+        {rewardsEnabled && <button className="points" onClick={() => navigate('rewards')}>
             <i>QT</i><span><b>{points.toLocaleString()} points</b><small>{pointsUntilReward.toLocaleString()} points until your next reward</small></span><em><Icon
-            name="fa-chevron-right"/></em></button>
+            name="fa-chevron-right"/></em></button>}
         <Header title="Your visit, your way"/>
         <div className="actions">
             <button onClick={() => navigate('book')}><strong><Icon name="fa-calendar-plus"/></strong>Book a table
             </button>
-            <button onClick={() => navigate('rewards')}><strong><Icon name="fa-star"/></strong>Use rewards</button>
+            {rewardsEnabled && <button onClick={() => navigate('rewards')}><strong><Icon name="fa-star"/></strong>Use rewards</button>}
             <button onClick={() => navigate('menu')}><strong><Icon name="fa-utensils"/></strong>View menu</button>
         </div>
         <UpcomingBookings bookings={bookings}

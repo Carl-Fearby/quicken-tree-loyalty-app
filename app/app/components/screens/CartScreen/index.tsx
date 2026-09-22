@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import styles from './styles.module.css';
 import { Icon } from '../../Icon';
 
@@ -7,8 +7,26 @@ export type OrderGuestDetails = { names: string[]; assignments: Record<string, s
 
 function GuestSelect({value, names, onChange}: {value: string; names: string[]; onChange: (value: string) => void}) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const options = ['To share', ...names];
-  return <div className="guestSelect"><button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(current => !current)}>{value}<Icon name="fa-chevron-down"/></button>{open && <div className="guestSelectOptions" role="listbox">{options.map(option => <button type="button" key={option} role="option" aria-selected={option === value} className={option === value ? 'selected' : ''} onClick={() => {onChange(option); setOpen(false);}}>{option}</button>)}</div>}</div>;
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const dismissWithKeyboard = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', dismissWithKeyboard);
+    return () => {
+      document.removeEventListener('pointerdown', dismiss);
+      document.removeEventListener('keydown', dismissWithKeyboard);
+    };
+  }, [open]);
+  return <div className="guestSelect" ref={rootRef} onBlur={event => {
+    if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+  }}><button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(current => !current)}>{value}<Icon name="fa-chevron-down"/></button>{open && <div className="guestSelectOptions" role="listbox">{options.map(option => <button type="button" key={option} role="option" aria-selected={option === value} className={option === value ? 'selected' : ''} onClick={event => {event.stopPropagation(); setOpen(false); onChange(option);}}>{option}</button>)}</div>}</div>;
 }
 
 export function CartScreen({ lines, total, booking, guestDetails, onGuestDetailsChange, onBack, onAdd, onRemove, onDelete, onEmpty, onCheckout }: { lines: CartLine[]; total: number; booking: { guests: string; time: string; name?: string } | null; guestDetails: OrderGuestDetails; onGuestDetailsChange: (details: OrderGuestDetails) => void; onBack: () => void; onAdd: (name: string) => void; onRemove: (name: string) => void; onDelete: (name: string) => void; onEmpty: () => void; onCheckout: () => void }) {

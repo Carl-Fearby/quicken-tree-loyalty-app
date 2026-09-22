@@ -17,10 +17,11 @@ type Props = {
   onRequestCancel: () => void;
   onViewOrder: () => void;
   onSubmit: (event: FormEvent) => void;
+  readOnly?: boolean;
 };
 export function EditBookingModal(props: Props) {
   return (
-    <ModalShell title="Edit booking" onClose={props.onClose}>
+    <ModalShell title={props.readOnly ? 'Booking details' : 'Edit booking'} onClose={props.onClose}>
       <BookingForm {...props} />
       <div className="dialog-actions">
         {props.booking.orderAhead && (
@@ -28,10 +29,10 @@ export function EditBookingModal(props: Props) {
             View order
           </button>
         )}
-        <button className="booking-cancel-trigger" type="button" onClick={props.onRequestCancel}>
+        {!props.readOnly && <button className="booking-cancel-trigger" type="button" onClick={props.onRequestCancel}>
           Cancel this booking…
-        </button>
-        <button
+        </button>}
+        {!props.readOnly && <button
           className="primary"
           disabled={props.saving || !props.value.time}
           onClick={() =>
@@ -39,7 +40,7 @@ export function EditBookingModal(props: Props) {
           }
         >
           {props.saving ? 'Saving…' : 'Save booking'}
-        </button>
+        </button>}
       </div>
     </ModalShell>
   );

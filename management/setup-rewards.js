@@ -20,6 +20,12 @@ try {
         'utf8',
       ),
     );
+      await tx.unsafe(
+        await readFile(
+          new URL('../backend/migrations/016_feature_flags.sql', import.meta.url),
+          'utf8',
+        ),
+      );
   });
   console.log('Reward tokens and single-use claims configured.');
 } finally {

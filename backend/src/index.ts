@@ -25,6 +25,21 @@ const ownBooking = async (id:string, memberId:string) => {const [row] = await sq
 const recalc = async (orderId:string) => sql`update orders set total_pence = coalesce((select sum(unit_price_pence * quantity) from order_lines where order_id = ${orderId}),0), updated_at = now() where id = ${orderId}`;
 const getOrder = async (bookingId:string, memberId:string, create=false) => {await ownBooking(bookingId, memberId); if (create) await sql`insert into orders (booking_id) values (${bookingId}) on conflict (booking_id) do nothing`; const [row] = await sql<{id:string; status:string; total_pence:number; paid_at:Date|null}[]>`select id,status,total_pence,paid_at from orders where booking_id=${bookingId}`; if (!row) throw new Error('Order not found.'); return row;};
 const live = [{bearerAuth: []}];
+const rewardsEnabled = async () => {
+    const [feature] = await sql<{enabled:boolean}[]>`select enabled from feature_flags where feature_key='rewards'`;
+    return feature?.enabled ?? true;
+};
+const requireRewardsEnabled = async () => {
+    if (await rewardsEnabled()) return;
+    const error = new Error('Rewards are not available for this venue.');
+    (error as Error & {statusCode?:number}).statusCode = 404;
+    throw error;
+};
+await sql`create table if not exists feature_flags(feature_key text primary key,enabled boolean not null default true,updated_at timestamptz not null default now())`;
+await sql`insert into feature_flags(feature_key,enabled) values('rewards',true) on conflict(feature_key) do nothing`;
+app.addHook('preHandler', async request => {
+    if (/^\/(?:me\/)?rewards(?:\/|$)/.test(request.url.split('?')[0])) await requireRewardsEnabled();
+});
 app.post('/contact', {schema: {tags: ['Marketing'], summary: 'Send a marketing enquiry', body: anyObject}}, async (request, reply) => {
     const body = z.object({
         name: z.string().trim().min(2).max(100),
@@ -51,6 +66,7 @@ app.post('/auth/logout',{schema:{tags:['Authentication'],summary:'Revoke current
 app.post('/auth/forgot-password',{schema:{tags:['Authentication'],summary:'Send a password reset link',body:anyObject}},async request=>{const {email}=z.object({email:z.string().email()}).parse(request.body);const [member]=await sql<{id:string;email:string;display_name:string}[]>`select id,email,display_name from members where email=${email.trim().toLowerCase()}`;if(member){const token=createRefreshToken();await sql.begin(async tx=>{await tx`update member_password_reset_tokens set used_at=now() where member_id=${member.id} and used_at is null`;await tx`insert into member_password_reset_tokens(member_id,token_hash,expires_at) values(${member.id},${hashRefreshToken(token)},now()+interval '30 minutes')`;});try{await sendPasswordResetEmail(member.email,member.display_name,token);}catch(error){app.log.error(error,'Password reset email could not be sent');}}return {ok:true};});
 app.post('/auth/reset-password',{schema:{tags:['Authentication'],summary:'Set a new password with a one-time reset token',body:anyObject}},async request=>{const {token,password}=z.object({token:z.string().min(32),password:z.string().min(8).max(128)}).parse(request.body);const credentials=await hashPassword(password);const member=await sql.begin(async tx=>{const [reset]=await tx<{member_id:string}[]>`update member_password_reset_tokens set used_at=now() where token_hash=${hashRefreshToken(token)} and used_at is null and expires_at>now() returning member_id`;if(!reset){const error=new Error('This password reset link is invalid or has expired.');(error as Error & {statusCode?:number}).statusCode=400;throw error;}await tx`update member_credentials set password_salt=${credentials.salt},password_hash=${credentials.hash},updated_at=now() where member_id=${reset.member_id}`;await tx`update member_refresh_sessions set revoked_at=now() where member_id=${reset.member_id} and revoked_at is null`;return reset.member_id;});return {ok:true,memberId:member};});
 // Cacheable datasets: menu, events, offers, rewards, opening rules, and profile options.
+app.get('/features/rewards',{schema:{tags:['Features'],summary:'Read whether customer rewards are enabled'}},async()=>({enabled:await rewardsEnabled()}));
 app.get('/content/manifest',{schema:{tags:['Content'],summary:'List versions of cacheable datasets'}},async()=>contentManifest());
 app.get('/content/:key',{schema:{tags:['Content'],summary:'Download a dataset only if the cached version is stale'}},async request=>{const {key}=z.object({key:z.string().min(1)}).parse(request.params);const {version}=z.object({version:z.string().optional()}).parse(request.query);const data=await currentDataset(key);if(!data)return {statusCode:404,message:'Content dataset not found.'};return version===data.version?{key,version:data.version,updatedAt:data.updatedAt,changed:false}:{...data,changed:true};});
 app.put('/admin/content/:key',{preHandler:admin,schema:{tags:['Content administration'],summary:'Publish one independently versioned dataset',security:[{adminToken:[]}],body:{type:'object',required:['data'],properties:{version:{type:'string'},data:anyObject}}}},async request=>{const {key}=z.object({key:z.string().min(1)}).parse(request.params);const body=z.object({version:z.string().optional(),data:z.record(z.string(),z.unknown())}).parse(request.body);return publishDataset(key,body.data,body.version);});
@@ -87,4 +103,4 @@ app.get('/me/payment-methods',{schema:{tags:['Payments'],summary:'List payment t
 app.post('/me/payment-methods',{schema:{tags:['Payments'],summary:'Store provider token reference',security:live,body:anyObject}},async request=>{const member=await me(request);const b=z.object({provider:z.string().min(1),providerReference:z.string().min(1),brand:z.string().optional(),last4:z.string().regex(/^\d{4}$/).optional(),expiresAt:z.string().date().optional()}).parse(request.body);const [result]=await sql<{id:string}[]>`insert into payment_method_references(member_id,provider,provider_reference,brand,last4,expires_at) values(${member.id},${b.provider},${b.providerReference},${b.brand??null},${b.last4??null},${b.expiresAt??null}) returning id`;return result;});
 app.delete('/me/payment-methods/:id',{schema:{tags:['Payments'],summary:'Delete payment provider reference',security:live}},async request=>{const member=await me(request);const {id}=params.parse(request.params);await sql`delete from payment_method_references where id=${id} and member_id=${member.id}`;return {ok:true};});
 
-app.listen({port:config.PORT,host:'0.0.0.0'});
+app.listen({port: config.PORT, host: config.HOST});

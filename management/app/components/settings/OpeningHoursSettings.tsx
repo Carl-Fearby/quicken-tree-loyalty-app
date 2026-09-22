@@ -55,13 +55,19 @@ export function OpeningHoursSettings({
     );
   return (
     <div className="opening-hours-editor">
+      <div className="opening-hours-columns" aria-hidden="true">
+        <span />
+        <span>Venue opens</span>
+        <span>Kitchen opens</span>
+        <span>Kitchen closes</span>
+        <span>Venue closes</span>
+      </div>
       {days.map(([id, title]) => {
         const hour = valueFor(id);
         return (
           <div className="opening-hours-row" key={id}>
             <strong>{title}</strong>
-            <label>
-              Venue opens
+            <div className="opening-hours-field">
               <RoundedSelect
                 ariaLabel={`${title} venue opening time`}
                 value={hour.open}
@@ -70,9 +76,8 @@ export function OpeningHoursSettings({
                   .map((time) => ({ value: time, label: label(time) }))}
                 onChange={(time) => update(id, 'open', Number(time))}
               />
-            </label>
-            <label>
-              Kitchen opens
+            </div>
+            <div className="opening-hours-field">
               <RoundedSelect
                 ariaLabel={`${title} kitchen opening time`}
                 value={hour.kitchenOpen}
@@ -81,9 +86,8 @@ export function OpeningHoursSettings({
                   .map((time) => ({ value: time, label: label(time) }))}
                 onChange={(time) => update(id, 'kitchenOpen', Number(time))}
               />
-            </label>
-            <label>
-              Kitchen closes
+            </div>
+            <div className="opening-hours-field">
               <RoundedSelect
                 ariaLabel={`${title} kitchen closing time`}
                 value={hour.kitchenClose}
@@ -92,9 +96,8 @@ export function OpeningHoursSettings({
                   .map((time) => ({ value: time, label: label(time) }))}
                 onChange={(time) => update(id, 'kitchenClose', Number(time))}
               />
-            </label>
-            <label>
-              Venue closes
+            </div>
+            <div className="opening-hours-field">
               <RoundedSelect
                 ariaLabel={`${title} closing time`}
                 value={hour.close}
@@ -103,7 +106,7 @@ export function OpeningHoursSettings({
                   .map((time) => ({ value: time, label: label(time) }))}
                 onChange={(time) => update(id, 'close', Number(time))}
               />
-            </label>
+            </div>
           </div>
         );
       })}

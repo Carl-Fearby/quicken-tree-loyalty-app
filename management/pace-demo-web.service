@@ -1,0 +1,20 @@
+[Unit]
+Description=Pace interactive back-office demo
+After=network-online.target pace-demo-gateway.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pace
+Group=pace
+WorkingDirectory=/srv/pace/management-demo
+Environment=NODE_ENV=production
+Environment=PORT=4200
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 4200
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

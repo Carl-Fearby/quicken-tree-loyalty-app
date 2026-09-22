@@ -1,23 +1,81 @@
 import http from 'node:http';
+import { execFile, spawn } from 'node:child_process';
 import { rewardsRoute } from './rewards.js';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
+import { mkdir, rm } from 'node:fs/promises';
+import { createConnection } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { promisify } from 'node:util';
 import postgres from 'postgres';
 import { describe, quote, remove } from './db.js';
 if (!process.env.DATABASE_URL) throw Error('Set DATABASE_URL in management/.env first.');
 const port = Number(process.env.PORT || 4100);
-const dbUrl = new URL(process.env.DATABASE_URL);
-const local = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(dbUrl.hostname);
-const sql = postgres(process.env.DATABASE_URL, {
-  max: 4,
-  connect_timeout: 5,
-  connection: { statement_timeout: 15000, lock_timeout: 3000 },
-  ssl:
-    process.env.DATABASE_SSL === 'disable'
-      ? false
-      : process.env.DATABASE_SSL === 'require' || !local
-        ? 'require'
-    : false,
+const createDatabaseClient = (connectionString) => {
+  const url = new URL(connectionString);
+  const isLocal = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(url.hostname);
+  return postgres(connectionString, {
+    max: 4,
+    connect_timeout: 5,
+    connection: { statement_timeout: 15000, lock_timeout: 3000, search_path: 'public' },
+    ssl:
+      process.env.DATABASE_SSL === 'disable'
+        ? false
+        : process.env.DATABASE_SSL === 'require' || !isLocal
+          ? 'require'
+          : false,
+  });
+};
+const databaseClients = { local: createDatabaseClient(process.env.DATABASE_URL) };
+const databaseUrls = { local: process.env.DATABASE_URL, remote: process.env.PRODUCTION_DATABASE_URL || '' };
+let activeDatabaseTarget = 'local';
+let sql = databaseClients.local;
+const databaseSwitchEnabled = process.env.NODE_ENV !== 'production';
+const runFile = promisify(execFile);
+let productionTunnel;
+const productionPort = () => Number(new URL(databaseUrls.remote).port);
+const canConnect = (port) => new Promise((resolve) => {
+  const socket = createConnection({ host: '127.0.0.1', port });
+  socket.setTimeout(1000);
+  socket.once('connect', () => { socket.destroy(); resolve(true); });
+  socket.once('error', () => resolve(false));
+  socket.once('timeout', () => { socket.destroy(); resolve(false); });
 });
+const ensureProductionTunnel = async () => {
+  const key = process.env.PRODUCTION_SSH_KEY;
+  const host = process.env.PRODUCTION_SSH_HOST;
+  const port = productionPort();
+  const url = new URL(databaseUrls.remote);
+  if (!key || !host || !port || url.hostname !== '127.0.0.1')
+    throw Error('Configure the Production SSH tunnel and local forwarded database URL.');
+  if (productionTunnel && await canConnect(port)) return;
+  if (await canConnect(port))
+    throw Error('The Production tunnel port is already in use. Stop the other listener and try again.');
+  productionTunnel = spawn('ssh', [
+    '-N', '-i', key, '-o', 'BatchMode=yes', '-o', 'ExitOnForwardFailure=yes',
+    '-o', 'ServerAliveInterval=30', '-L', `127.0.0.1:${port}:127.0.0.1:5432`,
+    `${process.env.PRODUCTION_SSH_USER || 'root'}@${host}`,
+  ], { stdio: 'ignore' });
+  productionTunnel.once('error', () => { productionTunnel = undefined; });
+  productionTunnel.once('exit', () => { productionTunnel = undefined; });
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (await canConnect(port)) return;
+    if (!productionTunnel) break;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw Error('Could not establish the private tunnel to the Production database.');
+};
+process.once('exit', () => productionTunnel?.kill());
+const activeDatabaseInfo = () => {
+  const url = new URL(databaseUrls[activeDatabaseTarget]);
+  return {
+    target: activeDatabaseTarget,
+    label: activeDatabaseTarget === 'local' ? 'Local database' : 'Production database',
+    database: decodeURIComponent(url.pathname.slice(1)),
+    host: url.hostname,
+    remoteConfigured: Boolean(databaseUrls.remote),
+  };
+};
 await sql`alter table menu_item_options add column if not exists price_delta_pence integer`;
 await sql`create table if not exists allergen_tags(id text primary key, parent_id text not null default 'menu', position integer not null default 0, map_key text not null unique, label text not null)`;
 await sql`create table if not exists allergen_tag_styles(id text primary key, parent_id text not null default 'menu', position integer not null default 0, map_key text not null unique, color text not null default '', icon text not null default '')`;
@@ -25,6 +83,72 @@ await sql`create table if not exists menu_item_allergen_labels(id text primary k
 await sql`create table if not exists menu_item_allergens(id text primary key, parent_id text not null references menu_item_allergen_labels(id) on delete cascade, position integer not null default 0, allergen_code text not null)`;
 await sql`alter table kitchen_hours add column if not exists opens_at numeric`;
 await sql`update kitchen_hours k set opens_at=o.opens_at from opening_hours o where o.parent_id='appointments' and o.map_key=k.day and k.opens_at is null`;
+await sql`create table if not exists feature_flags(feature_key text primary key,enabled boolean not null default true,updated_at timestamptz not null default now())`;
+await sql`insert into feature_flags(feature_key,enabled) values('rewards',true) on conflict(feature_key) do nothing`;
+await sql`create table if not exists management_users(
+  id uuid primary key,
+  email text not null unique,
+  display_name text not null,
+  password_hash text not null,
+  role text not null default 'staff' check(role in ('admin','staff')),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+)`;
+await sql`create unique index if not exists management_users_email_lower on management_users(lower(email))`;
+await sql`create table if not exists management_sessions(
+  id uuid primary key,
+  user_id uuid not null references management_users(id) on delete cascade,
+  token_hash text not null unique,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+)`;
+await sql`create index if not exists management_sessions_expiry on management_sessions(expires_at)`;
+await sql`alter table management_users add column if not exists configuration_access boolean not null default false`;
+await sql`alter table management_users add column if not exists booking_access text not null default 'read'`;
+await sql`alter table management_users drop constraint if exists management_users_booking_access_check`;
+await sql`alter table management_users add constraint management_users_booking_access_check check(booking_access in ('none','read','write'))`;
+await sql`update management_users set configuration_access=true,booking_access='write' where role='admin'`;
+await sql`create table if not exists management_permission_definitions(
+  permission_key text primary key,
+  label text not null,
+  description text not null,
+  levels text[] not null,
+  position integer not null default 0
+)`;
+await sql`create table if not exists management_user_permissions(
+  user_id uuid not null references management_users(id) on delete cascade,
+  permission_key text not null references management_permission_definitions(permission_key) on delete cascade,
+  access_level text not null,
+  primary key(user_id,permission_key)
+)`;
+await sql`insert into management_permission_definitions(permission_key,label,description,levels,position) values
+  ('bookings','Booking diary','View or manage bookings and table assignments.',array['none','read','write'],0),
+  ('customers','Customers tab','Show the Customers tab and view customer profiles and loyalty balances.',array['none','read'],1),
+  ('rewards','Rewards','Create rewards and add points to customers.',array['none','write'],2),
+  ('configuration.tables','Restaurant tables','Manage restaurant tables and capacities.',array['none','write'],10),
+  ('configuration.duration','Booking duration','Manage the default booking duration.',array['none','write'],11),
+  ('configuration.hours','Opening & kitchen hours','Manage venue and kitchen hours.',array['none','write'],12),
+  ('configuration.menu','Menu maintenance','Manage menus, sections, dishes and availability.',array['none','write'],13),
+  ('configuration.symbols','Dietary & allergen symbols','Manage dietary and allergen keys.',array['none','write'],14),
+  ('configuration.rewards','Rewards settings','Turn customer rewards on or off.',array['none','write'],15),
+  ('configuration.users','User management','Create users and delegate permissions.',array['none','write'],16),
+  ('configuration.database','Database management','Inspect and modify database records.',array['none','write'],17)
+  on conflict(permission_key) do update set label=excluded.label,description=excluded.description,levels=excluded.levels,position=excluded.position`;
+await sql`delete from management_permission_definitions where permission_key in ('configuration','users')`;
+await sql`insert into management_users(id,email,display_name,password_hash,role,configuration_access,booking_access)
+  select ${randomUUID()},'carlfearby@me.com','Carl Fearby','scrypt:d6df8a5f0b2895143f2ea76558990501:f874205f60ebbb25b77d86d9ada6ef8c733d11f95400e3990b008e29af47f9c795414ad658238c11d79193fdbd796a741c5ada0c6c3ffe622fd7fcde119a47e4','admin',true,'write'
+  where not exists(select 1 from management_users)`;
+await sql`insert into management_user_permissions(user_id,permission_key,access_level)
+  select u.id,d.permission_key,
+    case
+      when u.role='admin' then d.levels[array_length(d.levels,1)]
+      when d.permission_key='bookings' then u.booking_access
+      when d.permission_key like 'configuration.%' and u.configuration_access then 'write'
+      else 'none'
+    end
+  from management_users u cross join management_permission_definitions d
+  on conflict(user_id,permission_key) do nothing`;
 const allergenDefaults = [
   ['g', 'Gluten'],
   ['cr', 'Crustaceans'],
@@ -80,6 +204,109 @@ async function readJson(req, limit = 16384) {
     throw Object.assign(new Error('Invalid JSON.'), { status: 400 });
   }
 }
+const sessionCookie = 'pace_management_session';
+const sessionLifetimeSeconds = 60 * 60 * 12;
+const secureCookie = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+const hashToken = (token) => createHash('sha256').update(token).digest('hex');
+const hashPassword = (password) => {
+  const salt = randomBytes(16).toString('hex');
+  return `scrypt:${salt}:${scryptSync(password, salt, 64).toString('hex')}`;
+};
+const passwordMatches = (password, stored) => {
+  const [scheme, salt, encoded] = String(stored).split(':');
+  if (scheme !== 'scrypt' || !salt || !encoded) return false;
+  const expected = Buffer.from(encoded, 'hex');
+  const actual = scryptSync(password, salt, expected.length);
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+};
+const parseCookies = (header = '') =>
+  Object.fromEntries(
+    header.split(';').map((part) => part.trim().split('=').map(decodeURIComponent)).filter(([key]) => key),
+  );
+const clearSessionCookie =
+  `${sessionCookie}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secureCookie}`;
+const authUser = async (req) => {
+  const token = parseCookies(req.headers.cookie)[sessionCookie];
+  if (!token) return null;
+  const [user] = await sql`
+    select u.id,u.email,u.display_name as "displayName",u.role,u.active,
+      case when u.role='admin' then true else u.configuration_access end as "configurationAccess",
+      case when u.role='admin' then 'write' else u.booking_access end as "bookingAccess"
+    from management_sessions s join management_users u on u.id=s.user_id
+    where s.token_hash=${hashToken(token)} and s.expires_at>now() and u.active=true`;
+  if (!user) return null;
+  user.permissions = await effectivePermissions(user.id, user.role);
+  user.configurationAccess = Object.entries(user.permissions).some(
+    ([key, level]) => key.startsWith('configuration.') && level !== 'none',
+  );
+  user.bookingAccess = user.permissions.bookings || 'none';
+  return user;
+};
+const permissionDefinitions = async () =>
+  sql`select permission_key as "key",label,description,levels,position from management_permission_definitions order by position,permission_key`;
+const effectivePermissions = async (userId, role) => {
+  const definitions = await permissionDefinitions();
+  if (role === 'admin')
+    return Object.fromEntries(definitions.map((definition) => [definition.key, definition.levels.at(-1)]));
+  const rows = await sql`select permission_key as "key",access_level as level from management_user_permissions where user_id=${userId}`;
+  const stored = Object.fromEntries(rows.map((row) => [row.key, row.level]));
+  return Object.fromEntries(
+    definitions.map((definition) => [
+      definition.key,
+      definition.levels.includes(stored[definition.key]) ? stored[definition.key] : 'none',
+    ]),
+  );
+};
+const permissionRank = (definition, level) => definition.levels.indexOf(level);
+const validateDelegatedPermissions = async (requested, actor, role) => {
+  const definitions = await permissionDefinitions();
+  if (role === 'admin' && actor.role !== 'admin')
+    throw Object.assign(new Error('Only an administrator can create or promote administrators.'), { status: 403 });
+  const permissions = {};
+  for (const definition of definitions) {
+    const level = role === 'admin' ? definition.levels.at(-1) : requested?.[definition.key] || 'none';
+    if (!definition.levels.includes(level))
+      throw Object.assign(new Error(`Choose a valid ${definition.label} permission.`), { status: 400 });
+    const actorLevel = actor.permissions[definition.key] || 'none';
+    if (actor.role !== 'admin' && permissionRank(definition, level) > permissionRank(definition, actorLevel))
+      throw Object.assign(new Error(`You cannot grant ${definition.label} access above your own.`), { status: 403 });
+    permissions[definition.key] = level;
+  }
+  if (role !== 'admin' && Object.values(permissions).every((level) => level === 'none'))
+    throw Object.assign(new Error('Give the user access to at least one function.'), { status: 400 });
+  return { definitions, permissions };
+};
+const savePermissions = async (transaction, userId, permissions) => {
+  for (const [key, level] of Object.entries(permissions))
+    await transaction`insert into management_user_permissions(user_id,permission_key,access_level) values(${userId},${key},${level}) on conflict(user_id,permission_key) do update set access_level=excluded.access_level`;
+};
+const userFields = (body, requirePassword = false) => {
+  const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
+  const displayName = typeof body?.displayName === 'string' ? body.displayName.trim() : '';
+  const password = typeof body?.password === 'string' ? body.password : '';
+  const role = body?.role === 'admin' ? 'admin' : body?.role === 'staff' ? 'staff' : '';
+  const bookingAccess = ['none', 'read', 'write'].includes(body?.bookingAccess)
+    ? body.bookingAccess
+    : 'none';
+  const configurationAccess = body?.configurationAccess === true;
+  if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254)
+    throw Object.assign(new Error('Enter a valid email address.'), { status: 400 });
+  if (!displayName || displayName.length > 100)
+    throw Object.assign(new Error('Enter a name of up to 100 characters.'), { status: 400 });
+  if (!role) throw Object.assign(new Error('Choose Admin or Staff.'), { status: 400 });
+  if ((requirePassword || password) && (password.length < 12 || password.length > 128))
+    throw Object.assign(new Error('Passwords must be between 12 and 128 characters.'), { status: 400 });
+  return {
+    email,
+    displayName,
+    password,
+    role,
+    active: body?.active !== false,
+    configurationAccess: role === 'admin' ? true : configurationAccess,
+    bookingAccess: role === 'admin' ? 'write' : bookingAccess,
+    permissions: body?.permissions && typeof body.permissions === 'object' ? body.permissions : {},
+  };
+};
 const itemFields = (body) => {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   const description = typeof body.description === 'string' ? body.description.trim() : '';
@@ -210,6 +437,7 @@ const londonDateTime = () => {
   );
   return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}`;
 };
+const loginAttempts = new Map();
 const server = http.createServer(async (req, res) => {
   const json = (status, data) => {
     res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -225,6 +453,254 @@ const server = http.createServer(async (req, res) => {
     );
     res.setHeader('X-Content-Type-Options', 'nosniff');
     const url = new URL(req.url, `http://localhost:${port}`);
+    if (url.pathname === '/api/development/database-target' && req.method === 'GET') {
+      if (!databaseSwitchEnabled) return json(404, { message: 'Not found.' });
+      return json(200, activeDatabaseInfo());
+    }
+    if (url.pathname === '/api/development/database-target' && req.method === 'PUT') {
+      if (!databaseSwitchEnabled) return json(404, { message: 'Not found.' });
+      const body = await readJson(req);
+      const target = body?.target === 'remote' ? 'remote' : body?.target === 'local' ? 'local' : '';
+      if (!target) return json(400, { message: 'Choose the local or remote database.' });
+      if (target === 'remote' && !databaseUrls.remote)
+        return json(400, { message: 'Set PRODUCTION_DATABASE_URL in management/.env first.' });
+      if (target === 'remote') await ensureProductionTunnel();
+      if (!databaseClients[target]) databaseClients[target] = createDatabaseClient(databaseUrls[target]);
+      await databaseClients[target]`select current_database()`;
+      sql = databaseClients[target];
+      activeDatabaseTarget = target;
+      res.setHeader('Set-Cookie', clearSessionCookie);
+      return json(200, activeDatabaseInfo());
+    }
+    if (url.pathname === '/api/auth/login' && req.method === 'POST') {
+      const key = req.socket.remoteAddress || 'local';
+      const attempt = loginAttempts.get(key) || { count: 0, resetAt: Date.now() + 15 * 60 * 1000 };
+      if (attempt.resetAt <= Date.now()) {
+        attempt.count = 0;
+        attempt.resetAt = Date.now() + 15 * 60 * 1000;
+      }
+      if (attempt.count >= 10)
+        return json(429, { message: 'Too many sign-in attempts. Try again later.' });
+      const body = await readJson(req);
+      const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
+      const password = typeof body?.password === 'string' ? body.password : '';
+      const [user] = await sql`select id,email,display_name as "displayName",password_hash as "passwordHash",role,active,configuration_access as "configurationAccess",booking_access as "bookingAccess" from management_users where lower(email)=${email}`;
+      if (!user?.active || !passwordMatches(password, user.passwordHash)) {
+        attempt.count += 1;
+        loginAttempts.set(key, attempt);
+        return json(401, { message: 'Email or password is incorrect.' });
+      }
+      loginAttempts.delete(key);
+      const token = randomBytes(32).toString('hex');
+      await sql`delete from management_sessions where expires_at<=now()`;
+      await sql`insert into management_sessions(id,user_id,token_hash,expires_at) values(${randomUUID()},${user.id},${hashToken(token)},now()+interval '12 hours')`;
+      res.setHeader('Set-Cookie', `${sessionCookie}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${sessionLifetimeSeconds}${secureCookie}`);
+      return json(200, { user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, configurationAccess: user.role === 'admin' || user.configurationAccess, bookingAccess: user.role === 'admin' ? 'write' : user.bookingAccess } });
+    }
+    if (url.pathname === '/api/auth/logout' && req.method === 'POST') {
+      const token = parseCookies(req.headers.cookie)[sessionCookie];
+      if (token) await sql`delete from management_sessions where token_hash=${hashToken(token)}`;
+      res.setHeader('Set-Cookie', clearSessionCookie);
+      return json(200, { ok: true });
+    }
+    const currentUser = await authUser(req);
+    if (url.pathname === '/api/auth/session' && req.method === 'GET') {
+      if (!currentUser) return json(401, { message: 'Sign in required.' });
+      return json(200, { user: currentUser });
+    }
+    if (url.pathname.startsWith('/api/') && !currentUser) {
+      res.setHeader('Set-Cookie', clearSessionCookie);
+      return json(401, { message: 'Sign in required.' });
+    }
+    if (url.pathname === '/api/development/refresh-production' && req.method === 'POST') {
+      if (!databaseSwitchEnabled) return json(404, { message: 'Not found.' });
+      if (currentUser.role !== 'admin' && currentUser.permissions?.['configuration.database'] !== 'write')
+        return json(403, { message: 'Database management access required.' });
+      if (!databaseUrls.remote)
+        return json(400, { message: 'Set PRODUCTION_DATABASE_URL in management/.env first.' });
+      if (activeDatabaseTarget !== 'local')
+        return json(409, { message: 'Switch to the Local database before refreshing Production.' });
+      const body = await readJson(req);
+      if (body?.confirmation !== 'PRODUCTION')
+        return json(400, { message: 'Type PRODUCTION to confirm the replacement.' });
+      await ensureProductionTunnel();
+      const dumpFile = join(tmpdir(), `pace-local-${randomUUID()}.dump`);
+      const backupDir = join(process.cwd(), 'backups');
+      await mkdir(backupDir, { recursive: true, mode: 0o700 });
+      const productionBackup = join(backupDir, `production-before-refresh-${new Date().toISOString().replace(/[:.]/g, '-')}.dump`);
+      try {
+        await runFile('pg_dump', [
+          '--format=custom', '--no-owner', '--no-privileges',
+          `--dbname=${databaseUrls.remote}`, `--file=${productionBackup}`,
+        ], { timeout: 5 * 60 * 1000, maxBuffer: 8 * 1024 * 1024 });
+        await runFile('pg_dump', [
+          '--format=custom', '--no-owner', '--no-privileges',
+          `--dbname=${databaseUrls.local}`, `--file=${dumpFile}`,
+        ], { timeout: 5 * 60 * 1000, maxBuffer: 8 * 1024 * 1024 });
+        await runFile('pg_restore', [
+          '--clean', '--if-exists', '--no-owner', '--no-privileges', '--exit-on-error', '--single-transaction',
+          `--dbname=${databaseUrls.remote}`, dumpFile,
+        ], { timeout: 10 * 60 * 1000, maxBuffer: 8 * 1024 * 1024 });
+        return json(200, { ok: true, message: 'Production now matches the local database. A pre-refresh backup was saved locally.' });
+      } finally {
+        await rm(dumpFile, { force: true });
+      }
+    }
+    if (url.pathname === '/api/auth/change-password' && req.method === 'POST') {
+      const body = await readJson(req);
+      const currentPassword = typeof body?.currentPassword === 'string' ? body.currentPassword : '';
+      const newPassword = typeof body?.newPassword === 'string' ? body.newPassword : '';
+      if (newPassword.length < 12 || newPassword.length > 128)
+        return json(400, { message: 'New password must be between 12 and 128 characters.' });
+      if (currentPassword === newPassword)
+        return json(400, { message: 'Choose a new password that is different from your current password.' });
+      const [credentials] = await sql`select password_hash as "passwordHash" from management_users where id=${currentUser.id}`;
+      if (!credentials || !passwordMatches(currentPassword, credentials.passwordHash))
+        return json(400, { message: 'Current password is incorrect.' });
+      await sql`update management_users set password_hash=${hashPassword(newPassword)},updated_at=now() where id=${currentUser.id}`;
+      const currentToken = parseCookies(req.headers.cookie)[sessionCookie];
+      await sql`delete from management_sessions where user_id=${currentUser.id} and token_hash<>${hashToken(currentToken)}`;
+      return json(200, { ok: true });
+    }
+    const bookingAccess = currentUser?.role === 'admin' ? 'write' : currentUser?.bookingAccess;
+    const hasPermission = (key, level = 'write') => {
+      if (currentUser?.role === 'admin') return true;
+      return currentUser?.permissions?.[key] === level;
+    };
+    let requiredConfigurationPermission = null;
+    if (url.pathname.startsWith('/api/features/') && req.method !== 'GET') requiredConfigurationPermission = 'configuration.rewards';
+    else if (url.pathname.startsWith('/api/opening-hours')) requiredConfigurationPermission = 'configuration.hours';
+    else if (url.pathname === '/api/booking-settings' && req.method === 'PUT') requiredConfigurationPermission = 'configuration.duration';
+    else if (url.pathname === '/api/booking-settings' && req.method === 'GET') {
+      if (!hasPermission('configuration.tables') && !hasPermission('configuration.duration'))
+        return json(403, { message: 'Booking configuration access required.' });
+    }
+    else if (url.pathname.startsWith('/api/booking-tables')) requiredConfigurationPermission = 'configuration.tables';
+    else if (url.pathname.startsWith('/api/menu-tags')) requiredConfigurationPermission = 'configuration.symbols';
+    else if (url.pathname.startsWith('/api/menu')) requiredConfigurationPermission = 'configuration.menu';
+    else if (url.pathname.startsWith('/api/tables')) requiredConfigurationPermission = 'configuration.database';
+    if (requiredConfigurationPermission && !hasPermission(requiredConfigurationPermission))
+      return json(403, { message: 'You do not have access to this configuration function.' });
+    if (url.pathname.startsWith('/api/diary')) {
+      if (bookingAccess === 'none') return json(403, { message: 'Booking access required.' });
+      if (req.method !== 'GET' && bookingAccess !== 'write')
+        return json(403, { message: 'Read and write booking access required.' });
+    }
+    if (url.pathname === '/api/users' && req.method === 'GET') {
+      if (!hasPermission('configuration.users')) return json(403, { message: 'User management access required.' });
+      const rows = await sql`select id,email,display_name as "displayName",role,active,created_at as "createdAt",updated_at as "updatedAt" from management_users order by active desc,display_name,email`;
+      const users = await Promise.all(rows.map(async (user) => ({...user, permissions: await effectivePermissions(user.id,user.role)})));
+      return json(200, {
+        users,
+        currentUser: { id: currentUser.id, role: currentUser.role, permissions: currentUser.permissions },
+        permissionDefinitions: await permissionDefinitions(),
+      });
+    }
+    if (url.pathname === '/api/users' && req.method === 'POST') {
+      if (!hasPermission('configuration.users')) return json(403, { message: 'User management access required.' });
+      const fields = userFields(await readJson(req), true);
+      const delegated = await validateDelegatedPermissions(fields.permissions, currentUser, fields.role);
+      const id = randomUUID();
+      const [user] = await sql.begin(async (transaction) => {
+        const [created] = await transaction`insert into management_users(id,email,display_name,password_hash,role,active,configuration_access,booking_access) values(${id},${fields.email},${fields.displayName},${hashPassword(fields.password)},${fields.role},${fields.active},false,'none') returning id,email,display_name as "displayName",role,active,created_at as "createdAt",updated_at as "updatedAt"`;
+        await savePermissions(transaction,id,delegated.permissions);
+        return [created];
+      });
+      user.permissions = delegated.permissions;
+      return json(201, { user });
+    }
+    const userMatch = url.pathname.match(/^\/api\/users\/([0-9a-f-]{36})$/i);
+    if (userMatch && req.method === 'PUT') {
+      if (!hasPermission('configuration.users')) return json(403, { message: 'User management access required.' });
+      const id = userMatch[1];
+      const fields = userFields(await readJson(req));
+      const [existing] = await sql`select id,role,active from management_users where id=${id}`;
+      if (!existing) return json(404, { message: 'User not found.' });
+      const delegatedDefinitions = await permissionDefinitions();
+      const existingPermissions = await effectivePermissions(id, existing.role);
+      if (currentUser.role !== 'admin' && (existing.role === 'admin' || Object.entries(existingPermissions).some(([key,level]) => {
+        const definition = delegatedDefinitions.find((item) => item.key === key);
+        return definition && permissionRank(definition,level) > permissionRank(definition,currentUser.permissions[key] || 'none');
+      }))) return json(403, { message: 'You cannot manage a user with permissions above your own.' });
+      const delegated = await validateDelegatedPermissions(fields.permissions, currentUser, fields.role);
+      if (id === currentUser.id && (!fields.active || fields.role !== existing.role))
+        return json(400, { message: 'You cannot disable or change the role of your own account.' });
+      if (existing.role === 'admin' && existing.active && (!fields.active || fields.role !== 'admin')) {
+        const [count] = await sql`select count(*)::integer as count from management_users where role='admin' and active=true`;
+        if (count.count <= 1) return json(400, { message: 'At least one active administrator is required.' });
+      }
+      const passwordHash = fields.password ? hashPassword(fields.password) : null;
+      const [user] = await sql.begin(async (transaction) => {
+        const [saved] = await transaction`update management_users set email=${fields.email},display_name=${fields.displayName},role=${fields.role},active=${fields.active},password_hash=coalesce(${passwordHash},password_hash),updated_at=now() where id=${id} returning id,email,display_name as "displayName",role,active,created_at as "createdAt",updated_at as "updatedAt"`;
+        await savePermissions(transaction,id,delegated.permissions);
+        return [saved];
+      });
+      user.permissions = delegated.permissions;
+      if (!fields.active) await sql`delete from management_sessions where user_id=${id}`;
+      else if (passwordHash) {
+        const currentToken = parseCookies(req.headers.cookie)[sessionCookie];
+        if (id === currentUser.id && currentToken)
+          await sql`delete from management_sessions where user_id=${id} and token_hash<>${hashToken(currentToken)}`;
+        else await sql`delete from management_sessions where user_id=${id}`;
+      }
+      return json(200, { user });
+    }
+    if (userMatch && req.method === 'DELETE') {
+      if (!hasPermission('configuration.users')) return json(403, { message: 'User management access required.' });
+      const id = userMatch[1];
+      if (id === currentUser.id) return json(400, { message: 'You cannot delete your own account.' });
+      const [existing] = await sql`select role,active from management_users where id=${id}`;
+      if (!existing) return json(404, { message: 'User not found.' });
+      if (currentUser.role !== 'admin' && existing.role === 'admin')
+        return json(403, { message: 'Only an administrator can delete an administrator.' });
+      if (currentUser.role !== 'admin') {
+        const definitions = await permissionDefinitions();
+        const targetPermissions = await effectivePermissions(id, existing.role);
+        if (Object.entries(targetPermissions).some(([key,level]) => {
+          const definition = definitions.find((item) => item.key === key);
+          return definition && permissionRank(definition,level) > permissionRank(definition,currentUser.permissions[key] || 'none');
+        })) return json(403, { message: 'You cannot delete a user with permissions above your own.' });
+      }
+      if (existing.role === 'admin' && existing.active) {
+        const [count] = await sql`select count(*)::integer as count from management_users where role='admin' and active=true`;
+        if (count.count <= 1) return json(400, { message: 'At least one active administrator is required.' });
+      }
+      await sql`delete from management_users where id=${id}`;
+      return json(200, { ok: true });
+    }
+    if (url.pathname === '/api/features/rewards' && req.method === 'GET') {
+      const [feature] = await sql`select enabled from feature_flags where feature_key='rewards'`;
+      return json(200, { enabled: feature?.enabled ?? true });
+    }
+    if (url.pathname === '/api/features/rewards' && req.method === 'PUT') {
+      const body = await readJson(req);
+      if (typeof body?.enabled !== 'boolean')
+        return json(400, { message: 'Rewards enabled must be true or false.' });
+      await sql`insert into feature_flags(feature_key,enabled,updated_at) values('rewards',${body.enabled},now()) on conflict(feature_key) do update set enabled=excluded.enabled,updated_at=excluded.updated_at`;
+      return json(200, { enabled: body.enabled });
+    }
+    if (url.pathname === '/api/customers' && req.method === 'GET') {
+      if (!hasPermission('customers', 'read')) return json(403, { message: 'Customer access required.' });
+      const search = (url.searchParams.get('q') || '').trim().slice(0, 120);
+      const rows =
+        await sql`select m.id,m.display_name as name,m.email,m.member_since as "memberSince",
+        m.tier,m.created_at as "createdAt",coalesce(a.points,0) as points,
+        count(b.id)::integer as "bookingCount",max(b.booking_date) as "lastBookingDate"
+        from members m
+        left join loyalty_accounts a on a.member_id=m.id
+        left join bookings b on b.member_id=m.id and b.status<>'cancelled'
+        where ${search === ''} or m.display_name ilike ${'%' + search + '%'} or m.email ilike ${'%' + search + '%'}
+        group by m.id,a.points
+        order by m.created_at desc,m.display_name
+        limit 200`;
+      return json(200, { customers: rows });
+    }
+    if (url.pathname.startsWith('/api/rewards')) {
+      if (!hasPermission('rewards')) return json(403, { message: 'Rewards access required.' });
+      const [feature] = await sql`select enabled from feature_flags where feature_key='rewards'`;
+      if (feature && !feature.enabled)
+        return json(404, { message: 'Rewards are disabled for this venue.' });
+    }
     if (await rewardsRoute({ req, res, url, sql, json, readJson })) return;
     if (url.pathname === '/api/diary' && req.method === 'GET') {
       const date = url.searchParams.get('date');
@@ -579,6 +1055,14 @@ const server = http.createServer(async (req, res) => {
       });
       return json(200, { hours: days.map((day) => hours.find((hour) => hour.day === day)) });
     }
+    if (url.pathname === '/api/booking-settings' && req.method === 'GET') {
+      const tables = await sql`select id,name,seat_count as seats from booking_tables order by table_number`;
+      const [setting] = await sql`select integer_value as "defaultDurationMinutes" from booking_system_settings where setting_key='default_booking_duration_minutes'`;
+      return json(200, {
+        tables,
+        defaultDurationMinutes: Number(setting?.defaultDurationMinutes ?? 90),
+      });
+    }
     if (url.pathname === '/api/booking-settings' && req.method === 'PUT') {
       const body = await readJson(req);
       const minutes = Number(body?.defaultDurationMinutes);
@@ -759,7 +1243,7 @@ const server = http.createServer(async (req, res) => {
         table.count = row.count;
       }
       return json(200, {
-        database: decodeURIComponent(dbUrl.pathname.slice(1)),
+        database: activeDatabaseInfo().database,
         schema: 'public',
         tables,
       });
@@ -1178,10 +1662,12 @@ const server = http.createServer(async (req, res) => {
     json(405, { message: 'Method not allowed.' });
   } catch (error) {
     console.error(error.message);
-    json(error.code === 'P1001' ? 409 : error.status || 500, {
+    json(error.code === 'P1001' || error.code === '23505' || error.code === '23503' ? 409 : error.status || 500, {
       message:
         error.status || error.code === 'P1001'
           ? error.message
+          : error.code === '23505'
+            ? 'That email address is already assigned to a user.'
           : error.code === '23503'
             ? 'Related rows prevent this deletion. Nothing was deleted.'
             : 'Database request failed. Check the database connection and server log.',
@@ -1191,7 +1677,7 @@ const server = http.createServer(async (req, res) => {
 server.listen(port, '127.0.0.1', () => console.log(`PostgreSQL manager: http://localhost:${port}`));
 async function stop() {
   server.close();
-  await sql.end({ timeout: 3 });
+  await Promise.all(Object.values(databaseClients).map((client) => client.end({ timeout: 3 })));
 }
 process.on('SIGTERM', stop);
 process.on('SIGINT', stop);

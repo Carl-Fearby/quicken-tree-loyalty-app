@@ -1,0 +1,20 @@
+[Unit]
+Description=Pace temporary demo API gateway
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pace
+Group=pace
+WorkingDirectory=/srv/pace/management-demo
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/pace/demo.env
+ExecStart=/usr/bin/node demo-gateway.js
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

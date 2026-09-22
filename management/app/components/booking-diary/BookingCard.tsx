@@ -5,9 +5,10 @@ type Props = {
   onSelect: (booking: Booking) => void;
   onAssign: (booking: Booking) => void;
   onViewOrder: (booking: Booking) => void;
+  canWrite: boolean;
 };
 
-export function BookingCard({ booking, onSelect, onAssign, onViewOrder }: Props) {
+export function BookingCard({ booking, onSelect, onAssign, onViewOrder, canWrite }: Props) {
   const orderTotal = booking.orderAhead
     ? new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(
         booking.orderAhead.totalPence / 100,
@@ -24,11 +25,11 @@ export function BookingCard({ booking, onSelect, onAssign, onViewOrder }: Props)
           {booking.guests} guests · {booking.assignedTableName || 'Unassigned'} · {booking.status}
         </p>
       </button>
-      <div className="booking-card-actions">
+      {canWrite && <div className="booking-card-actions">
         <button className="booking-table-action" type="button" onClick={() => onAssign(booking)}>
           {booking.assignedTableName ? 'Change table' : 'Assign table'}
         </button>
-      </div>
+      </div>}
       {booking.dietaryNeeds?.length ? (
         <p className="diary-dietary">Dietary: {booking.dietaryNeeds.join(', ')}</p>
       ) : null}

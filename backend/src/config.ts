@@ -12,6 +12,7 @@ const schema = z.object({
     VENUE_NAME: z.string().min(1).default('The Quicken Tree'),
     FRONTEND_URL: z.string().url().default('http://localhost:3000'),
     PORT: z.coerce.number().int().positive().default(4000),
+    HOST: z.string().default('0.0.0.0'),
     CORS_ORIGIN: z.string().optional()
 });
 

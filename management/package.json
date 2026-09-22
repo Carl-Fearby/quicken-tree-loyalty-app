@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "next start --port 4100",
+    "start": "next start --hostname 127.0.0.1 --port 4100",
     "dev": "next dev --port 4100",
     "build": "next build",
     "format": "prettier --write \"app/**/*.{js,jsx,ts,tsx,css}\" \"*.{js,mjs,json}\"",
@@ -14,7 +14,8 @@
     "test": "node --test",
     "setup:booking-tables": "node --env-file=.env setup-booking-tables.js",
     "setup:rewards": "node --env-file=.env setup-rewards.js",
-    "setup:kitchen-hours": "node --env-file=.env setup-kitchen-hours.js"
+    "setup:kitchen-hours": "node --env-file=.env setup-kitchen-hours.js",
+    "setup:users": "node --env-file=.env setup-users.js"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.1",
@@ -25,6 +26,9 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "prettier": "^3.9.7"
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "prettier": "^3.9.7",
+    "typescript": "^7.0.2"
   }
 }
