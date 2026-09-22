@@ -1,0 +1,16 @@
+:root{--orange-ink:#b54014}
+
+.nav-dropdown:not(.open) .nav-dropdown-panel,
+.nav-dropdown-panel[hidden]{display:none!important}
+.nav-dropdown.open .nav-dropdown-panel{display:grid}
+.nav-dropdown.open .nav-dropdown-trigger svg{transform:rotate(180deg)}
+
+button:focus-visible,a:focus-visible,summary:focus-visible,
+.contact-form input:focus-visible,.contact-form select:focus-visible,
+.contact-form textarea:focus-visible{outline:3px solid var(--orange-ink);outline-offset:3px}
+
+@media(max-width:760px){
+  .header nav.open{max-height:calc(100dvh - 72px);overflow-y:auto}
+  .nav-dropdown.open .nav-dropdown-panel{position:static;width:100%;margin-top:12px;padding:8px 14px;box-shadow:none}
+  .nav-dropdown-panel::before{display:none}
+}

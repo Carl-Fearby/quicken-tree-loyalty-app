@@ -1,16 +1,27 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import { ArrowIcon, WhatsAppArrow, whatsappUrl } from './WhatsAppLink';
 
 export function SiteHeader() {
   const [menu, setMenu] = useState(false);
-  const closeMenu = () => setMenu(false);
+  const [exploreOpen, setExploreOpen] = useState(false);
+  const exploreRef = useRef<HTMLDivElement>(null);
+  const exploreButtonRef = useRef<HTMLButtonElement>(null);
+  const closeMenu = () => { setMenu(false); setExploreOpen(false); };
+  useEffect(() => {
+    if (!exploreOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!exploreRef.current?.contains(event.target as Node)) setExploreOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    return () => document.removeEventListener('pointerdown', closeOutside);
+  }, [exploreOpen]);
   const explore = [['About Pace','/about'],['Platform overview','/platform-overview'],['Platform map','/platform-map'],['Integrations','/integrations'],['Use cases','/use-cases'],['Resources','/resources'],['Operations centre','/operations-centre'],['Workflow examples','/workflow-examples'],['Getting started','/getting-started'],['Restaurants','/restaurants'],['Cafes','/cafes'],['Pubs & bars','/pubs-bars'],['Customer journey','/customer-journey'],['For venue owners','/for-venue-owners'],['Implementation','/implementation'],['Support','/support'],['Product tour','/product-tour'],['Guest app + back office','/guest-app-back-office'],['Compare approaches','/comparison']];
-  return <header className="header"><Link href="/" aria-label="Pace home"><span className="logo"><img src="/branding/pace-light.png" width="1448" height="1086" alt="Pace — Service in Sync"/></span></Link><button className={`menu-toggle${menu?' is-open':''}`} aria-expanded={menu} aria-controls="navigation" aria-label={menu?'Close menu':'Open menu'} onClick={()=>setMenu(!menu)}><span/><span/><span/></button><nav id="navigation" className={menu?'open':''} aria-label="Main navigation"><Link href="/capabilities" onClick={closeMenu}>Capabilities</Link><Link href="/platform" onClick={closeMenu}>The platform</Link><Link href="/app" onClick={closeMenu}>Guest app</Link><Link href="/pricing" onClick={closeMenu}>Pricing</Link><Link href="/developers" onClick={closeMenu}>Developers</Link><Link href="/how-it-works" onClick={closeMenu}>How it works</Link><Link href="/faqs" onClick={closeMenu}>FAQs</Link><div className="nav-dropdown"><button className="nav-dropdown-trigger" type="button">Explore <FontAwesomeIcon icon={faChevronDown} aria-hidden="true"/></button><div className="nav-dropdown-panel">{explore.map(([label,href])=><Link key={href} href={href} onClick={closeMenu}>{label}</Link>)}</div></div></nav><a className="button button-small header-cta" href={whatsappUrl} target="_blank" rel="noreferrer">Talk to Pace <WhatsAppArrow/></a></header>;
+  return <><a className="skip" href="#main">Skip to content</a><header className="header"><Link href="/" aria-label="Pace home"><span className="logo"><img src="/branding/pace-light.png" width="1448" height="1086" alt="Pace — Service in Sync"/></span></Link><button className={`menu-toggle${menu?' is-open':''}`} aria-expanded={menu} aria-controls="navigation" aria-label={menu?'Close menu':'Open menu'} onClick={()=>{setMenu(!menu);setExploreOpen(false)}}><span/><span/><span/></button><nav id="navigation" className={menu?'open':''} aria-label="Main navigation"><Link href="/capabilities" onClick={closeMenu}>Capabilities</Link><Link href="/platform" onClick={closeMenu}>The platform</Link><Link href="/app" onClick={closeMenu}>Guest app</Link><Link href="/pricing" onClick={closeMenu}>Pricing</Link><Link href="/developers" onClick={closeMenu}>Developers</Link><Link href="/how-it-works" onClick={closeMenu}>How it works</Link><Link href="/faqs" onClick={closeMenu}>FAQs</Link><div ref={exploreRef} className={`nav-dropdown${exploreOpen?' open':''}`} onKeyDown={event=>{if(event.key==='Escape'){setExploreOpen(false);exploreButtonRef.current?.focus()}}}><button ref={exploreButtonRef} className="nav-dropdown-trigger" type="button" aria-expanded={exploreOpen} aria-controls="explore-navigation" onClick={()=>setExploreOpen(!exploreOpen)}>Explore <FontAwesomeIcon icon={faChevronDown} aria-hidden="true"/></button><div id="explore-navigation" className="nav-dropdown-panel" hidden={!exploreOpen}>{explore.map(([label,href])=><Link key={href} href={href} onClick={closeMenu}>{label}</Link>)}</div></div></nav><a className="button button-small header-cta" href={whatsappUrl} target="_blank" rel="noreferrer">Talk to Pace <WhatsAppArrow/></a></header></>;
 }
 
 export function SiteFooter() {
