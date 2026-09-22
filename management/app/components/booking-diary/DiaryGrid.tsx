@@ -97,22 +97,6 @@ export function DiaryGrid({ bookings, date, slots, kitchenClose, kitchenOpen, ta
 
   return (
     <section className="diary-scroll" ref={scrollRef}>
-      {kitchenClose !== undefined && (
-        <p className="diary-kitchen-notice">
-          {kitchenOpen !== undefined ? (
-            <>
-              Kitchen open {String(Math.floor(kitchenOpen)).padStart(2, '0')}:
-              {kitchenOpen % 1 ? '30' : '00'} – {String(Math.floor(kitchenClose)).padStart(2, '0')}:
-              {kitchenClose % 1 ? '30' : '00'}
-            </>
-          ) : (
-            <>
-              Kitchen closes at {String(Math.floor(kitchenClose)).padStart(2, '0')}:
-              {kitchenClose % 1 ? '30' : '00'} · No new bookings from this time
-            </>
-          )}
-        </p>
-      )}
       <div
         id="diary-grid"
         style={{

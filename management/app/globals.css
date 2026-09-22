@@ -2872,15 +2872,6 @@ h2 {
 .opening-hours-row {
   grid-template-columns: 140px repeat(4, minmax(130px, 1fr));
 }
-.diary-kitchen-notice {
-  margin: 0;
-  padding: 12px 16px;
-  color: #9c3345;
-  font-size: 13px;
-  font-weight: 600;
-  position: sticky;
-  left: 0;
-}
 .diary-service-zone[data-zone='kitchen closed'] {
   background: #e8e9ec;
   color: #697381;
@@ -2894,9 +2885,6 @@ h2 {
 [data-theme='dark'] .diary-service-zone[data-zone='kitchen closed'] {
   background: #303945;
   color: #bbc3cd;
-}
-[data-theme='dark'] .diary-kitchen-notice {
-  color: #efa6b2;
 }
 @media (max-width: 700px) {
   .opening-hours-columns {
