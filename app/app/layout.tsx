@@ -5,13 +5,13 @@ import {designTokens} from './designTokens';
 import {tenantBrand} from './lib/tenant-brand';
 
 export const metadata: Metadata = {
-  title: `${tenantBrand.name} | Loyalty`,
+  title: 'Pace Venues | Loyalty',
   description: `Book, earn and enjoy more at ${tenantBrand.name}.`,
-  applicationName: tenantBrand.name,
+  applicationName: 'Pace Venues',
   manifest: '/manifest.webmanifest',
   // In iOS standalone mode this lets the app surface continue behind the
   // system status area. Content itself is padded with safe-area insets.
-  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: tenantBrand.name },
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Pace Venues' },
   formatDetection: { telephone: false },
   icons: {
     icon: [

@@ -91,9 +91,10 @@ const toBooking = (booking: ApiBooking): Booking => ({
     notes: ''
 });
 
-export function PaceApp({dark: controlledDark, onShowNotification}: {
+export function PaceApp({dark: controlledDark, onShowNotification, demoPreview = false}: {
     dark?: boolean;
-    onShowNotification?: () => void
+    onShowNotification?: () => void;
+    demoPreview?: boolean
 }) {
     const {
         appointments: appointmentsData,
@@ -291,6 +292,7 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
     const [memberPoints, setMemberPoints] = useState(0);
     const [memberTier, setMemberTier] = useState(profileData.default.tier);
     const signOut = async () => {
+        if (demoPreview) return;
         await logout();
         setMemberToken('');
         localStorage.removeItem('access_token');
@@ -348,10 +350,22 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
         };
     }, []);
     useEffect(() => {
+        let active = true;
+        if (demoPreview) {
+            setSession({accessToken: 'temporary-dashboard-preview', email: '', name: profileData.default.name, createdAt: ''});
+            setProfileName(profileData.default.name);
+            setMemberPoints(pointsData.points);
+            setMemberTier(pointsData.tier);
+            setProfileLoaded(true);
+            setBookingsLoaded(true);
+            return () => { active = false; };
+        }
+        setSession(undefined);
         const storedToken = localStorage.getItem('access_token');
 
         refreshSession()
             .then(response => {
+                if (!active) return;
                 setMemberToken(response.accessToken);
 
                 setSession({
@@ -362,6 +376,7 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
                 });
             })
             .catch(() => {
+                if (!active) return;
                 if (!storedToken) {
                     setSession(null);
                     return;
@@ -371,6 +386,7 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
 
                 memberRequest<ApiProfile>('/me/profile')
                     .then(profile => {
+                        if (!active) return;
                         setSession({
                             accessToken: storedToken,
                             email: profile.email,
@@ -379,11 +395,13 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
                         });
                     })
                     .catch(() => {
+                        if (!active) return;
                         setMemberToken('');
                         setSession(null);
                     });
             });
-    }, []);
+        return () => { active = false; };
+    }, [demoPreview, profileData.default.name, pointsData.points, pointsData.tier]);
     const times = availableSlots(bookingDate);
     const bookingTimes = bookingExperience === 'Bottomless Brunch' ? (fromInputDate(bookingDate).getDay() === 0 ? [] : times.filter(slot => slot >= '12:00' && slot <= '19:30')) : bookingExperience === 'Afternoon Tea' ? times.filter(slot => slot >= '12:00' && slot <= '17:00') : times;
     const experiencePrice = experiencePrices[bookingExperience];
@@ -616,12 +634,14 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
     }, [controlledDark, isDarkMode, themeReady]);
     const saveProfile = async () => {
         try {
-            await memberRequest('/me/profile', 'PATCH', {
-                displayName: profileName.trim() || profileData.default.name,
-                email: profileEmail.trim(),
-                tastes: tasteProfile,
-                dietaryNeeds
-            });
+            if (!demoPreview) {
+                await memberRequest('/me/profile', 'PATCH', {
+                    displayName: profileName.trim() || profileData.default.name,
+                    email: profileEmail.trim(),
+                    tastes: tasteProfile,
+                    dietaryNeeds
+                });
+            }
             setBookingName(profileName.trim() || profileData.default.name);
             setBookingEmail(profileEmail.trim());
             setProfileSaved(true);
@@ -689,7 +709,7 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
             guests: [bookingName.trim() || 'Guest']
         };
         try {
-            const created = await memberRequest<{ id: string }>('/bookings', 'POST', bookingPayload);
+            const created = demoPreview ? {id: `demo-${crypto.randomUUID()}`} : await memberRequest<{ id: string }>('/bookings', 'POST', bookingPayload);
             const booking: Booking = {
                 id: created.id,
                 date: bookingDate,
@@ -726,36 +746,38 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
     const completeOrder = async () => {
         if (orderAheadBooking && preOrderLines.length) {
             try {
-                const order = await memberRequest<{ id: string }>(`/bookings/${orderAheadBooking.id}/order`, 'POST');
-                const bookingDetail = await memberRequest<{
-                    guests: { id: string; displayName: string }[]
-                }>(`/bookings/${orderAheadBooking.id}`);
-                const guestsByName = new Map(bookingDetail.guests.map(guest => [guest.displayName, guest.id]));
-                for (const name of orderGuestDetails.names) {
-                    if (!name || guestsByName.has(name)) continue;
-                    const guest = await memberRequest<{
-                        id: string;
-                        displayName: string
-                    }>(`/bookings/${orderAheadBooking.id}/guests`, 'POST', {displayName: name});
-                    guestsByName.set(guest.displayName, guest.id);
-                }
-                for (const line of preOrderLines) {
-                    const createdLine = await memberRequest<{
-                        id: string
-                    }>(`/bookings/${orderAheadBooking.id}/order/lines`, 'POST', {
-                        itemName: line.name,
-                        itemDescription: line.description,
-                        unitPricePence: Math.round(line.price * 100),
-                        quantity: line.quantity
-                    });
-                    for (let serving = 1; serving <= line.quantity; serving += 1) {
-                        const guestName = orderGuestDetails.assignments[line.name]?.[serving - 1];
-                        await memberRequest(`/orders/${order.id}/lines/${createdLine.id}/assignments/${serving}`, 'PUT', {
-                            bookingGuestId: guestName && guestName !== 'To share' ? guestsByName.get(guestName) ?? null : null
-                        });
+                if (!demoPreview) {
+                    const order = await memberRequest<{ id: string }>(`/bookings/${orderAheadBooking.id}/order`, 'POST');
+                    const bookingDetail = await memberRequest<{
+                        guests: { id: string; displayName: string }[]
+                    }>(`/bookings/${orderAheadBooking.id}`);
+                    const guestsByName = new Map(bookingDetail.guests.map(guest => [guest.displayName, guest.id]));
+                    for (const name of orderGuestDetails.names) {
+                        if (!name || guestsByName.has(name)) continue;
+                        const guest = await memberRequest<{
+                            id: string;
+                            displayName: string
+                        }>(`/bookings/${orderAheadBooking.id}/guests`, 'POST', {displayName: name});
+                        guestsByName.set(guest.displayName, guest.id);
                     }
+                    for (const line of preOrderLines) {
+                        const createdLine = await memberRequest<{
+                            id: string
+                        }>(`/bookings/${orderAheadBooking.id}/order/lines`, 'POST', {
+                            itemName: line.name,
+                            itemDescription: line.description,
+                            unitPricePence: Math.round(line.price * 100),
+                            quantity: line.quantity
+                        });
+                        for (let serving = 1; serving <= line.quantity; serving += 1) {
+                            const guestName = orderGuestDetails.assignments[line.name]?.[serving - 1];
+                            await memberRequest(`/orders/${order.id}/lines/${createdLine.id}/assignments/${serving}`, 'PUT', {
+                                bookingGuestId: guestName && guestName !== 'To share' ? guestsByName.get(guestName) ?? null : null
+                            });
+                        }
+                    }
+                    await memberRequest(`/orders/${order.id}/checkout`, 'POST', {providerReference: `demo-${Date.now()}`});
                 }
-                await memberRequest(`/orders/${order.id}/checkout`, 'POST', {providerReference: `demo-${Date.now()}`});
             } catch {
                 setPaymentState('idle');
                 setOrderToast('Could not submit order');
@@ -853,7 +875,7 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
     };
     const cancelBooking = async (booking: Booking, hasOrder: boolean) => {
         try {
-            await memberRequest(`/bookings/${booking.id}/cancel`, 'POST');
+            if (!demoPreview) await memberRequest(`/bookings/${booking.id}/cancel`, 'POST');
         } catch {
             setOrderToast('Could not cancel booking');
             return;
@@ -911,15 +933,15 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
         setBookingEmail(nextSession.email);
     };
 
-    if (session !== undefined && !session) {
+    if (session === undefined || (demoPreview && session?.accessToken !== 'temporary-dashboard-preview') || (!demoPreview && session?.accessToken === 'temporary-dashboard-preview')) {
         return <LoyaltyApp motion="idle" dark={isDarkMode} embedded={controlledDark !== undefined}>
-            <AuthScreen onAuthenticated={authenticate}/>
+            <div/>
         </LoyaltyApp>;
     }
 
-    if (session === undefined) {
+    if (!session) {
         return <LoyaltyApp motion="idle" dark={isDarkMode} embedded={controlledDark !== undefined}>
-            <div/>
+            <AuthScreen onAuthenticated={authenticate}/>
         </LoyaltyApp>;
     }
 
@@ -1144,7 +1166,7 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
                                     title={canRedeem ? undefined : `You need ${(cost - memberPoints).toLocaleString()} more points`}
                                     onClick={async () => {
                                         try {
-                                            const voucher = await memberRequest<{
+                                            const voucher = demoPreview ? {code: `DEMO-${code}`, title, pointsSpent: cost} : await memberRequest<{
                                                 code: string;
                                                 title: string;
                                                 pointsSpent: number
@@ -1179,10 +1201,10 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
                         name="fa-chevron-right"/></span></button>
                     <button className="setting" onClick={() => setProfilePanel('help')}>Help & contact<span><Icon
                         name="fa-chevron-right"/></span></button>
-                    <button className="setting logout" onClick={() => {
+                    {!demoPreview && <button className="setting logout" onClick={() => {
                         void signOut();
                     }}>Log out<span><Icon
-                        name="fa-right-from-bracket"/></span></button>
+                        name="fa-right-from-bracket"/></span></button>}
                     <button className="setting resetApp" onClick={() => setProfilePanel('reset')}>Reset app to
                         default<span><Icon
                             name="fa-arrow-rotate-left"/></span></button>

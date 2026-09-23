@@ -6,8 +6,8 @@ export const dynamic = 'force-static';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: tenantBrand.name,
-    short_name: tenantBrand.shortName,
+    name: 'Pace Venues',
+    short_name: 'Pace',
     description: `Book, earn rewards and order ahead at ${tenantBrand.name}.`,
     start_url: '/',
     scope: '/',

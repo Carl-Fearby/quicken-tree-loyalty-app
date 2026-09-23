@@ -22,6 +22,7 @@ function AppPreview() {
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [showDevice, setShowDevice] = useState(true);
     const [isStandalonePwa, setIsStandalonePwa] = useState(false);
+    const [displayModeReady, setDisplayModeReady] = useState(false);
     const [isDeviceAppOpen, setIsDeviceAppOpen] = useState(false);
     const [notification, setNotification] = useState<IphoneNotification | null>(null);
     const notificationIndex = useRef(0);
@@ -55,6 +56,7 @@ function AppPreview() {
         const updateDisplayMode = () => {
             const standalone = fullscreenMedia.matches || standaloneMedia.matches || Boolean((navigator as Navigator & {standalone?: boolean}).standalone);
             setIsStandalonePwa(standalone);
+            setDisplayModeReady(true);
             if (standalone) setShowDevice(false);
         };
         updateDisplayMode();
@@ -142,11 +144,13 @@ function AppPreview() {
         if (advertIndex.current++ % 2 === 0) setNotification({...appConfig.menuNotification});
         else triggerNotification();
     }, [triggerNotification, appConfig]);
-    const app = useMemo(() => <PaceApp dark={isDarkMode} onShowNotification={showAppAdvert}/>, [isDarkMode, showAppAdvert]);
+    const app = useMemo(() => displayModeReady
+        ? <PaceApp dark={isDarkMode} onShowNotification={showAppAdvert} demoPreview={showDevice && !isStandalonePwa}/>
+        : null, [isDarkMode, showAppAdvert, displayModeReady, showDevice, isStandalonePwa]);
     const previewApps = [
-        {id: 'venue-app', label: 'Pace Venues', icon: <PaceAppIcon/>, app, keepMounted: true}
+        {id: 'venue-app', label: 'Pace Venues', icon: <PaceAppIcon/>, app: showDevice ? app : null, keepMounted: true}
     ];
-    const installedApp = previewApps[0].app;
+    const installedApp = app;
     const iosDockApps = [<Icon key="phone" name="fa-phone"/>, <Icon key="messages" name="fa-message"/>, <Icon key="safari" name="fa-compass"/>, <Icon key="camera" name="fa-camera"/>];
     const androidDockApps = [<Icon key="phone" name="fa-phone"/>, <Icon key="messages" name="fa-message"/>, <Icon key="chrome" name="fa-chrome"/>, <Icon key="camera" name="fa-camera"/>];
     const orientationClass = `deviceOrientation${isLandscape ? ' landscape' : ''}`;
