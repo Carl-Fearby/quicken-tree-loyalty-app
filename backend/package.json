@@ -9,6 +9,7 @@
     "seed": "tsx src/seed-content.ts && tsx src/seed-operational.ts",
     "seed:content": "tsx src/seed-content.ts",
     "seed:operational": "tsx src/seed-operational.ts",
+    "seed:dish-images": "tsx src/seed-dish-images.ts",
     "typecheck": "tsc -p tsconfig.json",
     "migrate:relational": "tsx src/migrate-relational-content.ts",
     "clear:members": "tsx src/clear-members.ts",

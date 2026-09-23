@@ -1,4 +1,5 @@
 import {MailtrapClient} from 'mailtrap';
+import nodemailer from 'nodemailer';
 import {config} from './config';
 
 const client = config.MAILTRAP_API_KEY ? new MailtrapClient({token: config.MAILTRAP_API_KEY}) : null;
@@ -35,21 +36,18 @@ export async function sendPasswordResetEmail(email: string, displayName: string,
 }
 
 export async function sendContactEmail(fields: {name: string; email: string; venue: string; venueCount?: string; enquiryType?: string; message: string}) {
-    if (!client || !config.MAIL_FROM_ADDRESS || !config.MAIL_TO_ADDRESS) {
-        throw new Error('Contact email delivery is not configured.');
-    }
-
     const name = escapeHtml(fields.name);
     const email = escapeHtml(fields.email);
     const venue = escapeHtml(fields.venue);
     const venueCount = escapeHtml(fields.venueCount || 'Not provided');
     const enquiryType = escapeHtml(fields.enquiryType || 'Not provided');
     const message = escapeHtml(fields.message).replace(/\n/g, '<br>');
-    await client.send({
-        from: {email: config.MAIL_FROM_ADDRESS, name: config.MAIL_FROM_NAME},
-        to: [{email: config.MAIL_TO_ADDRESS}],
-        reply_to: {email: fields.email, name: fields.name},
-        subject: `New Pace enquiry from ${fields.name}`,
+    const mailer = nodemailer.createTransport({host: '127.0.0.1', port: 25, secure: false, tls: {servername: 'mail.pacevenues.com'}, connectionTimeout: 5000, greetingTimeout: 5000, socketTimeout: 10000});
+    await mailer.sendMail({
+        from: {address: 'carl@pacevenues.com', name: 'Pace website'},
+        to: 'carlfearby@me.com',
+        replyTo: {address: fields.email, name: fields.name},
+        subject: 'New Pace website enquiry',
         text: `Name: ${fields.name}\nEmail: ${fields.email}\nVenue: ${fields.venue}\nNumber of venues: ${fields.venueCount || 'Not provided'}\nEnquiry type: ${fields.enquiryType || 'Not provided'}\n\n${fields.message}`,
         html: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#152c37"><h2>New Pace enquiry</h2><p><strong>Name:</strong> ${name}<br><strong>Email:</strong> ${email}<br><strong>Venue:</strong> ${venue}<br><strong>Number of venues:</strong> ${venueCount}<br><strong>Enquiry type:</strong> ${enquiryType}</p><p>${message}</p></div>`
     });

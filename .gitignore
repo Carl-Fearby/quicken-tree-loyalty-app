@@ -4,6 +4,7 @@
 !/README.md
 !/netlify.toml
 !/start.sh
+!/deploy.sh
 !/deploy_vsp.sh
 !/deploy_demo_vps.sh
 !/app/

@@ -6,6 +6,23 @@ export type ContentManifestItem = {key: string; version: string; updatedAt: stri
 export type ContentManifest = {datasets: ContentManifestItem[]};
 const contentApiBase = process.env.NEXT_PUBLIC_CONTENT_API_URL ?? '/api';
 const endpoint = (path: string) => `${contentApiBase.replace(/\/$/, '')}${path}`;
+const dishImageCache = 'quicken-tree-dish-images-v1';
+
+async function cacheDishImages(menu: unknown, refresh: boolean) {
+    if (!('caches' in window)) return;
+    const images = (menu as {dishImages?: Record<string, string>} | null)?.dishImages ?? {};
+    const urls = [...new Set(Object.values(images).filter(url => url.startsWith('/dish-images/')))];
+    if (!urls.length) return;
+    const cache = await caches.open(dishImageCache);
+    for (let index = 0; index < urls.length; index += 4) {
+        await Promise.all(urls.slice(index, index + 4).map(async url => {
+            if (!refresh && await cache.match(url)) return;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Dish image download failed: ${url}`);
+            await cache.put(url, response);
+        }));
+    }
+}
 
 /** Checks version records first, then downloads only changed datasets. */
 let pending: Promise<{manifest: ContentManifest; updated: string[]}> | null = null;
@@ -26,6 +43,15 @@ async function syncContent() {
         const result = await resultResponse.json() as CachedContent;
         if (result.version !== item.version) throw new Error('Content changed during download; retry on next sync.');
         records.push({key:item.key,version:result.version,updatedAt:result.updatedAt,data:result.data});
+    }
+    const updatedMenu = records.find(record => record.key === 'menu');
+    const menu = updatedMenu ?? await localDb.content.get('menu');
+    if (menu) {
+        try {
+            await cacheDishImages(menu.data, Boolean(updatedMenu));
+        } catch (error) {
+            console.warn('Dish images could not be cached for offline use.', error);
+        }
     }
     await localDb.transaction('rw',localDb.content,async()=>{
         if(records.length)await localDb.content.bulkPut(records);

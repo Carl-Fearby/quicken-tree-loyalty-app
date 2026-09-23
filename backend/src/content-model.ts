@@ -10,6 +10,7 @@ const section: Model = {table:'menu_sections',fields:{title:field('title')},chil
 export const models: Record<string,Model> = {
  menu:{table:'menu_catalogue',fields:{},children:{
   menuItems:map({table:'menus',fields:{},children:{value:array(section)},scalar:true}),
+  dishImages:map(leaf('menu_item_images','image_data'),true),
   categories:array({table:'menu_categories',fields:{label:field('label'),source:field('menu_name'),service:field('service_name'),orderAheadOnly:field('order_ahead_only','boolean',true)},children:{sections:array(leaf('menu_category_sections','section_position','integer'),true)}}),
   itemAvailability:map({table:'menu_item_availability',fields:{orderAheadOnly:field('order_ahead_only','boolean',true)},children:{days:array(leaf('menu_item_availability_days','weekday','integer'))}},true),
   dietaryTags:map({table:'menu_item_dietary_labels',fields:{},scalar:true,children:{value:array(leaf('menu_item_dietary_tags','tag_code'))}}),

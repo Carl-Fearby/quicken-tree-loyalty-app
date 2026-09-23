@@ -1088,6 +1088,7 @@ export function PaceApp({dark: controlledDark, onShowNotification}: {
                                 onCategoryChange={setMenuCategory} search={menuSearch}
                                 onSearchChange={setMenuSearch}
                                 sections={filteredMenuSections} dietaryTags={dietaryTags}
+                                dishImages={menuData.dishImages ?? {}}
                                 dietaryTagNames={dietaryTagNames}
                                 allergenTags={allergenTags}
                                 allergenTagNames={allergenTagNames}

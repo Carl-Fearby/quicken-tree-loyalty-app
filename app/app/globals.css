@@ -316,6 +316,7 @@ html:has(.stage.appOnly),body:has(.stage.appOnly){background:var(--qt-color-app-
 }
 
 /* Optional per-guest order-ahead dish assignments. */
+.menuDishImage{width:72px;height:72px;flex:0 0 72px;border-radius:8px;object-fit:cover}.menuItem>div{min-width:0;flex:1}
 .stage::before,.stage::after{display:none}
 .guestSelect{position:relative}.guestSelect>button{display:flex;align-items:center;justify-content:space-between;gap:7px;min-width:104px;border:0;border-radius:12px;background:var(--qt-color-surface-muted);padding:7px 8px;color:var(--qt-color-text);font:inherit;font-size:10px}.guestSelect>button .fa-solid{color:var(--qt-color-brand);font-size:8px}.guestSelectOptions{position:absolute;z-index:20;right:0;bottom:calc(100% + 5px);display:grid;min-width:132px;overflow:hidden;border:0;border-radius:15px;background:var(--qt-color-surface-muted);box-shadow:0 12px 28px var(--qt-color-shadow-subtle);padding:5px}.guestSelectOptions button{border:0;border-radius:10px;background:transparent;padding:9px 10px;color:var(--qt-color-text);font:inherit;font-size:11px;text-align:left}.guestSelectOptions button.selected,.guestSelectOptions button:hover{background:var(--qt-color-brand-surface);color:var(--qt-color-brand)}
 .guestItemAssignments select{border:0!important;border-radius:10px!important}

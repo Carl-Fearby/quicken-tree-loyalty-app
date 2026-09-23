@@ -43,7 +43,7 @@ Portable Node.js + TypeScript API for Pace. It uses standard PostgreSQL and can 
 
 Set `NEXT_PUBLIC_CONTENT_API_URL=http://localhost:4000` in the frontend environment when running separately. The full platform-neutral contract is in `../app/api/openapi.yaml`.
 
-The public marketing contact form sends `POST /contact` to this API. Configure `MAILTRAP_API_KEY`, `MAIL_FROM_ADDRESS`, and `MAIL_TO_ADDRESS` to enable delivery, and include the deployed marketing origin in `CORS_ORIGIN`.
+The public marketing contact form sends `POST /contact` to this API. On the VPS, enquiries go through local Postfix SMTP on `127.0.0.1:25` from `carl@pacevenues.com` to `carlfearby@me.com`, with the visitor as Reply-To. Include the deployed marketing origin in `CORS_ORIGIN`. Password-reset emails still use the Mailtrap settings above.
 
 ## Endpoints
 

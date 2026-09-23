@@ -77,6 +77,9 @@ const activeDatabaseInfo = () => {
   };
 };
 await sql`alter table menu_item_options add column if not exists price_delta_pence integer`;
+await sql`alter table menu_catalogue add column if not exists "dishImages_present" boolean not null default true`;
+await sql`update menu_catalogue set "dishImages_present"=true where id='menu' and "dishImages_present"=false`;
+await sql`create table if not exists menu_item_images(id text primary key,parent_id text not null references menu_catalogue(id) on delete cascade,position integer not null default 0,map_key text not null unique,image_data text not null)`;
 await sql`create table if not exists allergen_tags(id text primary key, parent_id text not null default 'menu', position integer not null default 0, map_key text not null unique, label text not null)`;
 await sql`create table if not exists allergen_tag_styles(id text primary key, parent_id text not null default 'menu', position integer not null default 0, map_key text not null unique, color text not null default '', icon text not null default '')`;
 await sql`create table if not exists menu_item_allergen_labels(id text primary key, parent_id text not null default 'menu', position integer not null default 0, map_key text not null unique)`;
@@ -320,6 +323,23 @@ const itemFields = (body) => {
   if (priceLabel.length > 40)
     throw Object.assign(new Error('Price label must be 40 characters or fewer.'), { status: 400 });
   return { name, description, priceLabel };
+};
+const itemImage = (body) => {
+  const image = body?.imageData;
+  if (image === undefined) return undefined;
+  if (image === null || image === '') return null;
+  if (typeof image !== 'string' || image.length > 400000 || (!/^data:image\/(?:webp|jpeg|png);base64,[A-Za-z0-9+/]+={0,2}$/.test(image) && !/^\/dish-images\/[a-z-]+\.webp$/.test(image)))
+    throw Object.assign(new Error('Choose a valid dish image under 300 KB.'), { status: 400 });
+  return image;
+};
+const saveItemImage = async (transaction, itemName, image) => {
+  if (image === undefined) return;
+  if (image === null) {
+    await transaction`delete from menu_item_images where parent_id='menu' and map_key=${itemName}`;
+  } else {
+    await transaction`insert into menu_item_images(id,parent_id,position,map_key,image_data) values(${randomUUID()},'menu',0,${itemName},${image}) on conflict(map_key) do update set image_data=excluded.image_data`;
+  }
+  await bumpMenuContentRevision(transaction);
 };
 const itemDietaryTags = (body) => {
   if (!Array.isArray(body.dietaryTags)) return [];
@@ -1253,7 +1273,7 @@ const server = http.createServer(async (req, res) => {
       const sections =
         await sql`select id,parent_id as "menuId",title,position from menu_sections order by parent_id,position`;
       const items =
-        await sql`select id,parent_id as "sectionId",name,description,price_label as "priceLabel",position from menu_items order by parent_id,position`;
+        await sql`select items.id,items.parent_id as "sectionId",items.name,items.description,items.price_label as "priceLabel",items.position,images.image_data as "imageData" from menu_items items left join menu_item_images images on images.map_key=items.name order by items.parent_id,items.position`;
       const dietaryTags =
         await sql`select labels.map_key as "itemName",tags.tag_code as "tagCode",definitions.label from menu_item_dietary_labels labels join menu_item_dietary_tags tags on tags.parent_id=labels.id left join dietary_tags definitions on definitions.map_key=tags.tag_code order by labels.position,tags.position`;
       const dietaryTagDefinitions =
@@ -1517,9 +1537,10 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/menu/items' && req.method === 'POST') {
       if (req.headers['content-type'] !== 'application/json')
         return json(415, { message: 'JSON required.' });
-      const body = await readJson(req);
+      const body = await readJson(req, 450000);
       const sectionId = typeof body.sectionId === 'string' ? body.sectionId : '';
       const fields = itemFields(body);
+      const image = itemImage(body);
       const dietaryTags = itemDietaryTags(body);
       const allergens = itemAllergens(body);
       const optionGroups = itemOptionGroups(body);
@@ -1539,6 +1560,7 @@ const server = http.createServer(async (req, res) => {
         await saveItemDietaryTags(transaction, fields.name, dietaryTags);
         await saveItemAllergens(transaction, fields.name, allergens);
         await saveItemOptions(transaction, fields.name, optionGroups);
+        await saveItemImage(transaction, fields.name, image);
         return { id, sectionId, position: last.position + 1, ...fields };
       });
       return json(201, item);
@@ -1548,8 +1570,9 @@ const server = http.createServer(async (req, res) => {
       if (req.headers['content-type'] !== 'application/json')
         return json(415, { message: 'JSON required.' });
       const itemId = decodeURIComponent(itemMatch[1]);
-      const body = await readJson(req);
+      const body = await readJson(req, 450000);
       const fields = itemFields(body);
+      const image = itemImage(body);
       const dietaryTags = itemDietaryTags(body);
       const allergens = itemAllergens(body);
       const optionGroups = itemOptionGroups(body);
@@ -1569,12 +1592,14 @@ const server = http.createServer(async (req, res) => {
           await transaction`update menu_item_availability set map_key=${fields.name} where map_key=${current.name}`;
           await transaction`update menu_unavailable_items set item_name=${fields.name} where item_name=${current.name}`;
           await transaction`update menu_item_option_sets set map_key=${fields.name} where map_key=${current.name}`;
+          await transaction`update menu_item_images set map_key=${fields.name} where map_key=${current.name}`;
         }
         const [updated] =
           await transaction`update menu_items set name=${fields.name},description=${fields.description},price_label=${fields.priceLabel} where id=${itemId} returning id,parent_id as "sectionId",position,name,description,price_label as "priceLabel"`;
         await saveItemDietaryTags(transaction, fields.name, dietaryTags);
         await saveItemAllergens(transaction, fields.name, allergens);
         await saveItemOptions(transaction, fields.name, optionGroups);
+        await saveItemImage(transaction, fields.name, image);
         return updated;
       });
       return json(200, item);
@@ -1590,6 +1615,7 @@ const server = http.createServer(async (req, res) => {
         await transaction`delete from menu_item_availability where map_key=${item.name}`;
         await transaction`delete from menu_unavailable_items where item_name=${item.name}`;
         await transaction`delete from menu_item_option_sets where map_key=${item.name}`;
+        await transaction`delete from menu_item_images where map_key=${item.name}`;
         await transaction`delete from menu_items where id=${itemId}`;
       });
       return json(200, { id: itemId, deleted: true });

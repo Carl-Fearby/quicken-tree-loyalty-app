@@ -36,6 +36,11 @@ const requireRewardsEnabled = async () => {
     throw error;
 };
 await sql`create table if not exists feature_flags(feature_key text primary key,enabled boolean not null default true,updated_at timestamptz not null default now())`;
+if (relationalContentReady) {
+    await sql`alter table menu_catalogue add column if not exists "dishImages_present" boolean not null default true`;
+    await sql`update menu_catalogue set "dishImages_present"=true where id='menu' and "dishImages_present"=false`;
+    await sql`create table if not exists menu_item_images(id text primary key,parent_id text not null references menu_catalogue(id) on delete cascade,position integer not null default 0,map_key text not null unique,image_data text not null)`;
+}
 await sql`insert into feature_flags(feature_key,enabled) values('rewards',true) on conflict(feature_key) do nothing`;
 app.addHook('preHandler', async request => {
     if (/^\/(?:me\/)?rewards(?:\/|$)/.test(request.url.split('?')[0])) await requireRewardsEnabled();

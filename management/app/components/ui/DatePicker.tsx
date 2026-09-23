@@ -3,13 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { CalendarPopover } from './CalendarPopover';
 
-const displayDate = (value: string) =>
-  new Intl.DateTimeFormat('en-GB', {
+const displayDate = (value: string, placeholder: string) =>
+  value ? new Intl.DateTimeFormat('en-GB', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
     timeZone: 'UTC',
-  }).format(new Date(`${value}T12:00:00Z`));
+  }).format(new Date(`${value}T12:00:00Z`)) : placeholder;
 
 export function DatePicker({
   date,
@@ -18,6 +18,9 @@ export function DatePicker({
   prefix,
   align = 'left',
   allowPast = false,
+  yearSelection = false,
+  maxDate,
+  placeholder = 'Select date',
 }: {
   date: string;
   onChange: (date: string) => void;
@@ -25,6 +28,9 @@ export function DatePicker({
   prefix?: string;
   align?: 'left' | 'right';
   allowPast?: boolean;
+  yearSelection?: boolean;
+  maxDate?: string;
+  placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -55,11 +61,13 @@ export function DatePicker({
         onClick={() => setOpen((current) => !current)}
       >
         {prefix && <span>{prefix}</span>}
-        <span>{displayDate(date)}</span>
+        <span>{displayDate(date, placeholder)}</span>
       </button>
       {open && (
         <CalendarPopover
           allowPast={allowPast}
+          yearSelection={yearSelection}
+          maxDate={maxDate}
           date={date}
           onChange={onChange}
           onClose={() => setOpen(false)}

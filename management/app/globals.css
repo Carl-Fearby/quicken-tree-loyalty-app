@@ -1247,6 +1247,13 @@ h2 {
   padding: 13px 16px;
   border-top: 1px solid #e9ecf0;
 }
+.menu-dish-thumb {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 56px;
+  border-radius: 6px;
+  object-fit: cover;
+}
 .menu-item-copy {
   min-width: 0;
   flex: 1;
@@ -2516,6 +2523,22 @@ h2 {
   height: 40px;
   padding: 0;
 }
+.calendar-month-year {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+}
+.calendar-month-year select {
+  min-width: 0;
+  width: 50%;
+  padding: 7px 12px 7px 6px !important;
+  border: 1px solid #d9dce1;
+  border-radius: 6px;
+  background-color: #fff;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+}
 .calendar-weekdays,
 .calendar-grid {
   display: grid;
@@ -2942,6 +2965,27 @@ h2 {
 }
 .dialog-form > .menu-option-editor {
   grid-column: 1 / -1;
+}
+.dish-image-editor {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 8px;
+  color: #697381;
+  font-size: 12px;
+  font-weight: 700;
+}
+.dish-image-editor img {
+  width: 100%;
+  max-width: 240px;
+  aspect-ratio: 4 / 3;
+  border-radius: 6px;
+  object-fit: cover;
+}
+.dish-image-editor button {
+  justify-self: start;
+}
+.dish-image-editor small {
+  font-weight: 400;
 }
 .dialog-form > .dialog-actions {
   grid-column: 1 / -1;

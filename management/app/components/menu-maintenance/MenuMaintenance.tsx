@@ -14,6 +14,7 @@ type Item = {
   description: string;
   priceLabel: string;
   position: number;
+  imageData: string | null;
 };
 type ItemOption = { label: string; priceDeltaPence: number | null; priceDeltaInput?: string };
 type ItemOptionGroup = {
@@ -35,8 +36,8 @@ type MenuData = {
   unavailableItems?: { itemName: string }[];
   itemOptions?: { itemName: string; groups: ItemOptionGroup[] }[];
 };
-type ItemDraft = { name: string; description: string; priceLabel: string; dietaryTags: string[]; allergens: string[]; optionGroups: ItemOptionGroup[] };
-const emptyItem: ItemDraft = { name: '', description: '', priceLabel: '', dietaryTags: [], allergens: [], optionGroups: [] };
+type ItemDraft = { name: string; description: string; priceLabel: string; imageData: string | null; dietaryTags: string[]; allergens: string[]; optionGroups: ItemOptionGroup[] };
+const emptyItem: ItemDraft = { name: '', description: '', priceLabel: '', imageData: null, dietaryTags: [], allergens: [], optionGroups: [] };
 const emptyGroup = (): ItemOptionGroup => ({
   label: '',
   minSelections: 1,
@@ -95,6 +96,26 @@ const cleanOptionGroups = (groups: ItemOptionGroup[]): ItemOptionGroup[] =>
     ...group,
     options: group.options.map(({ priceDeltaInput, ...option }) => option),
   }));
+const prepareDishImage = async (file: File) => {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 15_000_000)
+    throw Error('Choose a JPG, PNG or WebP image under 15 MB.');
+  const bitmap = await createImageBitmap(file);
+  try {
+    const scale = Math.min(1, 900 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    if (!canvas.width || !canvas.height) throw Error('This image cannot be used.');
+    canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    for (const quality of [0.8, 0.65, 0.5]) {
+      const image = canvas.toDataURL('image/webp', quality);
+      if (image.length <= 400000) return image;
+    }
+    throw Error('This image is too detailed. Choose a smaller image.');
+  } finally {
+    bitmap.close();
+  }
+};
 
 async function request(path: string, init?: RequestInit) {
   const response = await fetch(path, init);
@@ -115,6 +136,8 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
   const [deleteItem, setDeleteItem] = useState<Item | null>(null);
   const [name, setName] = useState('');
   const [draft, setDraft] = useState<ItemDraft>(emptyItem);
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageError, setImageError] = useState('');
   const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
@@ -250,7 +273,7 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
   };
   const submitItem = async (event: FormEvent) => {
     event.preventDefault();
-    if (!itemDialog) return;
+    if (!itemDialog || imageBusy) return;
     try {
       await request(itemDialog.item ? `/api/menu/items/${itemDialog.item.id}` : '/api/menu/items', {
         method: itemDialog.item ? 'PUT' : 'POST',
@@ -530,9 +553,10 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
                     </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        setDraft(emptyItem);
-                        setItemDialog({ sectionId: section.id });
+                  onClick={() => {
+                    setDraft(emptyItem);
+                    setImageError('');
+                    setItemDialog({ sectionId: section.id });
                       }}
                     >
                       + Add dish
@@ -587,6 +611,7 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
                           <span className="menu-drag" aria-hidden="true">
                             ⠿
                           </span>
+                          {item.imageData && <img className="menu-dish-thumb" src={item.imageData} alt="" />}
                           <div className="menu-item-copy">
                             <div className="menu-item-title-row">
                               <b>{item.name}</b>
@@ -646,10 +671,12 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
                           <button
                             type="button"
                             onClick={() => {
+                              setImageError('');
                               setDraft({
                                 name: item.name,
                                 description: item.description,
                                 priceLabel: moneyInputValue(item.priceLabel),
+                                imageData: item.imageData,
                                 dietaryTags: tagsFor(item.name),
                                 allergens: allergensFor(item.name),
                                 optionGroups: optionsFor(item.name),
@@ -738,6 +765,28 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
                 onChange={(event) => setDraft({ ...draft, name: event.target.value })}
               />
             </label>
+            <div className="dish-image-editor">
+              <span>Dish image</span>
+              {draft.imageData && <img src={draft.imageData} alt="Dish preview" />}
+              <input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageBusy} onChange={async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                setImageBusy(true);
+                try {
+                  const imageData = await prepareDishImage(file);
+                  setDraft(current => ({...current, imageData}));
+                  setImageError('');
+                } catch (error) {
+                  setImageError(error instanceof Error ? error.message : 'Unable to prepare the image.');
+                } finally {
+                  setImageBusy(false);
+                  event.target.value = '';
+                }
+              }} />
+              {draft.imageData && <button type="button" onClick={() => setDraft(current => ({...current, imageData: null}))}>Remove image</button>}
+              <small>JPG, PNG or WebP. Images are resized for the app.</small>
+              {imageError && <span className="error-message" role="alert">{imageError}</span>}
+            </div>
             <label>
               Description
               <textarea
@@ -942,7 +991,7 @@ export function MenuMaintenance({ onBack }: { onBack: () => void }) {
               <button type="button" onClick={() => setItemDialog(null)}>
                 Cancel
               </button>
-              <button className="primary" type="submit">
+              <button className="primary" type="submit" disabled={imageBusy}>
                 {itemDialog.item ? 'Save changes' : 'Add dish'}
               </button>
             </div>
