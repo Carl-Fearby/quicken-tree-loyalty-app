@@ -75,8 +75,17 @@ echo "Checking services..."
 set -euo pipefail
 test -s /var/www/pace/app/dish-images/steak.webp
 test -s /srv/pace/management/public/dish-images/steak.webp
-curl --fail --silent http://127.0.0.1:4000/health >/dev/null
-curl --fail --silent http://127.0.0.1:4100/login >/dev/null
+wait_for_service() {
+  local url="$1"
+  for attempt in {1..15}; do
+    if curl --fail --silent "$url" >/dev/null; then return 0; fi
+    sleep 2
+  done
+  echo "Service did not become ready: $url" >&2
+  return 1
+}
+wait_for_service http://127.0.0.1:4000/health
+wait_for_service http://127.0.0.1:4100/login
 curl --fail --silent http://127.0.0.1:4101/api/development/database-target >/dev/null && exit 1 || true
 systemctl --no-pager --quiet is-active pace-api.service pace-management-api.service pace-backoffice.service
 REMOTE
