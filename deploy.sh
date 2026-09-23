@@ -63,6 +63,9 @@ cd /srv/pace/management
 npm ci
 npm run build
 cd /srv/pace/backend
+set -a
+source /etc/pace/backend.env
+set +a
 npm run seed:dish-images
 sudo systemctl restart pace-api.service pace-management-api.service pace-backoffice.service
 REMOTE
