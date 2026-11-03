@@ -9,12 +9,16 @@ product monorepo: a customer PWA, a public API, a staff back office and the
 
 | Directory | Package | What it is | Local port |
 | --- | --- | --- | --- |
-| `app/` | `pace-customer-app` | Guest mobile PWA, exported as static files | 3000 |
-| `backend/` | `pace-backend` | Public API (Fastify) with Swagger at `/docs` | 4000 |
-| `management/` | `pace-management` | Back office UI | 4100 |
-| `management/` | — | Back office API (`server.js`) | 4101 |
-| `frontend-management/` | `pace-account-web` | Account web: sign in, forgot/reset password | 4200 |
-| `marketing/` | `pace-marketing` | Marketing site, static export | 4300 |
+| [`app/`](app/README.md) | `pace-customer-app` | Guest mobile PWA, exported as static files | 3000 |
+| [`backend/`](backend/README.md) | `pace-backend` | Public API (Fastify) with Swagger at `/docs` | 4000 |
+| [`management/`](management/README.md) | `pace-management` | Back office UI | 4100 |
+| [`management/`](management/README.md) | — | Back office API (`server.js`) | 4101 |
+| [`frontend-management/`](frontend-management/README.md) | `pace-account-web` | Account web: sign in, forgot/reset password | 4200 |
+| [`marketing/`](marketing/README.md) | `pace-marketing` | Marketing site, static export | 4300 |
+
+Each directory has its own README covering that surface's setup, configuration,
+dependencies, tests, deploy path and known limits. This file is the source of truth for
+how they fit together.
 
 ## Running locally
 
@@ -28,9 +32,8 @@ done
 ```
 
 `start.sh` frees ports 3000, 4000, 4100, 4101, 4200 and 4300 before starting, so it can
-be re-run safely; Ctrl+C stops every service it started. `backend/`, `management/` and
-`marketing/` have their own README covering environment files; `app/` and
-`frontend-management/` carry only `AGENTS.md`. `backend/` and `management/` need a
+be re-run safely; Ctrl+C stops every service it started. Each project's own README covers
+its environment files and setup. `backend/` and `management/` need a
 PostgreSQL connection string, and the back office also reads `MANAGEMENT_*` values — see
 `management/.env.example`.
 
@@ -42,7 +45,8 @@ Git.
 Every app pins Next.js `16.3.4`, which contains breaking changes relative to earlier
 releases. Each project has an `AGENTS.md` that points at `node_modules/next/dist/docs/`;
 read the relevant page there before changing app code instead of relying on older Next
-conventions.
+conventions. Those `AGENTS.md` files are generated and re-added by `next dev`, so edit the
+code, not that block.
 
 ## Authentication
 
@@ -58,6 +62,9 @@ There are two deliberately separate systems, and neither grants access to the ot
 
 A guest token is useless in the back office and a staff session is useless on the
 member API. Anything that needs to serve both has to authenticate twice.
+
+Members also reach their account through `frontend-management/` on 4200, which talks to
+the same `/auth/*` endpoints as the app and has no database access of its own.
 
 ## Rewards
 
@@ -76,7 +83,9 @@ Until then, viewing or downloading a QR never redeems it.
 ## Deploying
 
 The live stack runs on one VPS (see `deploy.env.example`), behind the nginx vhosts and
-systemd units in `deploy/`.
+systemd units in `deploy/`. The units cover the API, the back office, the back-office API
+and nightly Postgres backups; the two browser-facing Next sites are static exports served
+by nginx, and the account web is not deployed yet.
 
 - `./deploy.sh` — deploy the application stack.
 - `./deploy-marketing-vps.sh` — deploy only the marketing site: builds `marketing/`,

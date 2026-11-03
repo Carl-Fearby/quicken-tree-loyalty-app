@@ -1,42 +1,148 @@
-# PostgreSQL management
+# Pace back office
 
-Standalone local application, independent of the customer app and API. Node.js 22+ and PostgreSQL are required.
+**Role:** the staff application — bookings diary, customers, rewards, waitlist and venue
+configuration.
+**Ports:** 4100 (UI) and 4101 (its own API) · **Package:** `pace-management`
+
+Part of the Pace platform; see the [root README](../README.md) for how the six surfaces
+fit together.
+
+## Role
+
+Two processes that ship together:
+
+- **`next dev` on 4100** — the back-office UI under `app/`: `diary`, `customers` (with
+  `[id]` detail and `segments`), `rewards`, `waitlist`, `profile`, `login`, plus a
+  `configuration/` tree for `attendance`, `cancellation`, `database`, `tables`,
+  `menu-symbols`, `rewards`, `deposits`, `users`, `menu`, `hours`, `duration` and
+  `communications`.
+- **`server.js` on 4101** — a hand-written `node:http` API that queries PostgreSQL
+  directly with `postgres.js`. It does **not** go through `backend/`; it is the separate,
+  staff-facing API.
+
+This surface owns most of the operational depth: deposits, cancellation policy, no-show
+handling, customer segments and the communications centre are implemented here and in the
+migrations they share with the public API.
+
+## Local development
 
 ```sh
 cd management
-npm install
-cp .env.example .env
-# Set DATABASE_URL in .env to the PostgreSQL database you want to manage.
-npm start
+npm ci
+cp .env.example .env   # set DATABASE_URL
+npm run dev            # UI on 4100
+npm run api:dev        # API on 4101, in a second terminal
 ```
 
-Open http://localhost:4100. Use `npm run dev` for server reloads and `npm test` for unit checks.
+`./start.sh` from the repository root starts both. One-off setup scripts exist for the
+data these screens expect:
 
-- Browse public-schema tables, exact record counts, column types and primary keys.
-- View 50 rows per page and inspect complete JSON records.
-- Delete individual rows by primary key, or empty a table without dropping it.
-- Type the table name to confirm either action. There is no undo.
-- Referenced rows block deletion, including cascading and set-null relationships. Remove dependent rows first. No automatic cascading deletion occurs.
-- All database fields are visible, including password hashes, salts, token hashes and payment provider references. Inspect shows the full stored values.
+```sh
+npm run setup:booking-tables   # creates 30 tables; later runs preserve edits
+npm run setup:rewards
+npm run setup:kitchen-hours
+npm run setup:users
+```
 
-The server binds only to 127.0.0.1 and validates Host and Origin. It has no login and is intended for a trusted local computer only. Do not expose it through a proxy or tunnel. Credentials live only in the ignored `.env` file. TLS is required by default for non-local databases; use DATABASE_SSL only as appropriate for your database.
+## Configuration
 
-Deletion transactions briefly lock public tables to prevent concurrent writes from bypassing dependency checks. A three-second lock timeout and fifteen-second statement timeout prevent indefinite waits. Counts and broad deletions can be expensive on very large databases. This tool does not adjust business aggregates such as order totals; it directly manages database records.
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection string (also read by `server.js`) |
+| `PORT` | API port, default `4101` |
+| `MANAGEMENT_*` | Staff/session and integration settings — see `.env.example` |
 
-Booking management stores tables in `booking_tables`, with a unique positive `table_number` and a `seat_count` of 2–10. Run `npm run setup:booking-tables` before starting the updated manager. Initial setup creates thirty tables; later runs preserve edits and removals. Open **Booking management → Configure tables** for the modal to add, remove, renumber tables or edit seats. Numbers may have gaps, such as 401, 402, 405, 501. The diary sorts numerically and displays seat counts. Internal IDs remain stable when renumbering. Booking assignment is not yet implemented.
+In development the database target can be switched between `local`, `seeded` and
+`remote`; the remote option opens an SSH tunnel rather than exposing Postgres directly.
+That switch is development-only.
+
+## Authentication
+
+Staff accounts live in `management_users` with scrypt-hashed passwords, roles and per-area
+permissions (`configuration.rewards`, `configuration.hours`, `configuration.deposits`,
+`configuration.attendance`, `configuration.communications`, `configuration.database`).
+Sessions are a `pace_management_session` HttpOnly cookie lasting 12 hours, and login is
+rate limited. This is entirely separate from guest accounts in `backend/`: an app member
+has no back-office access, and a staff session is not valid on the member API.
+
+## What it talks to
+
+PostgreSQL, directly — not the public API. That keeps staff writes transactional against
+the same tables the API reads, but it does mean schema changes must keep both code paths
+in step.
 
 ## Rewards
 
-Run `npm run setup:rewards` once per database after the existing operational migrations. The **Rewards** tab sits between Booking diary and Settings. It generates individual rewards worth 0–1,000 points, lists active/used/expired tokens, and provides downloadable PNG QR codes. Expiry defaults to three calendar months (clamped to the last day of the month); the selected date ends at 23:59:59.999 UTC. Expiry applies to unclaimed QR rewards, not points already credited to an account.
+Run `npm run setup:rewards` once per database. The **Rewards** tab generates individual
+rewards worth 0–1,000 points, lists active/used/expired tokens and offers downloadable PNG
+QR codes. Expiry defaults to three calendar months, clamped to the last day of the month,
+ending at 23:59:59.999 UTC; it applies to unclaimed QR rewards, not points already
+credited.
 
-Customer search supports name or email. Manual additions of 1–1,000 points require a reason and atomically update `loyalty_accounts` and `loyalty_ledger`. Request IDs prevent duplicate credits or token creation after a retry. Token history shows the latest 500 tokens; credit history shows the latest 100 entries.
+QR payloads are `quicken-tree:reward:v1:<token>` with a cryptographically random code of
+`QT` plus 12 uppercase letters and digits (for example `QT8F4M7R2K9P6A`). New codes exclude
+`I`, `O`, `0` and `1` to avoid transcription errors and always contain both letters and
+numbers. Previously issued tokens stay valid. Tokens are retained so they can be
+reprinted, and QR rendering happens locally — tokens are never sent to an external QR
+service.
 
-QR payloads are `quicken-tree:reward:v1:<token>` with a cryptographically random code: `QT` followed by 12 uppercase letters and digits (for example, `QT8F4M7R2K9P6A`). New codes exclude I, O, 0 and 1 to avoid transcription errors and always contain both letters and numbers. The code is shown in the reward list and QR preview. Previously issued tokens remain valid. Tokens are retained in the local management database for reprinting. QR rendering happens locally, without sending tokens to an external QR service. The future authenticated app claim endpoint must derive the member ID from the signed-in session and call `claim_reward_token(token, member_id)`. That database function enforces expiry and single use, credits points, and records the ledger entry atomically. No public claim endpoint or app scanner is included yet. Viewing/downloading a QR never redeems it.
+Claiming is **not wired up yet**. The authenticated claim endpoint must take the member ID
+from the signed-in session and call `claim_reward_token(token, member_id)`, which enforces
+expiry and single use, credits points and records the ledger entry atomically. There is no
+public claim endpoint and no app scanner, and viewing or downloading a QR never redeems it.
 
-Run `MANAGEMENT_INTEGRATION=1 node --env-file=.env --test test/rewards.test.js` for database tests. These use an isolated temporary schema and remove it afterwards, covering concurrent claims, expiry, rollback, zero-point rewards, QR PNG generation, and retry protection.
+Manual point adjustments of 1–1,000 require a reason and update `loyalty_accounts` and
+`loyalty_ledger` atomically; request IDs prevent duplicate credits after a retry.
 
-## Kitchen booking hours
+## Kitchen hours
 
-Run `npm run setup:kitchen-hours` for each database after the booking migrations. It preserves existing kitchen settings and defaults to 21:00 Monday–Saturday and 18:00 Sunday. Configure each day under **Settings → Opening & kitchen hours**; times use the venue's local booking time.
+Run `npm run setup:kitchen-hours` per database. Defaults are 21:00 Monday–Saturday and
+18:00 Sunday, editable under **Settings → Opening & kitchen hours** in venue-local time.
+Bookings must start before kitchen closing and finish by venue close; database triggers
+enforce that for new bookings, reschedules, duration changes and reactivations, including
+writes from the customer API.
 
-Bookings must start before kitchen closing and finish by venue closing. The diary marks the closed period and the booking form excludes invalid starts. Database triggers enforce the same restrictions for new bookings, rescheduling, duration changes and reactivating cancelled bookings, including writes from the customer API. Existing bookings are preserved. Run `MANAGEMENT_INTEGRATION=1 node --env-file=.env --test test/kitchen-hours.test.js` for isolated database coverage.
+## Database area
+
+The **Configuration → Database** area browses the public schema: exact row counts, column
+types and primary keys, 50 rows per page, full JSON records. It can delete a row by
+primary key or empty a table without dropping it, after typing the table name; there is no
+undo, and referenced rows block deletion (remove dependents first). Every field is
+visible, including password hashes, salts, token hashes and payment-provider references.
+
+Deletions briefly lock public tables to stop concurrent writes bypassing dependency
+checks, with a three-second lock timeout and fifteen-second statement timeout. Counts and
+bulk deletes are expensive on large databases. This area edits records directly; it does
+not recalculate business aggregates such as order totals.
+
+Booking tables live in `booking_tables` with a unique positive `table_number` and
+`seat_count` of 2–10. **Booking management → Configure tables** adds, removes, renumbers
+or edits seats; numbers may have gaps (401, 402, 405, 501), the diary sorts numerically,
+and internal IDs stay stable when renumbering.
+
+## Tests
+
+```sh
+npm test                                     # unit checks
+MANAGEMENT_INTEGRATION=1 node --env-file=.env --test test/rewards.test.js
+MANAGEMENT_INTEGRATION=1 node --env-file=.env --test test/kitchen-hours.test.js
+```
+
+The integration suites use an isolated temporary schema and remove it afterwards. They
+cover concurrent claims, expiry, rollback, zero-point rewards, QR PNG generation, retry
+protection and kitchen-hours enforcement. They need a real database, so they do not run
+as part of `npm test` alone.
+
+## Deploy
+
+`backoffice.pacevenues.com` (UI) and the `pace-backoffice` / `pace-management-api`
+systemd units in `deploy/systemd/`, behind the shared nginx vhost. The public sandbox at
+`backoffice-demo.pacevenues.com` is provisioned by `./deploy_demo_vps.sh` using
+`demo-fixtures.js`, `demo-sanitize.sql`, `demo-gateway.js` and `provision-demo-template.sh`
+— the demo runs against sanitised data, never the live venue database.
+
+## Known limits
+
+- `server.js` is a single large file with inline routing; changes there touch both the
+  route table and the SQL in one place, so keep it small and tested.
+- Two APIs over one schema means permissions and validation are implemented twice.

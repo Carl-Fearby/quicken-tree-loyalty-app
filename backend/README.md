@@ -1,62 +1,113 @@
 # Pace API
 
-Portable Node.js + TypeScript API for Pace. It uses standard PostgreSQL and can run on any container, VM, or Node-compatible platform.
+**Role:** the public HTTP API — content delivery, member accounts, bookings, order-ahead,
+loyalty and rewards.
+**Port:** 4000 (Swagger UI at `/docs`) · **Package:** `pace-backend`
 
-## Local setup
+Part of the Pace platform; see the [root README](../README.md) for how the six surfaces
+fit together.
 
-1. Provision a PostgreSQL database. For production, use Supabase Postgres; locally, use any PostgreSQL 15+ instance.
-2. Create `.env` from the values below:
+## Role
 
-   ```dotenv
-   DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/postgres?sslmode=require
-   API_ADMIN_TOKEN=replace-with-a-long-random-secret-of-at-least-24-characters
-   PORT=4000
-   CORS_ORIGIN=http://localhost:3000,http://localhost:4300
-   MAILTRAP_API_KEY=your-mailtrap-api-token
-   MAIL_FROM_ADDRESS=no-reply@example.com
-   MAIL_TO_ADDRESS=hello@example.com
-   ```
+A single Fastify service (`src/index.ts`) over PostgreSQL. It is portable Node: no
+platform-specific hosting APIs, so it runs on any VM, container or Node-compatible host.
+The full contract is published at `/docs` and checked in as `../app/api/openapi.yaml`.
 
-3. Install the API dependencies and apply the schemas:
+Two storage styles meet here:
 
-   ```sh
-   cd /Users/F7905607/Dropbox/Projects/hoe/backend
-   npm install
-   psql "$DATABASE_URL" -f migrations/001_content_versions.sql
-   psql "$DATABASE_URL" -f migrations/002_operational_data.sql
-   psql "$DATABASE_URL" -f migrations/003_versioned_content_datasets.sql
-   psql "$DATABASE_URL" -f migrations/004_reward_redemptions.sql
-   psql "$DATABASE_URL" -f migrations/005_member_auth.sql
-   ```
+- **Versioned datasets** in `content_datasets` — menus, availability, events, rewards and
+  other configuration, each independently versioned and served through a manifest so
+  clients only download what changed.
+- **Operational tables** — members, credentials, refresh sessions, preferences, loyalty
+  accounts and ledger, reward redemptions, bookings, guests, orders, lines, assignments,
+  payment-method references and audit events.
 
-4. Seed the current app JSON as version one and the demo member's operational data:
+Content is stored relationally (`src/content-model.ts`); JSON is the API format only and
+is never a storage column.
 
-   ```sh
-   npm run seed
-   ```
+## Local development
 
-5. Start the API:
+```sh
+cd backend
+npm ci
+cp .env.example .env   # then set DATABASE_URL
+npm run dev
+```
 
-   ```sh
-   npm run dev
-   ```
+Apply migrations in order, stopping at the first failure:
 
-Set `NEXT_PUBLIC_CONTENT_API_URL=http://localhost:4000` in the frontend environment when running separately. The full platform-neutral contract is in `../app/api/openapi.yaml`.
+```sh
+for migration in migrations/*.sql; do
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration" || break
+done
+```
 
-The public marketing contact form sends `POST /contact` to this API. On the VPS, enquiries go through local Postfix SMTP on `127.0.0.1:25` from `carl@pacevenues.com` to `carl@pacevenues.com`, with the visitor as Reply-To. Include the deployed marketing origin in `CORS_ORIGIN`. Password-reset emails still use the Mailtrap settings above.
+There are 28 migrations, numbered `001`–`028`. Later ones depend on earlier ones
+(`012_reward_tokens.sql` defines `claim_reward_token`, `017_management_users.sql` backs
+back-office sign-in, `020`–`028` add CRM, waitlist, cancellation, deposits, permissions,
+no-shows and the communications centre).
+
+Then seed and start:
+
+```sh
+npm run seed          # content + operational demo data
+npm run seed:dish-images
+npm run dev
+```
+
+## Configuration
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL 15+ connection string |
+| `PORT` | Listen port, default `4000` |
+| `CORS_ORIGIN` | Comma-separated allowed origins (guest app, marketing site, account web) |
+| `API_ADMIN_TOKEN` | Bearer token for content publishing endpoints (24+ characters) |
+| `AUTH_JWT_SECRET` | Access-token signing secret, 32+ characters in production |
+| `MAILTRAP_API_KEY` / `MAIL_FROM_ADDRESS` / `MAIL_TO_ADDRESS` | Email delivery |
+
+Set `NEXT_PUBLIC_CONTENT_API_URL=http://localhost:4000` for the guest app when the two run
+separately.
 
 ## Endpoints
 
-Browse the live OpenAPI documentation at `http://localhost:4000/docs`. Its contract covers:
+- `POST /contact` — public marketing enquiry (when email is configured).
+- `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`,
+  `/auth/forgot-password`, `/auth/reset-password` — member accounts.
+- `GET /content/manifest`, `GET /content/:key` — cacheable versioned datasets;
+  `PUT /admin/content/:key` publishes a new version with the admin token.
+- `/me/profile`, `/me/loyalty`, `/me/loyalty/ledger` — the signed-in member.
+- `GET /rewards`, `GET /me/rewards`, `POST /me/rewards/:code/redeem`,
+  `POST /me/rewards/:id/mark-redeemed` — catalogue and voucher redemption.
+- Bookings: create, read, update, cancel (policy-checked) and named guests.
+- Order-ahead: `/bookings/:id/order`, `/orders/:id/lines`, per-serving guest assignment,
+  `/orders/:id/checkout`.
+- Tokenised payment-method references — never card numbers.
 
-- cacheable datasets: manifest, conditional download, and authenticated independent publishing;
-- live member profile and dietary/taste preferences;
-- loyalty balance, ledger, reward catalogue and reward redemption;
-- booking CRUD, cancellation and named guests;
-- order-ahead lines, per-serving guest assignment and checkout confirmation; and
-- tokenised payment-method references (never card numbers).
-- public marketing enquiries via `POST /contact`, when email delivery is configured.
+Feature flags (for example `rewards`) gate optional capability per deployment.
 
-Authentication uses a short-lived access JWT in the `Authorization: Bearer` header and a rotating, HttpOnly refresh cookie. The frontend keeps the access token in memory, not browser storage. Set a distinct `AUTH_JWT_SECRET` of at least 32 characters in production; the local development fallback is the existing admin secret.
+## Authentication
 
-`content_datasets` holds independently versioned configuration such as menus, availability, events and rewards. The operational tables keep member-specific data transactional. The app should cache both locally for offline use, but only cacheable datasets use the version manifest to avoid unnecessary downloads.
+Guests only. A short-lived access JWT goes in `Authorization: Bearer`; the frontend keeps
+it in memory rather than browser storage. Sessions renew through a rotating, HttpOnly
+`qt_refresh` cookie that lives for 30 days and is revoked on logout or reuse. Back-office
+staff authenticate separately, in `management/` — a guest token grants nothing there.
+
+## Tests
+
+`npm run typecheck` is the available check; there is no test script in this project.
+Database-level behaviour (rewards claiming, kitchen hours, CRUD) is covered by the
+integration suites in `management/test/`, which run against a real database.
+
+## Deploy
+
+`api.pacevenues.com` behind nginx, run as the `pace-api` systemd unit from `deploy/systemd/`.
+`./deploy.sh` from the repository root builds and restarts the stack.
+
+## Known limits
+
+- `claim_reward_token(token, member_id)` exists and is tested, but **nothing calls it**:
+  there is no public claim endpoint yet. When added, the member ID must come from the
+  session, never from the request body.
+- Emails use Mailtrap settings locally; the VPS sends marketing enquiries through local
+  Postfix, so those two paths behave differently.
