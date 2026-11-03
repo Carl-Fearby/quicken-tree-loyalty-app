@@ -11,21 +11,30 @@ fi
 
 # shellcheck disable=SC1090
 source "$CONFIG"
-: "${DEPLOY_HOST:?DEPLOY_HOST is required}"
 : "${DEPLOY_USER:=pace}"
-: "${DEPLOY_KEY:?DEPLOY_KEY is required}"
 : "${APP_URL:=https://app.pacevenues.com}"
 : "${API_URL:=https://api.pacevenues.com}"
 : "${BACKOFFICE_URL:=https://backoffice.pacevenues.com}"
 
-# DEPLOY_PORT is optional and defaults to the standard SSH port.
+# DEPLOY_SSH_TARGET may name an ~/.ssh/config alias such as "pace". When set, the
+# alias supplies host, port, user and key; otherwise the explicit DEPLOY_HOST and
+# DEPLOY_KEY values (with optional DEPLOY_PORT) are used.
 SSH_PORT_ARGS=""
 if [[ -n "${DEPLOY_PORT:-}" ]]; then
   SSH_PORT_ARGS="-p $DEPLOY_PORT"
 fi
 
-SSH=(ssh -i "$DEPLOY_KEY" $SSH_PORT_ARGS -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST")
-RSYNC_SSH="ssh -i $DEPLOY_KEY $SSH_PORT_ARGS -o BatchMode=yes"
+if [[ -n "${DEPLOY_SSH_TARGET:-}" ]]; then
+  SSH=(ssh -o BatchMode=yes "$DEPLOY_SSH_TARGET")
+  RSYNC_SSH="ssh -o BatchMode=yes"
+  RSYNC_TARGET="$DEPLOY_SSH_TARGET"
+else
+  : "${DEPLOY_HOST:?DEPLOY_HOST is required unless DEPLOY_SSH_TARGET is set}"
+  : "${DEPLOY_KEY:?DEPLOY_KEY is required unless DEPLOY_SSH_TARGET is set}"
+  SSH=(ssh -i "$DEPLOY_KEY" $SSH_PORT_ARGS -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST")
+  RSYNC_SSH="ssh -i $DEPLOY_KEY $SSH_PORT_ARGS -o BatchMode=yes"
+  RSYNC_TARGET="$DEPLOY_USER@$DEPLOY_HOST"
+fi
 
 echo "Building customer app for $API_URL..."
 (
@@ -44,20 +53,20 @@ echo "Building marketing site for $API_URL..."
 )
 
 echo "Uploading marketing site..."
-rsync -az --delete -e "$RSYNC_SSH" "$ROOT/marketing/out/" "$DEPLOY_USER@$DEPLOY_HOST:/var/www/pace/marketing/"
+rsync -az --delete -e "$RSYNC_SSH" "$ROOT/marketing/out/" "$RSYNC_TARGET:/var/www/pace/marketing/"
 
 echo "Uploading customer app..."
-rsync -az --delete -e "$RSYNC_SSH" "$ROOT/app/out/" "$DEPLOY_USER@$DEPLOY_HOST:/var/www/pace/app/"
+rsync -az --delete -e "$RSYNC_SSH" "$ROOT/app/out/" "$RSYNC_TARGET:/var/www/pace/app/"
 
 echo "Uploading public API..."
 rsync -az --delete -e "$RSYNC_SSH" \
   --exclude node_modules --exclude .env --exclude dist --exclude '*.tsbuildinfo' \
-  "$ROOT/backend/" "$DEPLOY_USER@$DEPLOY_HOST:/srv/pace/backend/"
+  "$ROOT/backend/" "$RSYNC_TARGET:/srv/pace/backend/"
 
 echo "Uploading back office..."
 rsync -az --delete -e "$RSYNC_SSH" \
   --exclude node_modules --exclude .next --exclude .env --exclude '*.tsbuildinfo' \
-  "$ROOT/management/" "$DEPLOY_USER@$DEPLOY_HOST:/srv/pace/management/"
+  "$ROOT/management/" "$RSYNC_TARGET:/srv/pace/management/"
 
 echo "Installing, building and restarting remote services..."
 "${SSH[@]}" bash -s <<'REMOTE'
