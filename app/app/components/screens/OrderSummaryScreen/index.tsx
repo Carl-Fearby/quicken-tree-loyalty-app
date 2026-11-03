@@ -2,7 +2,7 @@ import styles from './styles.module.css';
 import {Icon} from '../../Icon';
 import type {CartLine, OrderGuestDetails} from '../CartScreen';
 
-export function OrderSummaryScreen({booking, lines, total, guestDetails, onBack}: {booking: { guests: string; time: string; date: string }; lines: CartLine[]; total: number; guestDetails?: OrderGuestDetails; onBack: () => void}) {
+export function OrderSummaryScreen({booking, lines, subtotal, depositCredit, total, guestDetails, onBack}: {booking: { guests: string; time: string; date: string }; lines: CartLine[]; subtotal: number; depositCredit: number; total: number; guestDetails?: OrderGuestDetails; onBack: () => void}) {
     const servings = lines.flatMap(line => Array.from({length: line.quantity}, (_, index) => ({...line, quantity: 1, guest: guestDetails?.assignments[line.name]?.[index] ?? 'To share'})));
     const groups = [...new Set(servings.map(serving => serving.guest))].map(guest => ({guest, lines: servings.filter(serving => serving.guest === guest)}));
     return <div className={styles.root}>
@@ -14,7 +14,7 @@ export function OrderSummaryScreen({booking, lines, total, guestDetails, onBack}
             <div><b>{line.name}</b><p>{line.description}</p></div>
             <span>£{line.price.toFixed(2)}</span>
         </article>)}</section>)}</div>
-        <section className={styles.total}><span>Total paid</span><b>£{total.toFixed(2)}</b></section>
+        <section className={styles.breakdown}><span>Order subtotal</span><b>£{subtotal.toFixed(2)}</b>{depositCredit > 0 && <><span>Booking deposit</span><b>−£{depositCredit.toFixed(2)}</b></>}<strong>Total paid</strong><strong>£{total.toFixed(2)}</strong></section>
         <p className={styles.paid}><Icon name="fa-circle-check"/> Paid by Apple Pay</p>
     </div>;
 }

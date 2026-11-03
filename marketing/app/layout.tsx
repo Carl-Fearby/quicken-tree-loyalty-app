@@ -24,7 +24,7 @@ export default function RootLayout({children}: Readonly<{children: React.ReactNo
   const schema = { '@context': 'https://schema.org', '@graph': [
     { '@type': 'Organization', name: 'Pace', slogan: 'Service in Sync', ...(siteUrl ? { '@id': `${siteUrl}/#organization`, url: siteUrl, logo: `${siteUrl}/favicon.png`, image: `${siteUrl}/favicon.png` } : {}) },
     { '@type': 'WebSite', name: 'Pace', inLanguage: 'en-GB', description, ...(siteUrl ? { '@id': `${siteUrl}/#website`, url: siteUrl, publisher: { '@id': `${siteUrl}/#organization` } } : {}) },
-    { '@type': 'SoftwareApplication', name: 'Pace', applicationCategory: 'BusinessApplication', operatingSystem: 'Web', description, featureList: ['Restaurant booking diary', 'Table management', 'Menu maintenance', 'Customer loyalty points', 'Kitchen closing times', 'Companion guest app'], offers: [{ '@type': 'Offer', price: '59', priceCurrency: 'GBP', description: 'Pace Core standard monthly price per venue, excluding VAT' }], ...(siteUrl ? { url: siteUrl, publisher: { '@id': `${siteUrl}/#organization` } } : {}) },
+    { '@type': 'SoftwareApplication', name: 'Pace', applicationCategory: 'BusinessApplication', operatingSystem: 'Web', description, featureList: ['Restaurant booking diary', 'Table management', 'Menu maintenance', 'Customer loyalty points', 'Kitchen closing times', 'Companion guest app'], offers: [{ '@type': 'Offer', price: '79', priceCurrency: 'GBP', description: 'Pace Core standard monthly price per venue, excluding VAT' }], ...(siteUrl ? { url: siteUrl, publisher: { '@id': `${siteUrl}/#organization` } } : {}) },
   ] };
   return <html lang="en-GB"><body><script type="application/ld+json" dangerouslySetInnerHTML={{__html:jsonLd(schema)}}/>{children}</body></html>;
 }

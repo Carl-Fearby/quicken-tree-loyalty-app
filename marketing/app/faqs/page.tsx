@@ -9,7 +9,7 @@ const groups = [
   ['About Pace', [
     ['Who is Pace designed for?', 'Pace is designed for hospitality teams managing table bookings, menus and customer loyalty, from independent cafés to restaurants, pubs and bars. It is intended for teams that want a clearer operational view without stitching together several disconnected tools.'],
     ['What problem does Pace solve?', 'Pace brings the information behind a good service into one connected system. Teams can plan reservations, maintain menus and manage customer rewards from the back office, while guests get a clearer way to book, browse and keep track of their visits.'],
-    ['Is Pace for one venue or multiple venues?', 'Both. Pace essentials is suited to a single venue, while a group rollout can be shaped around multiple sites, shared standards and the permissions or support model your organisation needs.'],
+    ['Is Pace for one venue or multiple venues?', 'Both. Pace Core, Growth and Complete are priced per venue, while Pace Group is tailored to multiple sites, shared standards and the permissions or support model your organisation needs.'],
     ['Does Pace replace our whole hospitality stack?', 'Pace focuses on the operational areas covered by the platform: bookings, tables, venue hours, menus and loyalty. During an initial conversation we can map those responsibilities against the tools you already use and identify a sensible starting point rather than assuming everything should change at once.'],
   ]],
   ['Bookings and service planning', [
@@ -43,14 +43,15 @@ const groups = [
     ['Is the app ready to be branded for our venue?', 'The app is designed around venue content and configuration, including menus, events, rewards and venue details. A rollout conversation can establish the appropriate branding and content requirements.'],
   ]],
   ['Customers and staff access', [
-    ['What does the customer list show?', 'The back office has a searchable list of registered app customers. Staff with customer access can see names, loyalty balances, booking counts and the latest booking date.'],
+    ['What does the customer CRM show?', 'Staff with customer access can search by name, email, phone or booking reference, then review contact details, visits, loyalty activity, notes, preferences, tags and marketing consent in one chronological profile.'],
+    ['Can we build customer segments?', 'Yes. Segments can combine visit count, recency, loyalty points, tags and dietary preferences. A consent-aware preview separates eligible, suppressed and unreachable customers and explains why each matching guest was included.'],
     ['Can staff have different permissions?', 'Yes. Booking access can be set to none, read or write. Customer access, rewards and each configuration area can be assigned separately to staff accounts. Administrators have full access.'],
     ['Can a staff member grant permissions they do not have?', 'No. A user who can manage accounts cannot give another person access to functions beyond their own permissions.'],
     ['Can rewards be turned off?', 'Yes. A rewards setting hides rewards in both the back office and guest app when disabled, while keeping existing reward data.'],
   ]],
   ['Getting started, pricing and support', [
-    ['How is Pace priced?', 'Pricing is shaped around the venue rather than presented as a misleading one-size-fits-all number. We consider the number of venues, tables and menus, team access, rollout needs and the support required.'],
-    ['Which plan should we choose?', 'Pace essentials is a sensible starting point for bookings, tables, hours and menu administration. Pace growth adds customer points and reward management, while Pace group is intended for multi-venue rollouts.'],
+    ['How is Pace priced?', 'Pace Core is £79, Growth £139 and Complete £199 per venue per month before VAT. Introductory monthly prices apply for the first three months; Pace Group is quoted for your rollout. Setup and onboarding may be quoted separately.'],
+    ['Which plan should we choose?', 'Pace Core covers bookings, tables, hours and menus. Growth adds customer management, loyalty points and rewards. Complete adds the customer-facing Pace mobile app. Group is for multi-venue rollouts.'],
     ['How long does setup take?', 'The timeline depends on the number of venues, the information you want to bring across and how your team works today. We can define a practical first phase and identify the configuration needed before launch.'],
     ['Do we need technical staff to use Pace?', 'Pace is designed for hospitality teams, not specialist developers. The important setup decisions are operational: your tables, service hours, menus, permissions and reward approach.'],
     ['Can we start with one part of the platform?', 'Yes. A focused rollout can begin with the area that creates the most friction, such as the booking diary or menu administration, then expand as the team is comfortable.'],

@@ -1,10 +1,13 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Breadcrumbs } from '../ui/Breadcrumbs';
 
 type Customer = {
   id: string;
   name: string;
   email: string | null;
+  phone: string | null;
   memberSince: string;
   tier: string;
   createdAt: string;
@@ -64,6 +67,7 @@ export function CustomersPage() {
 
   return (
     <section className="settings-page customers-page">
+      <Breadcrumbs current="Customers" showSettings={false} />
       <div className="customers-heading">
         <div>
           <p className="eyebrow">CUSTOMER REGISTRATIONS</p>
@@ -72,14 +76,14 @@ export function CustomersPage() {
             Registered app customers, their loyalty balance and recent booking activity.
           </p>
         </div>
-        <label className="customer-search">
+        <div className="customers-heading-actions"><Link className="secondary-action" href="/customers/segments">Segments</Link><label className="customer-search">
           Search customers
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Name or email"
+            placeholder="Name, email, phone or booking reference"
           />
-        </label>
+        </label></div>
       </div>
 
       {error && (
@@ -107,10 +111,10 @@ export function CustomersPage() {
           <span>Points</span>
         </div>
         {customers.map((customer) => (
-          <article className="customer-row" key={customer.id}>
+          <Link className="customer-row" href={`/customers/${customer.id}`} key={customer.id}>
             <div>
               <strong>{customer.name}</strong>
-              <small>{customer.email || 'No email on record'}</small>
+              <small>{customer.email || customer.phone || 'No contact details'}</small>
             </div>
             <span>{displayDate(customer.memberSince || customer.createdAt)}</span>
             <span>
@@ -118,7 +122,7 @@ export function CustomersPage() {
               <small>{displayDate(customer.lastBookingDate)}</small>
             </span>
             <strong>{customer.points.toLocaleString()}</strong>
-          </article>
+          </Link>
         ))}
         {!customers.length && (
           <p className="customers-empty">

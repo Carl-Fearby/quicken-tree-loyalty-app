@@ -7,21 +7,21 @@ import { ArrowIcon } from '../WhatsAppLink';
 type Plan = {
   name: string;
   monthly: number | null;
-  monthlyIntro?: number;
-  annualIntro?: number;
-  annualRenewal?: number;
+  intro?: number;
   summary: string;
   features: string[];
   cta: string;
+  emphasis?: 'popular' | 'premium';
 };
 
 const plans: Plan[] = [
-  { name: 'Pace core', monthly: 59, monthlyIntro: 29, annualIntro: 469, annualRenewal: 649, summary: 'For venues getting their daily operations into one place.', features: ['Booking diary and table assignments', 'Venue and kitchen hours', 'Menu sections, dishes and availability'], cta: 'Start a conversation' },
-  { name: 'Pace growth', monthly: 99, monthlyIntro: 49, annualIntro: 789, annualRenewal: 899, summary: 'For teams ready to connect service planning with customer loyalty.', features: ['Everything in Pace core', 'Customer points and reward codes', 'Reward expiry and activity history'], cta: 'Talk through your needs' },
-  { name: 'Pace group', monthly: null, summary: 'For growing hospitality businesses with more than one venue.', features: ['A rollout shaped around your venues', 'Shared operating standards', 'A plan for permissions, support and future integrations'], cta: 'Plan a rollout' },
+  { name: 'Pace Core', monthly: 79, intro: 39, summary: 'For venues that want daily operations in one place.', features: ['Bookings and table assignments', 'Venue and kitchen hours', 'Menus, dishes and availability'], cta: 'Book a demo' },
+  { name: 'Pace Growth', monthly: 139, intro: 69, summary: 'For venues turning customers into regulars.', features: ['Everything in Core', 'Customer management and CRM', 'Loyalty points and rewards', 'QR redemption and reward history'], cta: 'Book a demo', emphasis: 'popular' },
+  { name: 'Pace Complete', monthly: 199, intro: 99, summary: 'The complete experience for your team and guests.', features: ['Everything in Growth', 'Customer-facing Pace mobile app', 'Mobile bookings, menus and order ahead', 'In-app loyalty and rewards'], cta: 'Book a demo', emphasis: 'premium' },
+  { name: 'Pace Group', monthly: null, summary: 'For multi-site operators and larger hospitality businesses.', features: ['Central management across venues', 'Multi-site rollout and permissions', 'Bespoke onboarding and support', 'White-label requirements considered'], cta: 'Plan a rollout' },
 ];
 
-const money = (value: number) => `£${value.toFixed(value % 1 ? 2 : 0)}`;
+const money = (value: number) => `£${value.toLocaleString('en-GB')}`;
 
 export default function PricingCards() {
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
@@ -31,29 +31,27 @@ export default function PricingCards() {
       <button type="button" className={billing === 'monthly' ? 'active' : ''} onClick={() => setBilling('monthly')}>Monthly</button>
       <button type="button" className={billing === 'annual' ? 'active' : ''} onClick={() => setBilling('annual')}>Annual <span>1 month free</span></button>
     </div>
-    <p className="billing-explainer">
-      {billing === 'monthly'
-        ? 'Introductory monthly pricing is 50% off for the first six months. Standard monthly pricing applies from month seven.'
-        : 'Annual year one uses a rounded introductory price after 50% off your first 6 months. From year two, the standard annual renewal applies with 1 month free each year.'}
-    </p>
+    <p className="billing-explainer">{billing === 'monthly'
+      ? 'Introductory prices apply for your first 3 months. Standard monthly pricing starts in month 4.'
+      : 'Your first year includes 3 introductory-price months and 1 month free. Renewals include 1 month free each year.'}</p>
     <div className="pricing-grid">{plans.map(plan => {
-      const isCustom = !plan.monthly;
+      const isCustom = plan.monthly === null;
       const monthly = plan.monthly ?? 0;
-      const monthlyIntro = plan.monthlyIntro ?? monthly / 2;
-      const annualFirstYear = plan.annualIntro ?? monthly * 9;
-      const annualRenewal = plan.annualRenewal ?? monthly * 11;
-      return <article key={plan.name}>
-        <span className="pricing-label">{plan.name}</span>
-        {!isCustom && <span className="pricing-promo">{billing === 'monthly' ? '50% off for the first 6 months' : 'Introductory annual rate · 3 months equivalent free'}</span>}
+      const intro = plan.intro ?? 0;
+      const annualFirstYear = 8 * monthly + 3 * intro;
+      const annualRenewal = 11 * monthly;
+      return <article key={plan.name} className={plan.emphasis ? `pricing-${plan.emphasis}` : undefined}>
+        <div className="pricing-card-heading"><span className="pricing-label">{plan.name}</span>{plan.emphasis === 'popular' && <span className="pricing-badge">Most Popular</span>}</div>
         {isCustom ? <p className="pricing-price">Custom</p> : billing === 'monthly'
-          ? <p className="pricing-price">{money(monthlyIntro)} <del>{money(monthly)}</del></p>
-          : <p className="pricing-price">{money(annualFirstYear)} <small className="annual-total">first year</small></p>}
-        <p className="pricing-cadence">{isCustom ? 'multi-venue pricing' : billing === 'monthly' ? 'per venue / month' : `${money(annualRenewal)} from year two · billed annually`}</p>
+          ? <p className="pricing-price">{money(monthly)}<small>/ month</small></p>
+          : <p className="pricing-price">{money(annualFirstYear)}<small>/ first year</small></p>}
+        <p className="pricing-cadence">{isCustom ? 'Tailored to your group' : billing === 'monthly' ? 'per venue, excluding VAT' : `${money(annualRenewal)} per year from year 2`}</p>
+        {!isCustom && <p className="pricing-promo">{billing === 'monthly' ? `${money(intro)}/month for your first 3 months` : '3 introductory months + 1 month free'}</p>}
         <h2>{plan.summary}</h2>
-        <ul>{plan.features.map(feature => <li key={feature}><span>✓</span>{feature}</li>)}</ul>
-        <Link className="button" href="/contact">{plan.cta} <span><ArrowIcon/></span></Link>
+        <ul>{plan.features.map(feature => <li key={feature}><span aria-hidden="true">✓</span>{feature}</li>)}</ul>
+        <Link className="button" href="/contact?enquiry=demo">{plan.cta} <span><ArrowIcon/></span></Link>
       </article>;
     })}</div>
-    <p className="annual-detail">Annual figures are shown before VAT. First-year prices are rounded commercial introductory rates reflecting 50% off your first 6 months. From the second annual payment onward, the standard renewal price applies with 1 month free each year (11 months paid for 12 months’ access). Setup, onboarding and third-party services may be quoted separately.</p>
+    <p className="annual-detail">Prices exclude VAT. The first annual payment covers 8 months at the standard monthly rate, 3 at the introductory rate and 1 free month. Annual renewal is 11 standard-rate months for 12 months of access. Setup, onboarding and third-party services may be quoted separately.</p>
   </section>;
 }

@@ -15,7 +15,8 @@
     "setup:booking-tables": "node --env-file=.env setup-booking-tables.js",
     "setup:rewards": "node --env-file=.env setup-rewards.js",
     "setup:kitchen-hours": "node --env-file=.env setup-kitchen-hours.js",
-    "setup:users": "node --env-file=.env setup-users.js"
+    "setup:users": "node --env-file=.env setup-users.js",
+    "seed:test-database": "node --env-file=.env seed-test-database.js"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.1",

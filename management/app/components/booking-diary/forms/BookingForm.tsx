@@ -14,6 +14,7 @@ type Props = {
   onDateChange: (date: string) => void;
   onSubmit: (event: FormEvent) => void;
   readOnly?: boolean;
+  preserveCurrentSchedule?: boolean;
 };
 
 export function BookingForm({
@@ -26,6 +27,7 @@ export function BookingForm({
   onDateChange,
   onSubmit,
   readOnly = false,
+  preserveCurrentSchedule = false,
 }: Props) {
   return (
     <form onSubmit={onSubmit}>
@@ -38,6 +40,7 @@ export function BookingForm({
           value={value}
           onChange={onChange}
           onDateChange={onDateChange}
+          preserveCurrentSelection={preserveCurrentSchedule}
         />
         <BookingTableFields tables={tables} value={value} onChange={onChange} />
       </fieldset>

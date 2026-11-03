@@ -7,6 +7,7 @@ import { AssignTableModal } from './modals/AssignTableModal';
 import { EditBookingModal } from './modals/EditBookingModal';
 import { OrderDetailsModal } from './modals/OrderDetailsModal';
 import { CancelBookingDialog } from './modals/CancelBookingDialog';
+import { AttendanceStatusDialog } from './modals/AttendanceStatusDialog';
 import { DatePicker } from '../ui/DatePicker';
 import { Breadcrumbs } from '../ui/Breadcrumbs';
 import { useBookingAvailability } from './hooks/useBookingAvailability';
@@ -16,12 +17,18 @@ type Table = { id: number; name: string; seats: number };
 type Booking = {
   id: string;
   name: string;
+  contactEmail?: string | null;
   time: string;
   guests: number;
   experience: string;
   status: string;
+  depositStatus?: string;
+  depositAmountPence?: number;
   notes?: string;
   dietaryNeeds?: string[];
+  customerDietaryNeeds?: string[];
+  customerTastes?: string[];
+  customerTags?: string[];
   assignedTableName?: string;
   assignedTableIds?: number[];
   durationMinutes?: number;
@@ -38,23 +45,31 @@ type Booking = {
       assignments?: { servingNumber: number; isShared: boolean; guestName?: string | null }[];
     }[];
   } | null;
+  lastReminder?: { channel:string; status:string; createdAt:string; deliveredAt?:string|null } | null;
 };
 type Diary = {
   date: string;
   tables: Table[];
   bookings: Booking[];
   openingHours: { open: number; close: number; kitchenClose: number } | null;
-  bookingSettings: { defaultDurationMinutes: number };
+  bookingSettings: { defaultDurationMinutes: number; cancellationCutoffHours: number };
+  attendanceSummary: { completed: number; noShows: number; cancelled: number; needsReview: number };
 };
 type Draft = {
   name: string;
+  contactEmail: string;
   guests: number;
   time: string;
   duration: number;
   experience: string;
   dietary: string;
+  customerDietaryNeeds: string[];
+  customerTastes: string[];
+  customerTags: string[];
   notes: string;
   tableIds: number[];
+  depositStatus: 'none' | 'demo_paid' | 'demo_card_guarantee';
+  depositAmountPence: number;
 };
 const today = () =>
   new Intl.DateTimeFormat('en-CA', {
@@ -73,6 +88,7 @@ export default function BookingDiaryPage() {
     [assigning, setAssigning] = useState<Booking | null>(null),
     [orderDetails, setOrderDetails] = useState<Booking | null>(null),
     [cancelling, setCancelling] = useState<Booking | null>(null),
+    [attendanceChange, setAttendanceChange] = useState<{booking:Booking;status:'no_show'|'confirmed'}|null>(null),
     [saving, setSaving] = useState(false);
 
   const { bookings: active, diary, error, load, setError, slots } = useBookingDiary(date);
@@ -90,13 +106,19 @@ export default function BookingDiaryPage() {
     setBookingDate(date);
     setDraft({
       name: '',
+      contactEmail: '',
       guests: 2,
       time: slots[0] || '',
       duration: diary?.bookingSettings.defaultDurationMinutes || 90,
       experience: 'Table',
       dietary: '',
+      customerDietaryNeeds: [],
+      customerTastes: [],
+      customerTags: [],
       notes: '',
       tableIds: [],
+      depositStatus: 'demo_paid',
+      depositAmountPence: 1000,
     });
   };
   const beginEdit = (booking: Booking) => {
@@ -108,13 +130,19 @@ export default function BookingDiaryPage() {
     const value = existing
       ? {
           name: existing.name,
+          contactEmail: existing.contactEmail || '',
           guests: existing.guests,
           time: existing.time.slice(0, 5),
           duration: existing.durationMinutes || 90,
           experience: existing.experience,
           dietary: (existing.dietaryNeeds || []).join(', '),
+          customerDietaryNeeds: existing.customerDietaryNeeds || [],
+          customerTastes: existing.customerTastes || [],
+          customerTags: existing.customerTags || [],
           notes: existing.notes || '',
           tableIds: existing.assignedTableIds || [],
+          depositStatus: 'none' as const,
+          depositAmountPence: 0,
         }
       : draft;
     if (!value) return;
@@ -129,6 +157,7 @@ export default function BookingDiaryPage() {
               date: bookingDate,
               time: value.time,
               name: value.name,
+              contactEmail: value.contactEmail,
               guests: value.guests,
               durationMinutes: value.duration,
               experience: value.experience,
@@ -138,6 +167,10 @@ export default function BookingDiaryPage() {
                 .map((item) => item.trim())
                 .filter(Boolean),
               tableIds: value.tableIds,
+              ...(!existing && {
+                depositStatus: value.depositStatus,
+                depositAmountPence: value.depositAmountPence,
+              }),
             }),
           },
         ),
@@ -152,12 +185,14 @@ export default function BookingDiaryPage() {
       setSaving(false);
     }
   };
-  const cancelBooking = async () => {
+  const cancelBooking = async (reason: string) => {
     if (!cancelling) return;
     setSaving(true);
     try {
       const response = await fetch(`/api/diary/bookings/${cancelling.id}/cancel`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
       });
       const body = await response.json();
       if (!response.ok) throw Error(body.message || 'Unable to cancel booking.');
@@ -168,6 +203,32 @@ export default function BookingDiaryPage() {
     } finally {
       setSaving(false);
     }
+  };
+  const updateProtection = async (booking: Booking, changes: {depositStatus?:string;depositAmountPence?:number}) => {
+    setSaving(true); setError('');
+    try {
+      const response=await fetch(`/api/diary/bookings/${booking.id}/protection`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(changes)}),body=await response.json();
+      if(!response.ok) throw Error(body.message||'Unable to update booking protection.');
+      setEditing({...booking,...body.booking});
+      await load();
+    } catch(problem){setError(problem instanceof Error?problem.message:'Unable to update booking protection.');}
+    finally{setSaving(false);}
+  };
+  const updateAttendance = async (booking:Booking,status:string,reason='') => {
+    setSaving(true);setError('');
+    try{
+      const response=await fetch(`/api/diary/bookings/${booking.id}/status`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status,reason})}),body=await response.json();
+      if(!response.ok)throw Error(body.message||'Unable to update attendance.');
+      setEditing(current=>current?.id===booking.id?{...current,...body.booking}:current);
+      setAttendanceChange(null);await load();
+    }catch(problem){setError(problem instanceof Error?problem.message:'Unable to update attendance.');}
+    finally{setSaving(false);}
+  };
+  const sendReminder = async (booking:Booking) => {
+    setSaving(true);setError('');
+    try{const response=await fetch(`/api/diary/bookings/${booking.id}/reminder`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel:'email'})}),body=await response.json();if(!response.ok)throw Error(body.message||'Unable to send reminder.');setEditing({...booking,lastReminder:body.reminder});await load();}
+    catch(problem){setError(problem instanceof Error?problem.message:'Unable to send reminder.');}
+    finally{setSaving(false);}
   };
   const assignTable = async (tableId: number | null) => {
     if (!assigning) return;
@@ -202,10 +263,12 @@ export default function BookingDiaryPage() {
     value: Draft,
     source: Diary | null,
     bookings: Booking[],
-    times: string[],
+    _times: string[],
     currentBookingId?: string,
-  ) =>
-    source && times.includes(value.time)
+  ) => {
+    const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+    const start = minutes(value.time);
+    return source && value.time
       ? source.tables.filter(
           (table) =>
             table.seats >= value.guests &&
@@ -213,14 +276,18 @@ export default function BookingDiaryPage() {
               (booking) =>
                 booking.id !== currentBookingId &&
                 (booking.assignedTableIds || []).includes(table.id) &&
-                times.indexOf(value.time) <
-                  times.indexOf(booking.time.slice(0, 5)) +
-                    Math.ceil((booking.durationMinutes || 90) / 30) &&
-                times.indexOf(booking.time.slice(0, 5)) <
-                  times.indexOf(value.time) + Math.ceil(value.duration / 30),
+                start < minutes(booking.time) + (booking.durationMinutes || 90) &&
+                minutes(booking.time) < start + value.duration,
             ),
         )
       : [];
+  };
+  const reviewBookings = active.filter((booking) => {
+    if (!['confirmed','arrived'].includes(booking.status)) return false;
+    const serviceEnd = new Date(`${date}T${booking.time.slice(0,5)}:00`);
+    serviceEnd.setMinutes(serviceEnd.getMinutes() + (booking.durationMinutes || 90));
+    return serviceEnd.getTime() < Date.now();
+  });
   return (
     <>
       <Breadcrumbs
@@ -255,6 +322,13 @@ export default function BookingDiaryPage() {
         </div>
       </div>
       {error && <p className="error-message">{error}</p>}
+      {diary && <section className="attendance-overview" aria-label="Attendance overview">
+        <div><span>Completed visits</span><strong>{diary.attendanceSummary.completed}</strong><small>Last 90 days</small></div>
+        <div><span>No-shows</span><strong>{diary.attendanceSummary.noShows}</strong><small>Last 90 days</small></div>
+        <div><span>Late cancellations</span><strong>{diary.attendanceSummary.cancelled}</strong><small>Last 90 days</small></div>
+        <div className={diary.attendanceSummary.needsReview?'needs-review':''}><span>Needs review</span><strong>{diary.attendanceSummary.needsReview}</strong><small>Past service time</small></div>
+      </section>}
+      {!!reviewBookings.length&&<section className="attendance-review-queue"><div><strong>Attendance review</strong><span>{reviewBookings.length} {reviewBookings.length===1?'booking has':'bookings have'} passed the service window.</span></div><div>{reviewBookings.map(booking=><button key={booking.id} type="button" onClick={()=>beginEdit(booking)}><b>{booking.time.slice(0,5)}</b><span>{booking.name}</span><small>{booking.status}</small></button>)}</div></section>}
       <div className="diary-layout">
         <BookingList
           bookings={active}
@@ -297,13 +371,19 @@ export default function BookingDiaryPage() {
           tables={existingCandidates(
             {
               name: editing.name,
+              contactEmail: editing.contactEmail || '',
               guests: editing.guests,
               time: editing.time.slice(0, 5),
               duration: editing.durationMinutes || 90,
               experience: editing.experience,
               dietary: (editing.dietaryNeeds || []).join(', '),
+              customerDietaryNeeds: editing.customerDietaryNeeds || [],
+              customerTastes: editing.customerTastes || [],
+              customerTags: editing.customerTags || [],
               notes: editing.notes || '',
               tableIds: editing.assignedTableIds || [],
+              depositStatus: 'none',
+              depositAmountPence: 0,
             },
             modalDiary,
             modalBookings,
@@ -312,20 +392,28 @@ export default function BookingDiaryPage() {
           )}
           value={{
             name: editing.name,
+            contactEmail: editing.contactEmail || '',
             guests: editing.guests,
             time: editing.time.slice(0, 5),
             duration: editing.durationMinutes || 90,
             experience: editing.experience,
             dietary: (editing.dietaryNeeds || []).join(', '),
+            customerDietaryNeeds: editing.customerDietaryNeeds || [],
+            customerTastes: editing.customerTastes || [],
+            customerTags: editing.customerTags || [],
             notes: editing.notes || '',
             tableIds: editing.assignedTableIds || [],
+            depositStatus: 'none',
+            depositAmountPence: 0,
           }}
           saving={saving}
           readOnly={!canWrite}
+          preserveCurrentSchedule={bookingDate === date}
           onChange={(value) =>
             setEditing({
               ...editing,
               name: value.name,
+              contactEmail: value.contactEmail,
               guests: value.guests,
               time: value.time,
               durationMinutes: value.duration,
@@ -346,6 +434,9 @@ export default function BookingDiaryPage() {
             setOrderDetails(editing);
             setEditing(null);
           }}
+          onProtectionChange={(changes)=>void updateProtection(editing,changes)}
+          onStatusChange={(status)=>status==='no_show'||(editing.status==='no_show'&&status==='confirmed')?setAttendanceChange({booking:editing,status:status as 'no_show'|'confirmed'}):void updateAttendance(editing,status)}
+          onSendReminder={()=>void sendReminder(editing)}
           onSubmit={(event) => canWrite && void save(event, editing)}
         />
       )}
@@ -363,10 +454,13 @@ export default function BookingDiaryPage() {
       {cancelling && (
         <CancelBookingDialog
           booking={cancelling}
+          date={date}
+          cancellationCutoffHours={diary?.bookingSettings.cancellationCutoffHours ?? 24}
           onClose={() => setCancelling(null)}
-          onCancel={() => void cancelBooking()}
+          onCancel={(reason) => void cancelBooking(reason)}
         />
       )}
+      {attendanceChange&&<AttendanceStatusDialog booking={attendanceChange.booking} targetStatus={attendanceChange.status} saving={saving} onClose={()=>setAttendanceChange(null)} onConfirm={reason=>void updateAttendance(attendanceChange.booking,attendanceChange.status,reason)}/>}
     </>
   );
 }

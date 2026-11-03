@@ -15,7 +15,9 @@ export function OrderDetailsModal({ booking, onClose }: { booking: Booking; onCl
         <>
           <p className="diary-order-status">{order.status}</p>
           <p className="diary-order-payment">
-            Total {formatMoney(order.totalPence)}
+            Order {formatMoney(order.totalPence)}
+            {order.depositCreditPence ? ` · Deposit −${formatMoney(order.depositCreditPence)}` : ''}
+            {order.status === 'paid' ? ` · Charged ${formatMoney(order.paidPence ?? order.totalPence)}` : ''}
             {order.paidAt ? ` · Paid ${new Date(order.paidAt).toLocaleString('en-GB')}` : ''}
           </p>
           <div className="diary-order-lines">

@@ -19,6 +19,9 @@ rsync -az --delete -e "$RSYNC_SSH" \
   chown -R pace:pace /srv/pace/management-demo
   if [ ! -f /etc/pace/demo.env ]; then
     bash /srv/pace/management-demo/provision-demo-template.sh
+  else
+    systemctl stop pace-demo-gateway.service pace-demo-web.service
+    bash /srv/pace/management-demo/provision-demo-template.sh --refresh
   fi
   runuser -u pace -- sh -c "cd /srv/pace/management-demo && npm ci"
   runuser -u pace -- sh -c "cd /srv/pace/management-demo && MANAGEMENT_API_PORT=4201 NEXT_PUBLIC_DEMO_MODE=true npm run build"
@@ -32,6 +35,8 @@ rsync -az --delete -e "$RSYNC_SSH" \
   nginx -t
   systemctl reload nginx
   certbot --nginx --non-interactive --agree-tos --redirect -d backoffice-demo.pacevenues.com
+  test -s /srv/pace/management-demo/public/dish-images/steak.webp
+  test "$(runuser -u postgres -- psql -At --dbname=pace_demo_template -c "select count(*) from menu_item_images")" -gt 0
 '
 
 echo 'Demo deployed at https://backoffice-demo.pacevenues.com'

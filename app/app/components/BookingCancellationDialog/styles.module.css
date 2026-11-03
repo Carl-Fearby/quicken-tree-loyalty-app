@@ -54,6 +54,27 @@
     gap: 8px;
 }
 
+.reason {
+    display: grid;
+    gap: 6px;
+    margin: 0 0 14px;
+    color: var(--qt-color-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    text-align: left;
+}
+
+.reason select {
+    width: 100%;
+    min-height: 43px;
+    border: 1px solid var(--qt-color-border);
+    border-radius: 12px;
+    padding: 0 12px;
+    background: var(--qt-color-surface);
+    color: var(--qt-color-text);
+    font: inherit;
+}
+
 .actions button {
     min-height: 45px;
     border: 1px solid var(--qt-color-border);
@@ -81,6 +102,12 @@
 }
 
 :global(.dark) .actions button {
+    border-color: var(--qt-color-border-dark);
+    background: var(--qt-color-text-heading);
+    color: var(--qt-color-surface-dark-text);
+}
+
+:global(.dark) .reason select {
     border-color: var(--qt-color-border-dark);
     background: var(--qt-color-text-heading);
     color: var(--qt-color-surface-dark-text);

@@ -18,6 +18,30 @@ const options = [
     'Configure duration',
   ],
   [
+    'cancellation',
+    'Cancellation policy',
+    'Set the free-cancellation window and deposit outcome.',
+    'Configure cancellation policy',
+  ],
+  [
+    'deposits',
+    'Deposit rules',
+    'Require deposits by booking source, party size, day and time.',
+    'Configure deposit rules',
+  ],
+  [
+    'attendance',
+    'Attendance and reminders',
+    'Set reminder timings and manage the no-show review workflow.',
+    'Configure attendance',
+  ],
+  [
+    'communications',
+    'Communications centre',
+    'Manage templates, previews, test sends and delivery history.',
+    'Open communications',
+  ],
+  [
     'hours',
     'Opening & kitchen hours',
     'Configure venue hours and daily kitchen closing times.',
@@ -60,6 +84,10 @@ export function SettingsHome({ onOpen }: Props) {
   const permissionByView: Partial<Record<SettingsView, string>> = {
     tables: 'configuration.tables',
     duration: 'configuration.duration',
+    cancellation: 'configuration.cancellation',
+    deposits: 'configuration.deposits',
+    attendance: 'configuration.attendance',
+    communications: 'configuration.communications',
     hours: 'configuration.hours',
     menu: 'configuration.menu',
     'menu-symbols': 'configuration.symbols',

@@ -83,6 +83,10 @@
     color: var(--qt-color-brand);
     font-size: 18px;
 }
+.breakdown { display: grid; grid-template-columns: 1fr auto; gap: 7px 14px; margin-top: 2px; padding: 13px 12px; border-radius: 14px; background: var(--qt-color-surface-muted); color: var(--qt-color-text-subtle); font-size: 12px; }
+.breakdown b,.breakdown strong { text-align: right; }
+.breakdown strong { padding-top: 8px; border-top: 1px solid var(--qt-color-border); color: var(--qt-color-text); font-size: 14px; }
+.breakdown strong:last-child { color: var(--qt-color-brand); font-size: 18px; }
 
 .paid {
     display: flex;
@@ -109,6 +113,7 @@
     background: var(--qt-color-text-heading);
     color: var(--qt-color-surface-dark-text);
 }
+:global(.dark) .breakdown { background: var(--qt-color-text-heading); color: var(--qt-color-surface-dark-text); }
 
 :global(.dark) .paid {
     color: var(--qt-color-8ec7a6);

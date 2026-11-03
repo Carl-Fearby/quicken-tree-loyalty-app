@@ -17,9 +17,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordBusy, setPasswordBusy] = useState(false);
   const [passwordError, setPasswordError] = useState('');
-  const [databaseTarget, setDatabaseTarget] = useState<'local' | 'remote'>('local');
+  const [databaseTarget, setDatabaseTarget] = useState<'local' | 'seeded' | 'remote'>('local');
   const [databaseLabel, setDatabaseLabel] = useState('Local database');
   const [remoteDatabaseConfigured, setRemoteDatabaseConfigured] = useState(false);
+  const [seededDatabaseConfigured, setSeededDatabaseConfigured] = useState(false);
   const [databaseSwitchBusy, setDatabaseSwitchBusy] = useState(false);
   const [showDatabaseBadge, setShowDatabaseBadge] = useState(false);
   const [confirmProductionRefresh, setConfirmProductionRefresh] = useState(false);
@@ -38,6 +39,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         setDatabaseTarget(body.target);
         setDatabaseLabel(body.label);
         setRemoteDatabaseConfigured(body.remoteConfigured);
+        setSeededDatabaseConfigured(body.seededConfigured);
       })
       .catch(() => undefined);
   }, []);
@@ -100,6 +102,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const configurationPermissionByPath: Record<string, string> = {
       '/configuration/tables': 'configuration.tables',
       '/configuration/duration': 'configuration.duration',
+      '/configuration/cancellation': 'configuration.cancellation',
+      '/configuration/deposits': 'configuration.deposits',
+      '/configuration/attendance': 'configuration.attendance',
+      '/configuration/communications': 'configuration.communications',
       '/configuration/hours': 'configuration.hours',
       '/configuration/menu': 'configuration.menu',
       '/configuration/menu-symbols': 'configuration.symbols',
@@ -128,7 +134,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem('qt-back-office-theme', enabled ? 'dark' : 'light');
   };
 
-  const switchDatabase = async (target: 'local' | 'remote') => {
+  const switchDatabase = async (target: 'local' | 'seeded' | 'remote') => {
     setDatabaseSwitchBusy(true);
     try {
       const response = await fetch('/api/development/database-target', {
@@ -174,9 +180,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         aria-label="Active development database"
         value={databaseTarget}
         disabled={databaseSwitchBusy}
-        onChange={(event) => void switchDatabase(event.target.value as 'local' | 'remote')}
+        onChange={(event) => void switchDatabase(event.target.value as 'local' | 'seeded' | 'remote')}
       >
         <option value="local">Local</option>
+        <option value="seeded" disabled={!seededDatabaseConfigured}>Seeded</option>
         <option value="remote" disabled={!remoteDatabaseConfigured}>Production</option>
       </select>
       {remoteDatabaseConfigured && (
@@ -228,7 +235,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   const isDiaryActive = pathname === '/diary';
-  const isCustomersActive = pathname === '/customers';
+  const isWaitlistActive = pathname === '/waitlist';
+  const isCustomersActive = pathname.startsWith('/customers');
   const isRewardsActive = pathname === '/rewards';
   const isConfigActive = pathname.startsWith('/configuration');
 
@@ -271,6 +279,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               Booking diary
             </Link>
           )}
+          {user.bookingAccess !== 'none' && <Link className="global-tab" aria-selected={isWaitlistActive} href="/waitlist">Waitlist</Link>}
           {user.permissions.customers !== 'none' && <Link
             className="global-tab"
             aria-selected={isCustomersActive}

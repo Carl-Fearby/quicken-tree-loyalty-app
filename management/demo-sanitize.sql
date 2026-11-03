@@ -1,7 +1,7 @@
 -- Run only in an unserved demo template database, never in production.
 truncate table members, bookings, management_users, staff_users,
   reward_tokens, reward_redemptions, content_generation,
-  content_revisions, menu_notifications restart identity cascade;
+  content_revisions, menu_notifications, customer_audit_events restart identity cascade;
 
 update profile_defaults
 set name = 'Demo Guest', email = 'guest@demo.invalid', member_since = '2024-01-01';

@@ -11,6 +11,7 @@ type Props = {
   value: BookingDraft;
   onChange: (value: BookingDraft) => void;
   onDateChange: (date: string) => void;
+  preserveCurrentSelection?: boolean;
 };
 
 export function BookingScheduleFields({
@@ -20,6 +21,7 @@ export function BookingScheduleFields({
   value,
   onChange,
   onDateChange,
+  preserveCurrentSelection = false,
 }: Props) {
   const availableSlots = useMemo(() => {
     if (!slots.length) return [];
@@ -40,11 +42,16 @@ export function BookingScheduleFields({
       );
     });
   }, [date, slots, kitchenClose, value.duration]);
+  const selectableSlots = useMemo(() => {
+    if (!preserveCurrentSelection || !value.time || availableSlots.includes(value.time))
+      return availableSlots;
+    return [...availableSlots, value.time].sort();
+  }, [availableSlots, preserveCurrentSelection, value.time]);
 
   useEffect(() => {
-    if (!availableSlots.includes(value.time) && value.time !== (availableSlots[0] || ''))
-      onChange({ ...value, time: availableSlots[0] || '', tableIds: [] });
-  }, [availableSlots, onChange, value]);
+    if (!selectableSlots.includes(value.time) && value.time !== (selectableSlots[0] || ''))
+      onChange({ ...value, time: selectableSlots[0] || '', tableIds: [] });
+  }, [selectableSlots, onChange, value]);
 
   return (
     <>
@@ -57,11 +64,11 @@ export function BookingScheduleFields({
         <RoundedSelect
           ariaLabel="Time"
           value={value.time}
-          options={availableSlots.map((slot) => ({ value: slot, label: slot }))}
+          options={selectableSlots.map((slot) => ({ value: slot, label: slot }))}
           onChange={(time) => onChange({ ...value, time: String(time) })}
         />
       </label>
-      {!availableSlots.length && (
+      {!selectableSlots.length && (
         <p className="dialog-warning">
           No booking times are available for this date and length within service hours.
         </p>

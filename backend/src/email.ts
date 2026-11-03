@@ -45,7 +45,7 @@ export async function sendContactEmail(fields: {name: string; email: string; ven
     const mailer = nodemailer.createTransport({host: '127.0.0.1', port: 25, secure: false, tls: {servername: 'mail.pacevenues.com'}, connectionTimeout: 5000, greetingTimeout: 5000, socketTimeout: 10000});
     await mailer.sendMail({
         from: {address: 'carl@pacevenues.com', name: 'Pace website'},
-        to: 'carlfearby@me.com',
+        to: 'carl@pacevenues.com',
         replyTo: {address: fields.email, name: fields.name},
         subject: 'New Pace website enquiry',
         text: `Name: ${fields.name}\nEmail: ${fields.email}\nVenue: ${fields.venue}\nNumber of venues: ${fields.venueCount || 'Not provided'}\nEnquiry type: ${fields.enquiryType || 'Not provided'}\n\n${fields.message}`,

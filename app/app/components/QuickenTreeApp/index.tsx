@@ -41,6 +41,7 @@ type Booking = {
     experience?: string;
     price?: number;
     total?: number;
+    deposit?: number;
     afternoonTeaUpgrade?: boolean;
     bottomlessBrunchUpgrade?: boolean;
     bottomlessBrunchMeal?: string;
@@ -50,7 +51,7 @@ type Booking = {
     notes: string
 };
 type OrderSummary = { itemCount: number; total: number };
-type PlacedOrder = { lines: CartLine[]; total: number; paidAt: string; guestDetails?: OrderGuestDetails };
+type PlacedOrder = { lines: CartLine[]; subtotal: number; depositCredit: number; total: number; paidAt: string; guestDetails?: OrderGuestDetails };
 type CustomOrderLine = { description: string; price: number };
 type ApiBooking = {
     id: string;
@@ -60,16 +61,24 @@ type ApiBooking = {
     experience: string;
     status: string;
     totalPence: number;
+    depositStatus?: string;
+    depositAmountPence?: number;
     contactName: string;
     dietaryNeeds: string[]
 };
 type ApiProfile = { displayName: string; email: string; tier: string; tastes: string[]; dietaryNeeds: string[] };
 type ApiLoyalty = { points: number };
 type RewardsFeature = { enabled: boolean };
+type BookingPolicy = { cancellationCutoffHours: number };
+type DepositQuote = { required: boolean; amountPence: number; ruleName?: string | null };
 type ApiOrder = {
     status: string;
     total_pence: number;
     totalPence?: number;
+    deposit_credit_pence?: number;
+    depositCreditPence?: number;
+    paid_pence?: number;
+    paidPence?: number;
     paid_at?: string;
     paidAt?: string;
     lines: { id: string; itemName: string; itemDescription?: string; unitPricePence: number; quantity: number }[];
@@ -85,6 +94,9 @@ const toBooking = (booking: ApiBooking): Booking => ({
     guests: `${booking.guestCount} ${booking.guestCount === 1 ? 'Guest' : 'Guests'}`,
     experience: booking.experience,
     total: booking.totalPence ? booking.totalPence / 100 : undefined,
+    deposit: booking.depositStatus === 'demo_paid' && booking.depositAmountPence
+        ? booking.depositAmountPence / 100
+        : undefined,
     dietaryNeeds: booking.dietaryNeeds ?? [],
     name: booking.contactName,
     email: '',
@@ -245,6 +257,8 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
     const [placedOrders, setPlacedOrders] = useState<Record<string, PlacedOrder>>({});
     const [selectedPlacedOrderBooking, setSelectedPlacedOrderBooking] = useState<Booking | null>(null);
     const [bookingPendingCancellation, setBookingPendingCancellation] = useState<Booking | null>(null);
+    const [cancellationCutoffHours, setCancellationCutoffHours] = useState(24);
+    const [depositQuote, setDepositQuote] = useState<DepositQuote>({required:true,amountPence:1000,ruleName:'Standard booking deposit'});
     const [orderToast, setOrderToast] = useState('');
 
     useEffect(() => {
@@ -408,6 +422,16 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
     const bookingPricePerGuest = experiencePrice + ((bookingExperience === 'Afternoon Tea' && afternoonTeaUpgrade) || (bookingExperience === 'Bottomless Brunch' && bottomlessBrunchUpgrade) ? 5 : 0);
     const guestCount = parseInt(guests, 10);
     const bookingTotal = bookingPricePerGuest * guestCount;
+    const bookingDeposit = depositQuote.amountPence / 100;
+    const bookingPaymentDue = bookingExperience === 'Table' ? bookingDeposit : bookingTotal;
+    useEffect(() => {
+        if (!time || !session || session.accessToken === 'temporary-dashboard-preview') return;
+        let active = true;
+        memberRequest<DepositQuote>(`/booking-deposit-quote?date=${bookingDate}&time=${time}&guestCount=${guestCount}`)
+            .then(quote => { if (active) setDepositQuote(quote); })
+            .catch(() => undefined);
+        return () => { active = false; };
+    }, [bookingDate, guestCount, session, time]);
     const rewardProgress = Math.min(100, Math.max(0, (memberPoints / pointsData.nextRewardAt) * 100));
     const calendarStart = new Date(visibleMonth);
     calendarStart.setDate(1 - ((calendarStart.getDay() + 6) % 7));
@@ -460,6 +484,8 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
     }))).filter(section => section.items.length);
     const preOrderCount = Object.values(preOrderItems).reduce((total, quantity) => total + quantity, 0);
     const preOrderTotal = summariseOrder(preOrderItems, customOrderLines).total;
+    const orderDepositCredit = Math.min(preOrderTotal, orderAheadBooking?.deposit ?? 0);
+    const orderPaymentDue = Math.max(0, preOrderTotal - orderDepositCredit);
     const preOrderLines = Object.entries(preOrderItems).flatMap(([name, quantity]) => {
         const custom = customOrderLines[name];
         if (custom) return [{name, description: custom.description, price: custom.price, quantity}];
@@ -476,10 +502,11 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
         let active = true;
         const loadLiveMemberData = async () => {
             try {
-                const [profile, loyalty, liveBookings] = await Promise.all([
+                const [profile, loyalty, liveBookings, bookingPolicy] = await Promise.all([
                     memberRead<ApiProfile>(session.email, '/me/profile'),
                     memberRead<ApiLoyalty>(session.email, '/me/loyalty'),
-                    memberRead<ApiBooking[]>(session.email, '/bookings')
+                    memberRead<ApiBooking[]>(session.email, '/bookings'),
+                    memberRead<BookingPolicy>(session.email, '/booking-policy')
                 ]);
                 if (!active) return;
                 setProfileName(profile.displayName);
@@ -490,6 +517,7 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
                 setDietaryNeeds(profile.dietaryNeeds ?? []);
                 setMemberTier(profile.tier);
                 setMemberPoints(loyalty.points);
+                setCancellationCutoffHours(bookingPolicy.cancellationCutoffHours);
                 const now = new Date();
 
                 const visibleBookings = liveBookings
@@ -537,7 +565,9 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
                         };
                         return [booking.id, {
                             lines,
-                            total: (order.totalPence ?? order.total_pence) / 100,
+                            subtotal: (order.totalPence ?? order.total_pence) / 100,
+                            depositCredit: (order.depositCreditPence ?? order.deposit_credit_pence ?? 0) / 100,
+                            total: (order.paidPence ?? order.paid_pence ?? order.totalPence ?? order.total_pence) / 100,
                             paidAt: order.paidAt ?? order.paid_at ?? '',
                             guestDetails
                         }] as const;
@@ -702,6 +732,7 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
             guestCount,
             experience: bookingExperience,
             totalPence: Math.round(bookingTotal * 100),
+            depositAmountPence: depositQuote.amountPence,
             dietaryNeeds: [...dietaryNeeds],
             contactName: bookingName.trim() || 'Guest',
             contactEmail: bookingEmail.trim() || undefined,
@@ -718,6 +749,7 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
                 experience: bookingExperience,
                 price: bookingPricePerGuest || undefined,
                 total: bookingTotal || undefined,
+                deposit: depositQuote.required ? bookingDeposit : undefined,
                 afternoonTeaUpgrade: bookingExperience === 'Afternoon Tea' && afternoonTeaUpgrade,
                 bottomlessBrunchUpgrade: bookingExperience === 'Bottomless Brunch' && bottomlessBrunchUpgrade,
                 bottomlessBrunchMeal: bookingExperience === 'Bottomless Brunch' ? bottomlessBrunchMeal : undefined,
@@ -742,7 +774,14 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
         appKeys.forEach(key => window.localStorage.removeItem(key));
         window.location.reload();
     };
-    const continueFromDetails = () => bookingExperience === 'Table' ? requestTable() : (setCheckoutMode('booking'), navigate('checkout'));
+    const continueFromDetails = () => {
+        if (bookingExperience === 'Table' && !depositQuote.required) {
+            void requestTable();
+            return;
+        }
+        setCheckoutMode('booking');
+        navigate('checkout');
+    };
     const completeOrder = async () => {
         if (orderAheadBooking && preOrderLines.length) {
             try {
@@ -785,7 +824,9 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
             }
             const placedOrder: PlacedOrder = {
                 lines: preOrderLines,
-                total: preOrderTotal,
+                subtotal: preOrderTotal,
+                depositCredit: orderDepositCredit,
+                total: orderPaymentDue,
                 paidAt: new Date().toISOString(),
                 guestDetails: orderGuestDetails
             };
@@ -873,9 +914,9 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
         link.click();
         window.URL.revokeObjectURL(url);
     };
-    const cancelBooking = async (booking: Booking, hasOrder: boolean) => {
+    const cancelBooking = async (booking: Booking, hasOrder: boolean, reason: string) => {
         try {
-            if (!demoPreview) await memberRequest(`/bookings/${booking.id}/cancel`, 'POST');
+            if (!demoPreview) await memberRequest(`/bookings/${booking.id}/cancel`, 'POST', {reason});
         } catch {
             setOrderToast('Could not cancel booking');
             return;
@@ -1024,7 +1065,7 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
                                                                              onChange={event => setBookingNotes(event.target.value)}
                                                                              placeholder="Dietary requirements or occasion"/></label>
                     <button className="cta"
-                            onClick={continueFromDetails}>{experiencePrice ? `Continue to payment · £${bookingTotal.toFixed(2)}` : 'Request reservation'}</button>
+                            onClick={continueFromDetails}>{bookingExperience === 'Table' && !depositQuote.required ? 'Request reservation' : `Continue to payment · £${bookingPaymentDue.toFixed(2)}`}</button>
                 </>}
                 {view === 'checkout' && <>
                     <button className="topBack"
@@ -1039,10 +1080,10 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
                         <b>{checkoutMode === 'order' ? 'Order ahead' : bookingExperience}</b><small>{selectedCard ? `${selectedCard.brand} · •••• ${selectedCard.last4}` : 'Apple Pay'}</small>
                     </section>
                     <section className="checkoutSummary">
-                        <p>{checkoutMode === 'order' ? 'Your order' : bookingExperience}</p>
-                        <span>{checkoutMode === 'order' ? `${preOrderCount} ${preOrderCount === 1 ? 'item' : 'items'}` : `${guestCount} guests × £${bookingPricePerGuest.toFixed(2)}${afternoonTeaUpgrade || bottomlessBrunchUpgrade ? ' incl. Prosecco/Pimms' : ''}${bookingExperience === 'Bottomless Brunch' && bottomlessBrunchMeal ? ` · ${bottomlessBrunchMeal}` : ''}`}</span><b>Total
+                        <p>{checkoutMode === 'order' ? 'Your order' : bookingExperience === 'Table' ? 'Booking deposit' : bookingExperience}</p>
+                        <span>{checkoutMode === 'order' ? `${preOrderCount} ${preOrderCount === 1 ? 'item' : 'items'}` : bookingExperience === 'Table' ? `${guestCount} guests · £10 deposit applied to your booking` : `${guestCount} guests × £${bookingPricePerGuest.toFixed(2)}${afternoonTeaUpgrade || bottomlessBrunchUpgrade ? ' incl. Prosecco/Pimms' : ''}${bookingExperience === 'Bottomless Brunch' && bottomlessBrunchMeal ? ` · ${bottomlessBrunchMeal}` : ''}`}</span><b>Total
                         due
-                        today <strong>£{(checkoutMode === 'order' ? preOrderTotal : bookingTotal).toFixed(2)}</strong></b><small>{checkoutMode === 'order' ? 'Your order is sent to the kitchen after payment.' : 'Your reservation is confirmed as soon as payment is complete.'}</small>
+                        today <strong>£{(checkoutMode === 'order' ? orderPaymentDue : bookingPaymentDue).toFixed(2)}</strong></b>{checkoutMode === 'order' && orderDepositCredit > 0 && <small>Order £{preOrderTotal.toFixed(2)} · booking deposit −£{orderDepositCredit.toFixed(2)}</small>}<small>{checkoutMode === 'order' ? 'Your order is sent to the kitchen after payment.' : 'Your reservation is confirmed as soon as payment is complete.'}</small>
                     </section>
                     <PaymentMethodPicker cards={cards} value={effectivePaymentMethod} onChange={setPaymentMethod}
                                          disabled={!cardsReady || paymentState === 'processing'}/>
@@ -1052,8 +1093,8 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
                         <i
                             className="appleSpinner"/> Processing payment…</> : <>
                         {selectedCard ? <span>{selectedCard.brand}</span> :
-                            <span></span>} Pay <b>£{(checkoutMode === 'order' ? preOrderTotal : bookingTotal).toFixed(2)}</b></>}</button>
-                    <p className="checkoutFine">Demo payment · no payment is taken.</p></>}
+                            <span></span>} Pay <b>£{(checkoutMode === 'order' ? orderPaymentDue : bookingPaymentDue).toFixed(2)}</b></>}</button>
+                    <p className="checkoutFine">Test payment · no payment is taken.</p></>}
                 {view === 'bookings' && <>
                     <button className="topBack" onClick={() => navigate(bookingsOrigin)}><Icon
                         name="fa-chevron-left"/> {bookingsOrigin === 'profile' ? 'Profile' : 'Home'}
@@ -1071,7 +1112,7 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
                                     className="bookingDietarySummary">Dietary: {booking.dietaryNeeds.join(' · ')}</small> : null}{booking.total ?
                                 <strong className="paidBooking"><Icon name="fa-circle-check"/> Paid ·
                                     £{booking.total.toFixed(2)}
-                                </strong> : null}<small>{booking.name}</small>{parseInt(booking.guests, 10) >= 4 && !booking.total &&
+                                </strong> : booking.deposit ? <strong className="paidBooking"><Icon name="fa-circle-check"/> Deposit paid · £{booking.deposit.toFixed(2)}</strong> : null}<small>{booking.name}</small>{parseInt(booking.guests, 10) >= 4 && !booking.total &&
                                 (placedOrder ? <button className="savedOrder" onClick={() => openPlacedOrder(booking)}>
                                     <Icon
                                         name="fa-receipt"/><span><b>{placedOrderItemCount} {placedOrderItemCount === 1 ? 'item' : 'items'} ordered</b><small>£{placedOrder.total.toFixed(2)} · View order</small></span><Icon
@@ -1103,6 +1144,8 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
                     <OrderSummaryScreen booking={selectedPlacedOrderBooking}
                                         lines={placedOrders[selectedPlacedOrderBooking.id].lines}
                                         guestDetails={placedOrders[selectedPlacedOrderBooking.id].guestDetails}
+                                        subtotal={placedOrders[selectedPlacedOrderBooking.id].subtotal ?? placedOrders[selectedPlacedOrderBooking.id].total}
+                                        depositCredit={placedOrders[selectedPlacedOrderBooking.id].depositCredit ?? 0}
                                         total={placedOrders[selectedPlacedOrderBooking.id].total}
                                         onBack={() => navigate('bookings')}/>}
                 {view === 'menu' &&
@@ -1125,7 +1168,8 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
                                 onAdd={addToOrder}
                                 onBook={() => navigate('book')}/>}
                 {view === 'cart' &&
-                    <CartScreen lines={preOrderLines} total={preOrderTotal} booking={orderAheadBooking}
+                    <CartScreen lines={preOrderLines} total={preOrderTotal} depositCredit={orderDepositCredit}
+                                amountDue={orderPaymentDue} booking={orderAheadBooking}
                                 guestDetails={orderGuestDetails} onGuestDetailsChange={setOrderGuestDetails}
                                 onBack={() => navigate('menu', true)} onAdd={addToOrder}
                                 onRemove={name => setPreOrderItems(current => {
@@ -1232,7 +1276,7 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
                         <button key={taste} className={tasteProfile.includes(taste) ? 'selected' : ''}
                                 onClick={() => setTasteProfile(current => current.includes(taste) ? current.filter(item => item !== taste) : [...current, taste])}>
                             <Icon name={tasteProfile.includes(taste) ? 'fa-check' : 'fa-plus'}/> {taste}
-                        </button>)}</div>
+                        </button>)}</div><button className="cta" onClick={() => void saveProfile()}><Icon name="fa-check"/> {profileSaved ? 'Saved' : 'Save preferences'}</button>
                 </>}{profilePanel === 'dietary' && <><p className="eyebrow">Dietary profile</p><h1>Good food,<br/>for
                     you.</h1><p className="profileIntro">Save dietary requirements and allergies so we can make menu
                     information easier to find. Always tell your server about an allergy before ordering.</p>
@@ -1252,7 +1296,7 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
                             <Icon name={dietaryNeeds.includes(option) ? 'fa-check' : 'fa-plus'}/> {option}
                         </button>)}</div>
                     </section>
-                    </div>
+                    </div><button className="cta" onClick={() => void saveProfile()}><Icon name="fa-check"/> {profileSaved ? 'Saved' : 'Save dietary profile'}</button>
                 </>}{profilePanel === 'gifts' && <><p className="eyebrow">Gift cards & credit</p><h1>A
                     little extra<br/>for your table.</h1>
                     <section className="creditCard"><small>QUICKEN TREE CREDIT</small><b>£0.00</b><span>No credit available</span>
@@ -1296,8 +1340,12 @@ export function PaceApp({dark: controlledDark, onShowNotification, demoPreview =
                 <RedemptionPass redemption={redemption} closing={isClosingRedemption} onClose={closeRedemption}/>}
             {bookingPendingCancellation && <BookingCancellationDialog
                 hasOrder={Boolean(placedOrders[bookingPendingCancellation.id] || bookingOrderSummaries[bookingPendingCancellation.id])}
-                onCancel={() => setBookingPendingCancellation(null)} onConfirm={() => {
-                cancelBooking(bookingPendingCancellation, Boolean(placedOrders[bookingPendingCancellation.id] || bookingOrderSummaries[bookingPendingCancellation.id]));
+                bookingDate={bookingPendingCancellation.date}
+                bookingTime={bookingPendingCancellation.time}
+                depositAmount={bookingPendingCancellation.deposit}
+                cancellationCutoffHours={cancellationCutoffHours}
+                onCancel={() => setBookingPendingCancellation(null)} onConfirm={(reason) => {
+                cancelBooking(bookingPendingCancellation, Boolean(placedOrders[bookingPendingCancellation.id] || bookingOrderSummaries[bookingPendingCancellation.id]), reason);
                 setBookingPendingCancellation(null);
             }}/>}
             {orderToast &&

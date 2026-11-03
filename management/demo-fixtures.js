@@ -100,10 +100,14 @@ export async function seedDemoFixtures(sql) {
           on conflict(email) do update set display_name=excluded.display_name
           returning id`;
         await tx`insert into loyalty_accounts(member_id,points) values(${member.id},${(index + 1) * 125}) on conflict(member_id) do nothing`;
+        const depositStatus = (dayIndex + index) % 5 === 0 ? 'demo_paid' : (dayIndex + index) % 5 === 1 ? 'demo_card_guarantee' : 'none';
+        const bookingStatus = dayIndex < 7 ? ((dayIndex + index) % 6 === 0 ? 'no_show' : 'completed') : 'confirmed';
         const [booking] = await tx`
-          insert into bookings(member_id,booking_date,booking_time,guest_count,experience,status,contact_name,contact_email,notes,booking_duration_minutes,assigned_table_id)
-          values(${member.id},${date}::date,${time}::time,${partySize},'Table','confirmed',${name},${email},${orderAhead ? 'Demo booking with order ahead' : 'Demo booking'},90,${tableId})
+          insert into bookings(member_id,booking_date,booking_time,guest_count,experience,status,contact_name,contact_email,notes,booking_duration_minutes,assigned_table_id,deposit_status,deposit_amount_pence)
+          values(${member.id},${date}::date,${time}::time,${partySize},'Table',${bookingStatus},${name},${email},${orderAhead ? 'Demo booking with order ahead' : 'Demo booking'},90,${tableId},${depositStatus},${depositStatus === 'demo_paid' ? 1000 : 0})
           returning id`;
+        if(bookingStatus==='no_show')await tx`insert into booking_status_events(booking_id,member_id,from_status,to_status,reason,actor_user_id) values(${booking.id},${member.id},'confirmed','no_show','Demo contact attempt recorded',null)`;
+        if(bookingStatus==='confirmed'&&(dayIndex+index)%4===0)await tx`insert into booking_reminder_events(booking_id,channel,status,initiated_by,delivered_at) values(${booking.id},'email','delivered',null,now())`;
         await tx`insert into booking_table_assignments(booking_id,table_id) values(${booking.id},${tableId})`;
         const guestNames = demoGuestNames(dayIndex, index, name, partySize);
         const bookingGuests = [];
@@ -137,6 +141,11 @@ export async function seedDemoFixtures(sql) {
           }
         }
       }
+    }
+    const waitingParties = demoBookingsForDay(3).slice(0,5);
+    for (const [index,party] of waitingParties.entries()) {
+      const [member] = await tx`select id from members where email=${party.email}`;
+      await tx`insert into waitlist_entries(member_id,service_date,guest_name,contact_email,party_size,status,priority,quoted_wait_minutes,notes,assigned_table_id) values(${member?.id??null},${today}::date,${party.name},${party.email},${party.partySize},${index===0?'ready':index===1?'nearly_ready':'waiting'},${index===2?1:0},${10+index*10},'Demo walk-in party',${index<2?party.tableId:null})`;
     }
   });
 }

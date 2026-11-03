@@ -10,7 +10,32 @@ npm run dev
 
 Open http://localhost:4300. Production: `npm run build`, then `npm start`.
 
-For Fasthosts static hosting, copy `.env.deploy.example` to `.env.deploy`, enter the FTP password locally, and run `npm run deploy`. The script builds the static export, uploads the contents and `.htaccess` directly into the FTP account's current website root, and never stores the password in Git. Leave `FTP_REMOTE_DIR` empty when the account opens directly in the site root. Use `FTP_PROTOCOL=ftp` for ordinary FTP, `FTP_PROTOCOL=ftps` for explicit FTP over TLS, or `FTP_PROTOCOL=sftp` only if SFTP is enabled for the hosting account.
+For the live Pace site, deploy the marketing export to the VPS-backed web root rather than the legacy FTP target:
+
+```sh
+cd /Users/F7905607/Dropbox/Projects/hoe
+./deploy-marketing-vps.sh
+```
+
+That script reads `deploy.env`, builds with production values (`SITE_URL=https://pacevenues.com`, `SITE_NOINDEX=false`, public API origin from `API_URL`) and uploads `marketing/out/` to `/var/www/pace/marketing/` over SSH/rsync. You can also run it from the marketing project with:
+
+```sh
+cd /Users/F7905607/Dropbox/Projects/hoe/marketing
+npm run deploy:vps
+```
+
+Use `./deploy-marketing-vps.sh --dry-run` to preview the rsync changes without uploading. A normal run now also verifies that the public `/contact/` HTML matches the newly built export; if it does not, the script exits with a failure so you know the upload did not reach the live site.
+
+If you still have old notes referencing `./deploy_vsp.sh`, that script now forwards to `./deploy-marketing-vps.sh` and prints a deprecation warning.
+
+The older FTP-based command below is only for the separate Fasthosts static hosting account and does not update the current public `pacevenues.com` site:
+
+```sh
+cd /Users/F7905607/Dropbox/Projects/hoe/marketing
+npm run deploy
+```
+
+It uses `marketing/.env.deploy`, uploads files and `.htaccess` into the FTP account's current website root, and leaves the password out of Git. Leave `FTP_REMOTE_DIR` empty when the account opens directly in the site root. Use `FTP_PROTOCOL=ftp` for ordinary FTP, `FTP_PROTOCOL=ftps` for explicit FTP over TLS, or `FTP_PROTOCOL=sftp` only if SFTP is enabled for the hosting account.
 
 The site includes responsive navigation, interactive Bookings / Menus / Rewards sections, illustrative product previews, accessible expandable FAQs, and a backend-connected enquiry form. The form posts to `POST /contact` on the Pace API; set `NEXT_PUBLIC_BACKEND_URL` for the target API origin and configure the backend Mailtrap settings before launch.
 

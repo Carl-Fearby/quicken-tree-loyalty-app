@@ -12,11 +12,19 @@ import { MenuMaintenance } from '../menu-maintenance/MenuMaintenance';
 import { Breadcrumbs } from '../ui/Breadcrumbs';
 import { RewardsFeatureSetting } from './RewardsFeatureSetting';
 import { UserManagement } from './UserManagement';
+import { CancellationPolicySettings } from './CancellationPolicySettings';
+import { DepositRulesSettings } from './DepositRulesSettings';
+import { AttendanceSettings } from './AttendanceSettings';
+import { CommunicationsCentre } from './CommunicationsCentre';
 
 export type SettingsView =
   | 'home'
   | 'tables'
   | 'duration'
+  | 'cancellation'
+  | 'deposits'
+  | 'attendance'
+  | 'communications'
   | 'hours'
   | 'database'
   | 'menu'
@@ -31,6 +39,7 @@ export function SettingsPage({
   const router = useRouter();
   const [tables, setTables] = useState<Table[]>([]),
     [duration, setDuration] = useState(90),
+    [cancellationCutoffHours, setCancellationCutoffHours] = useState(24),
     [hours, setHours] = useState<OpeningHour[]>([]),
     [databaseGateOpen, setDatabaseGateOpen] = useState(false),
     [message, setMessage] = useState('');
@@ -44,12 +53,13 @@ export function SettingsPage({
     }
   };
   useEffect(() => {
-    if (view !== 'tables' && view !== 'duration') return;
+    if (view !== 'tables' && view !== 'duration' && view !== 'cancellation') return;
     void fetch('/api/booking-settings')
       .then((response) => response.json())
       .then((data) => {
         setTables(data.tables || []);
         setDuration(data.defaultDurationMinutes || 90);
+        setCancellationCutoffHours(Number(data.cancellationCutoffHours ?? 24));
       });
   }, [view]);
   useEffect(() => {
@@ -74,6 +84,8 @@ export function SettingsPage({
           ]
         : view === 'duration'
           ? ['/api/booking-settings', { defaultDurationMinutes: duration }]
+          : view === 'cancellation'
+            ? ['/api/booking-settings', { cancellationCutoffHours }]
           : ['/api/opening-hours', { hours }];
     const response = await fetch(request[0] as string, {
       method: 'PUT',
@@ -118,11 +130,19 @@ export function SettingsPage({
         <RewardsFeatureSetting />
       </section>
     );
+  if (view === 'deposits')
+    return <DepositRulesSettings onBack={() => navigate('home')} />;
+  if (view === 'attendance')
+    return <AttendanceSettings onBack={() => navigate('home')} />;
+  if (view === 'communications')
+    return <CommunicationsCentre onBack={() => navigate('home')} />;
   const title =
     view === 'tables'
       ? 'Restaurant tables'
       : view === 'duration'
         ? 'Booking duration'
+        : view === 'cancellation'
+          ? 'Cancellation policy'
         : 'Opening & kitchen hours';
   return (
     <section className="settings-page">
@@ -134,6 +154,8 @@ export function SettingsPage({
           ? 'Manage tables available in the booking diary.'
           : view === 'duration'
             ? 'Set the default length used when creating new table bookings.'
+            : view === 'cancellation'
+              ? 'Set when guests can cancel without losing a booking deposit.'
             : 'Set venue hours and the kitchen closing time for each day. Bookings must start before the kitchen closes and finish by venue closing.'}
       </p>
       <section className="settings-card">
@@ -141,6 +163,8 @@ export function SettingsPage({
           <RestaurantTablesSettings tables={tables} onChange={setTables} />
         ) : view === 'duration' ? (
           <BookingDurationSettings value={duration} onChange={setDuration} />
+        ) : view === 'cancellation' ? (
+          <CancellationPolicySettings value={cancellationCutoffHours} onChange={setCancellationCutoffHours} />
         ) : (
           <OpeningHoursSettings hours={hours} onChange={setHours} />
         )}

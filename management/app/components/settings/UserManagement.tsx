@@ -215,7 +215,7 @@ export function UserManagement({ onBack }: { onBack: () => void }) {
                 )}
                 {form.role === 'admin' && <p>Administrators always have full access to every function.</p>}
               </fieldset>
-              <label className="user-active-toggle"><input type="checkbox" checked={form.active} disabled={editing?.id === currentUserId} onChange={(event) => setForm({...form, active: event.target.checked})} /> Active user</label>
+              <label className="user-active-toggle check-control"><input type="checkbox" checked={form.active} disabled={editing?.id === currentUserId} onChange={(event) => setForm({...form, active: event.target.checked})} /><span>Active user</span></label>
               <div className="dialog-actions"><button type="button" onClick={closeEditor}>Cancel</button><button className="primary" disabled={busy} type="submit">{busy ? 'Saving…' : editing ? 'Save changes' : 'Create user'}</button></div>
             </form>
           </section>

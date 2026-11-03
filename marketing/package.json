@@ -8,10 +8,12 @@
     "build": "next build",
     "build:static": "next build",
     "deploy": "sh ./scripts/deploy-fasthosts.sh",
+    "deploy:vps": "bash ../deploy-marketing-vps.sh",
     "start": "next start --port 4300"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.3.1",
+    "@fortawesome/free-brands-svg-icons": "^7.3.1",
     "@fortawesome/free-solid-svg-icons": "^7.3.1",
     "@fortawesome/react-fontawesome": "^3.5.0",
     "mailtrap": "^4.10.0",
