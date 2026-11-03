@@ -18,8 +18,14 @@ source "$CONFIG"
 : "${API_URL:=https://api.pacevenues.com}"
 : "${BACKOFFICE_URL:=https://backoffice.pacevenues.com}"
 
-SSH=(ssh -i "$DEPLOY_KEY" -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST")
-RSYNC_SSH="ssh -i $DEPLOY_KEY -o BatchMode=yes"
+# DEPLOY_PORT is optional and defaults to the standard SSH port.
+SSH_PORT_ARGS=""
+if [[ -n "${DEPLOY_PORT:-}" ]]; then
+  SSH_PORT_ARGS="-p $DEPLOY_PORT"
+fi
+
+SSH=(ssh -i "$DEPLOY_KEY" $SSH_PORT_ARGS -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST")
+RSYNC_SSH="ssh -i $DEPLOY_KEY $SSH_PORT_ARGS -o BatchMode=yes"
 
 echo "Building customer app for $API_URL..."
 (
